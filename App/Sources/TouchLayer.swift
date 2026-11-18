@@ -221,6 +221,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         let down = others(than: key)
         // Every recogniser asks about the same touch: the answer is made once.
         if let known = seen[key], known.landed == touch.timestamp { return known.verdict }
+        if down.isEmpty { landedInWindow = touch.location(in: nil) }
         var verdict = Verdict()
         if touch.type == .pencil {
             // The Pencil comes first: what a finger had begun (a resting hand, more often than not) is given up.
@@ -274,7 +275,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         // wait for the second finger, and sliding and zooming happen together.
         if other.view === self { return true }
         // The page's own swipe from the screen's edge (Back) may begin too; when it does, the press is given up.
-        if other is UIScreenEdgePanGestureRecognizer {
+        if isEdgeSwipe(other) {
             if !watched.contains(other) {
                 watched.add(other)
                 other.addTarget(self, action: #selector(edgeSwiped(_:)))
@@ -283,6 +284,28 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         }
         // Anything else (a swipe-back from the middle of the page, for one) loses to a press on the board.
         return false
+    }
+
+    /// Back by a swipe that began at the screen's very edge. Since iOS 26 the same recogniser also
+    /// answers a swipe from the middle of the page, so its kind alone does not tell: where the finger
+    /// landed does.
+    private func isEdgeSwipe(_ other: UIGestureRecognizer) -> Bool {
+        guard other is UIScreenEdgePanGestureRecognizer, let window else { return false }
+        let x = landedInWindow.x
+        return effectiveUserInterfaceLayoutDirection == .rightToLeft ? x > window.bounds.width - TouchSurface.edge : x < TouchSurface.edge
+    }
+    /// How near the screen's edge a finger must land for the page's swipe-back, in points.
+    private static let edge: CGFloat = 24
+    /// Where the newest touch landed, in the window.
+    private var landedInWindow = CGPoint(x: CGFloat.greatestFiniteMagnitude / 2, y: 0)
+
+    /// The page's swipe-back from the middle of the screen (new in iOS 26) waits until the board's
+    /// press or stroke has failed — which it never does while a finger is on the board. Without this
+    /// a slide or a drawn line to the right went back to the list of boards. The swipe from the
+    /// screen's very edge is left alone (see above).
+    func gestureRecognizer(_ recogniser: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+        if other.view === self || isEdgeSwipe(other) { return false }
+        return recogniser === fingerPress || recogniser === pencilPress || recogniser === inkStroke
     }
 
     @objc private func edgeSwiped(_ edge: UIGestureRecognizer) {
