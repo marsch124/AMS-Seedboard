@@ -45,6 +45,8 @@ struct SeedboardApp: App {
         RootView()
             .environmentObject(model)
             .tint(Theme.text(.boards))
+            // For pictures: `-night` shows the app by night whatever the device is set to.
+            .preferredColorScheme(LaunchOptions.arguments.contains("-night") ? .dark : nil)
             .onOpenURL { model.open(url: $0) }
             // Leaving the app keeps what is being typed and writes everything at once.
             .onChange(of: phase) { _, new in
