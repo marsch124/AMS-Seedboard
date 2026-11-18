@@ -559,7 +559,8 @@ struct CanvasView: View {
             } else if double(id), session.beginLaneName(of: id, at: p) {
                 // Two presses on a lane's name band: its name is typed in place (LanesView.swift).
             } else if double(id) {
-                if session.board.item(id)?.kind == .picture { session.beginCaption(id) } else { session.beginEdit(id) }
+                // Two presses on a door open its board (Doors.swift).
+                if session.board.item(id)?.kind == .picture { session.beginCaption(id) } else if !session.goThroughDoor(id) { session.beginEdit(id) }
             } else if shiftDown || session.choosingMore {
                 session.select(id, adding: true)
             } else {
@@ -684,7 +685,8 @@ struct CanvasView: View {
             return .ignored
         case .return:
             if let item {
-                if item.kind == .idea { session.addSister(of: item.id) } else { session.beginEdit(item.id) }
+                // Return on a chosen door opens its board (Doors.swift).
+                if item.kind == .idea { session.addSister(of: item.id) } else if !session.goThroughDoor(item.id) { session.beginEdit(item.id) }
                 return .handled
             }
             if let link = session.selectedLink { session.beginEdit(link); return .handled }

@@ -146,7 +146,7 @@ enum Lettering {
             case .frame:
                 break
             case .door:
-                // 0.5 groundwork: a door keeps the size it was given (the door lane draws it for real).
+                // A door is a card of one size (DoorDraw.swift): its words are its board's name.
                 break
             case .bar, .milestone, .phase:
                 break
@@ -317,8 +317,11 @@ struct BoardPainter {
             } else {
                 align = (facts.side[item.id] ?? .right) == .right ? .leading : .trailing
             }
-        case .box, .round, .diamond, .oval, .door:
-            // 0.5 groundwork: a door is drawn as a plain box until the door lane draws it for real.
+        case .door:
+            // A door to another board (DoorDraw.swift): a card of its own, no words to type, no tick.
+            drawDoor(item, ctx)
+            return
+        case .box, .round, .diamond, .oval:
             let shape: Path
             switch item.kind {
             case .round: shape = Path(roundedRect: f, cornerRadius: min(f.height, f.width) / 2)

@@ -115,6 +115,18 @@ final class BoardSession: ObservableObject {
         return true
     }
 
+    /// A change that is NO step for Undo and leaves Undo and Redo as they are (0.5: the names on doors follow
+    /// their boards, Doors.swift). Nothing happens while words are typed or a drag is going on.
+    func quietly(_ work: (inout Board) -> Void) {
+        guard !readOnly, !busy else { return }
+        var new = board
+        work(&new)
+        guard new != board else { return }
+        new.touch()
+        set(new)
+        onChange?(board)
+    }
+
     /// Shows a short line with an Undo button for the step just taken. It goes by itself.
     func tell(_ words: String) {
         noticeWork?.cancel()
@@ -222,7 +234,8 @@ final class BoardSession: ObservableObject {
         guard !readOnly else { return }
         // A drawing has no words; a picture has only its caption, which only the caption button and a double press start
         // (a letter key or Return on a chosen picture still does not start typing).
-        guard board.item(id)?.kind != .drawing, caption || board.item(id)?.kind != .picture else { return }
+        // (A door shows its board's name: it has no words to type either.)
+        guard board.item(id)?.kind != .drawing, board.item(id)?.kind != .door, caption || board.item(id)?.kind != .picture else { return }
         if editing != nil { commitEdit() }
         if let item = board.item(id) {
             draft = item.text
@@ -551,7 +564,7 @@ final class BoardSession: ObservableObject {
     func toggleTodo() {
         if board.isSequence { sequenceToggleTodo(); return }
         // A drawing carries no tick, nor does a timeline's phase heading.
-        let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .picture && board.item($0)?.kind != .phase }
+        let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .picture && board.item($0)?.kind != .phase && board.item($0)?.kind != .door }
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
         change { board in
