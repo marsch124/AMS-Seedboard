@@ -156,7 +156,8 @@ public extension Route {
             let over = abs(t) - (half - radius)
             if over > 0 { inset = radius - (max(0, radius * radius - over * over)).squareRoot() }
         default:
-            break
+            // Person, document, slanted box, store: the line ends on the real outline (ShapeOutline.swift).
+            inset = Double(ShapeOutline.inset(kind, rect, side: side))
         }
         switch side {
         case .right: return CGPoint(x: Double(rect.maxX) - inset, y: Double(rect.midY) + t)

@@ -95,6 +95,7 @@ public enum ParagonExport {
             flow.append(line)
         }
         section("Flow", flow, into: &out)
+        out += laneText(board)
 
         section("Notes", noteBullets(board), into: &out)
 

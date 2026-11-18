@@ -24,6 +24,8 @@ extension Paint {
 struct SnapShow {
     var guides: [Snap.Guide] = []
     var landing: CGRect?
+    /// The frames and lanes the dragged things are over: they light up softly (pick 16).
+    var over: [FrameSpot] = []
 
     /// The catch distance in board points: 6 screen points. Holding ⌘ on the Mac switches catching off.
     static func reach(_ scale: CGFloat) -> CGFloat {
