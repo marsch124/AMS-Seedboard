@@ -78,7 +78,7 @@ struct CanvasView: View {
                     let shown = session.shownNow
                     var painter = BoardPainter(board: shown.board, facts: shown.facts, paint: paint)
                     painter.motion = shown.looks
-                    painter.todoStates = ParagonEcho.shared.marks(for: session.board)
+                    painter.todoStates = TodoMark.marks(for: session.board)
                     painter.scale = session.scale
                     painter.selection = session.selection
                     painter.selectedLink = session.selectedLink
