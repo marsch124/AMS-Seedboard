@@ -1,0 +1,32 @@
+AMS Seedboard 0.9 (build 9) - what to test
+
+A big version. FIRST update every device (iPhone, iPad, Mac) to 0.9: a board changed by 0.9 opens read-only in older versions.
+
+1. Timeline (iPhone, iPad, Mac)
+- Mark bars Done late and early. The label past the bar: "18 Nov · 8 days late" (faint red) or "· 3 days early" (faint green), on a soft background; on time: only the day. The red Today line must not cross the words. Dates page: "Done on 18 Nov · 8 days late".
+- Today button (Mac and keyboard: T). Weekends and holidays shaded in Days and Weeks. A plan over half a year opens in Months ("Jan 2027").
+- Press the small arrow before a phase: its rows fold into a band ("4 bars"). More: Fold all phases / Unfold all.
+- More, Add to Calendar...: tick, Add, look in your Calendar. Add again: Added shows.
+
+2. Board and ideas
+- Choose a note, press Vote (Mac: option-command-V) a few times. More: Sort by dots.
+- More, Colour legend...: write what yellow means; the card appears bottom left.
+- In a note type "[ ] milk": a box; press it to tick. Button Tick list.
+- A web address in a note: the page title shows below. Pin in place: try to drag.
+- More, Background: Plain, Dots, Squares. Frame, Focus (option-command-F); More, Show frames (option-command-P); Tidy into a grid (option-command-G); Small map on a big board.
+- New starters: Decision grid, Weekly review, SWOT.
+
+3. Mind maps, flowcharts, Who does what
+- Mind map middle with branches: Balance. Fold a branch: "+5" pill, press it. Words on an arrow stand mid-line. More, Number the steps. Who does what: "sends 4" under each name.
+
+4. Pencil and pictures
+- Draw: Highlighter (H), rubber Small/Medium/Large, Lasso (L) round lines and move them. Choose a sketch of handwriting: Make typed. Choose a picture: Draw on it, then Done.
+
+5. PARAGON
+- Choose a frame: Send this frame to PARAGON... (switch Only this frame). Due days show beside to-do rings. Choose up to 3 things: Today's three.
+
+6. Finding and tidying
+- Press and hold a board: Put away; open "Put away (n)" at the bottom, Bring back. The line under boards: "34 ideas · 12 done". Search for a word inside a photo. Spotlight. Press and hold Undo (option-command-Z): the Undo list.
+
+Also look at: Settings, What's new (0.9) and How it works.
+Tell us: anything wrong in day or night, on iPhone, iPad or Mac.
