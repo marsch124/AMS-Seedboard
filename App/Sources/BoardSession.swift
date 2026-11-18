@@ -23,6 +23,8 @@ final class BoardSession: ObservableObject {
     @Published var choosingMore = false
     @Published private(set) var undoCount = 0
     @Published private(set) var redoCount = 0
+    /// Timeline boards only: the scale of the days (see TimelineSession.swift).
+    @Published var timeline = TimelineLook()
 
     var viewSize: CGSize = .zero
     private var moved = false
@@ -322,6 +324,7 @@ final class BoardSession: ObservableObject {
     /// A list becomes a mind map (or hangs under the chosen idea); one line becomes a sticky note.
     func paste(_ text: String) {
         guard !readOnly, editing == nil else { return }
+        if board.isTimeline { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
         let nodes = Outline.parse(clean)
@@ -386,6 +389,7 @@ final class BoardSession: ObservableObject {
 
     func duplicateSelection() {
         guard editing == nil, !selection.isEmpty else { return }
+        if board.isTimeline { timelineDuplicate(); return }
         var copies: Set<UUID> = []
         change { copies = $0.duplicate(self.selection) }
         if !copies.isEmpty { selection = copies }
@@ -518,12 +522,14 @@ final class BoardSession: ObservableObject {
     func pan(by delta: CGSize) {
         moved = true
         offset = CGSize(width: offset.width + delta.width, height: offset.height + delta.height)
+        if board.isTimeline { clampTimeline() }
     }
 
     /// Zooms so the board point under the screen point stays where it is.
     func zoom(to newScale: CGFloat, around point: CGPoint? = nil) {
         let anchor = point ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
         moved = true
+        if board.isTimeline { timelineZoom(by: newScale / max(scale, 0.01), around: anchor); return }
         let clamped = min(max(newScale, 0.2), 3)
         let under = toBoard(anchor)
         scale = clamped
@@ -532,6 +538,7 @@ final class BoardSession: ObservableObject {
 
     /// Shows the whole board, never bigger than life size.
     func fit() {
+        if board.isTimeline { timelineFit(); return }
         guard viewSize.width > 10, viewSize.height > 10 else { return }
         guard let all = board.bounds else {
             scale = 1
@@ -562,6 +569,7 @@ final class BoardSession: ObservableObject {
 
     /// Moves the view just enough to bring an item into sight.
     func reveal(_ id: UUID) {
+        if board.isTimeline { timelineReveal(id); return }
         guard let item = board.item(id), viewSize.width > 10 else { return }
         let r = toScreen(item.frame)
         let safe = CGRect(x: 30, y: 70, width: viewSize.width - 60, height: viewSize.height - 190)

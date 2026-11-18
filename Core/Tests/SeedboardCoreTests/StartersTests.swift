@@ -16,11 +16,12 @@ final class StartersTests: XCTestCase {
             XCTAssertEqual(board.title, starter.name)
             XCTAssertFalse(starter.hint.isEmpty)
         }
-        XCTAssertEqual(Starter.allCases.map(\.name), ["Blank board", "Mind map", "Flow", "Pros and cons", "Plan in steps"])
+        XCTAssertEqual(Starter.allCases.map(\.name), ["Blank board", "Mind map", "Flow", "Pros and cons", "Plan in steps", "Timeline"])
     }
 
     func testNoStarterOverlapsItsShapes() {
-        for starter in Starter.allCases {
+        // A timeline's bars are placed by their days and rows, not by a frame (see TimelineTests).
+        for starter in Starter.allCases where starter != .timeline {
             let items = starter.board().items.filter { $0.kind != .frame }
             for i in items.indices { for j in items.indices where j > i {
                 XCTAssertFalse(items[i].frame.intersects(items[j].frame), "\(starter.name): \(items[i].text) / \(items[j].text)")

@@ -301,6 +301,7 @@ private struct StarterPicker: View {
         case .flow: return .seedArrow
         case .prosCons: return .seedNote
         case .steps: return .seedBox
+        case .timeline: return NewMark.timeline.standIn
         }
     }
 
@@ -311,6 +312,7 @@ private struct StarterPicker: View {
         case .flow: return .arrows
         case .prosCons: return .notes
         case .steps: return .shapes
+        case .timeline: return .timeline
         }
     }
 }

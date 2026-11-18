@@ -46,9 +46,9 @@ struct BoardView: View {
         ZStack {
             // The board's own colour runs to every edge of the screen, also under the home bar.
             Paint(scheme).canvas.ignoresSafeArea()
-            CanvasView(session: session)
+            if session.board.isTimeline { TimelineView(session: session) } else { CanvasView(session: session) }
 
-            if session.board.isEmpty {
+            if session.board.isEmpty && !session.board.isTimeline {
                 VStack(spacing: 4) {
                     Text("An empty board")
                         .font(Txt.sectionTitle)
@@ -67,7 +67,8 @@ struct BoardView: View {
                     banner("This board was made by a newer Seedboard. Update the app to change it.", part: .notes)
                 } else if session.linking {
                     HStack(spacing: 8) {
-                        Text(session.linkFrom == nil ? "Press the first shape, then the second." : "Now press the shape the arrow goes to.")
+                        Text(session.board.isTimeline ? TimelineWords.linking(first: session.linkFrom == nil)
+                             : (session.linkFrom == nil ? "Press the first shape, then the second." : "Now press the shape the arrow goes to."))
                             .font(Txt.label)
                         Button("Cancel") {
                             session.linking = false
@@ -84,6 +85,7 @@ struct BoardView: View {
                     SelectionBar(session: session)
                 }
                 Spacer(minLength: 0)
+                if session.board.isTimeline && !session.linking { TimelineSelectionBar(session: session) }
                 if let flash = model.flash {
                     Text(flash)
                         .font(Txt.label)
@@ -183,6 +185,7 @@ struct BoardView: View {
                 Button("Paste a list as a mind map") {
                     if let text = model.clipboardText() { session.paste(text) } else { model.say("Nothing to paste.") }
                 }
+                .disabled(session.board.isTimeline)
                 Button("Copy the board as text") {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
@@ -225,6 +228,11 @@ struct ToolPill: View {
     @ObservedObject var session: BoardSession
 
     var body: some View {
+        // A timeline board has its own tools (TimelineBars.swift).
+        if session.board.isTimeline { TimelineToolPill(session: session) } else { ordinary }
+    }
+
+    private var ordinary: some View {
         Group {
             HStack(spacing: 6) {
                 tool(.seedMindMap, .mindMap, "tool.mindmap", "Mind map (M)") { session.add(.idea) }
@@ -269,6 +277,11 @@ struct ZoomCluster: View {
     @ObservedObject var session: BoardSession
 
     var body: some View {
+        // A timeline board steps through days, weeks and months, and has Today (TimelineBars.swift).
+        if session.board.isTimeline { TimelineZoomCluster(session: session) } else { ordinary }
+    }
+
+    private var ordinary: some View {
         HStack(spacing: 2) {
             button(.app(.zoomOut), "zoom.out", "Smaller") { session.zoom(to: session.scale / 1.25) }
             Text("\(Int((session.scale * 100).rounded())) %")
@@ -304,6 +317,12 @@ struct SelectionBar: View {
     @State private var showColours = false
 
     var body: some View {
+        // A timeline board has its own bar for the chosen bar, at the bottom (TimelineBars.swift).
+        if session.board.isTimeline { EmptyView() } else { ordinary }
+    }
+
+    @ViewBuilder
+    private var ordinary: some View {
         let item = session.single
         let link = session.selectedLink.flatMap { id in session.board.links.first { $0.id == id } }
         if session.readOnly || (session.selection.isEmpty && link == nil) {
@@ -385,6 +404,9 @@ struct SelectionBar: View {
         case .frame:
             chip("Colour", .app(.palette), "sel.colour", .frames, on: showColours) { showColours.toggle() }
             chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
+        case .bar, .milestone, .phase:
+            // A timeline's rows have their own bar (TimelineBars.swift).
+            EmptyView()
         }
         chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }
     }

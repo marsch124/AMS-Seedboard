@@ -8,6 +8,8 @@ import CoreGraphics
 
 public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case idea, box, round, diamond, oval, note, text, frame
+    /// A timeline board's own things (format 2): a bar on days, a one-day milestone, a heading row.
+    case bar, milestone, phase
 
     /// The four flowchart shapes.
     public var isShape: Bool { self == .box || self == .round || self == .diamond || self == .oval }
@@ -22,6 +24,9 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .note: return "Sticky note"
         case .text: return "Text"
         case .frame: return "Frame"
+        case .bar: return "Bar"
+        case .milestone: return "Milestone"
+        case .phase: return "Phase"
         }
     }
 
@@ -35,6 +40,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .note: return CGSize(width: 150, height: 110)
         case .text: return CGSize(width: 120, height: 28)
         case .frame: return CGSize(width: 440, height: 300)
+        case .bar, .milestone, .phase: return CGSize(width: 150, height: 22)
         }
     }
 }
@@ -59,6 +65,11 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var folded: Bool
     /// Mind map centre only: branches go to the left as well as to the right.
     public var bothSides: Bool
+    /// Timeline: the first and the last day of a bar as "2026-12-01" (a milestone has only `start`).
+    public var start: String?
+    public var end: String?
+    /// Timeline: the row, 0 at the top.
+    public var row: Int?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -80,6 +91,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, kind, text, x, y, w, h, colour, todo, parent, order, folded, bothSides
+        case start, end, row
     }
 
     public init(from decoder: Decoder) throws {
@@ -98,6 +110,9 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         order = (try? c.decode(Double.self, forKey: .order)) ?? 0
         folded = (try? c.decode(Bool.self, forKey: .folded)) ?? false
         bothSides = (try? c.decode(Bool.self, forKey: .bothSides)) ?? false
+        start = try? c.decode(String.self, forKey: .start)
+        end = try? c.decode(String.self, forKey: .end)
+        row = try? c.decode(Int.self, forKey: .row)
     }
 
     public var frame: CGRect {
@@ -176,7 +191,9 @@ public struct SentInfo: Codable, Equatable, Sendable {
 
 public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// Raise this when a new version writes something an older version would lose.
-    public static let currentFormat = 1
+    /// 2 (Seedboard 0.2): the timeline board — `kind` on the board; bars, milestones and phases with
+    /// `start`, `end` and `row`. An app that only knows 1 shows such a board without letting it be changed.
+    public static let currentFormat = 2
 
     public var id: UUID
     public var title: String
@@ -191,6 +208,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public var sent: SentInfo?
     /// To-do boxes that already went to the PARAGON Inbox, so they are not sent twice.
     public var sentTodos: [UUID]
+    /// What kind of board this is: "timeline", or nothing for an ordinary board.
+    public var kind: String?
 
     public init(id: UUID = UUID(), title: String = "New board", created: Date = Date(), changed: Date? = nil,
                 pinned: Bool = false, colour: String = "green", items: [Item] = [], links: [Link] = []) {
@@ -209,6 +228,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, title, created, changed, format, pinned, colour, items, links, sent, sentTodos
+        case kind
     }
 
     public init(from decoder: Decoder) throws {
@@ -225,6 +245,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         links = ((try? c.decode([Lenient<Link>].self, forKey: .links)) ?? []).compactMap(\.value)
         sent = try? c.decode(SentInfo.self, forKey: .sent)
         sentTodos = (try? c.decode([UUID].self, forKey: .sentTodos)) ?? []
+        kind = try? c.decode(String.self, forKey: .kind)
     }
 
     /// True when this version of the app may change the board (it was not written by a newer one).

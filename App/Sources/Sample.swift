@@ -4,6 +4,32 @@ import SeedboardCore
 
 /// Made-up boards for pictures and tests (`-sampleData`). Nothing is read or written.
 enum Sample {
+    /// A made-up timeline round today: two phases, seven bars, a milestone, five "comes after" arrows.
+    /// `-board timeline` opens it (no other sample board has that word in its name).
+    static func timeline(now: Date = Date()) -> Board {
+        var board = Board.timeline(title: "Build timeline", created: now.addingTimeInterval(-86_400 * 5))
+        board.colour = "orange"
+        // Counted from the Monday of this week, so the picture looks the same on every day of a week.
+        let monday = Day(now).weekStart
+        board.addPhase("Groundwork", colour: "teal")
+        let permit = board.addBar("Permit", start: monday - 21, days: 14, colour: "blue")
+        let builder = board.addBar("Find builder", start: monday - 14, days: 12, colour: "pink")
+        let foundation = board.addBar("Foundation", start: monday - 2, days: 12, colour: "teal")
+        board.addPhase("Shell", colour: "orange")
+        let walls = board.addBar("Walls", start: monday + 10, days: 14, colour: "orange")
+        let roof = board.addBar("Roof", start: monday + 24, days: 9, colour: "green")
+        board.addBar("Windows", start: monday + 28, days: 7, colour: "yellow")
+        let moveIn = board.addMilestone("Move in", on: monday + 40)
+        board.comesAfter(foundation, after: permit)
+        board.comesAfter(foundation, after: builder)
+        board.comesAfter(walls, after: foundation)
+        board.comesAfter(roof, after: walls)
+        board.comesAfter(moveIn, after: roof)
+        if let i = board.index(of: builder) { board.items[i].todo = true }
+        board.changed = now.addingTimeInterval(-3_600)
+        return board
+    }
+
     static func boards(now: Date = Date()) -> [Board] {
         var cabin = Board(title: "Summer cabin", created: now.addingTimeInterval(-86_400 * 3), changed: now, pinned: true, colour: "green")
         let centre = cabin.addCentre(at: CGPoint(x: 0, y: 0), text: "Summer cabin", bothSides: true)
@@ -50,6 +76,7 @@ enum Sample {
         ideas.pinned = true
         return [
             cabin,
+            timeline(now: now),
             ideas,
             made(.steps, "Garage shelves", "orange", daysAgo: 2),
             made(.prosCons, "Trip to Spain", "blue", daysAgo: 4),

@@ -564,7 +564,7 @@ struct CanvasView: View {
 
 #if os(macOS)
 /// The Mac's two-finger scroll moves the board, a pinch (or ⌘ with scrolling) zooms it.
-private struct ScrollCatcher: NSViewRepresentable {
+struct ScrollCatcher: NSViewRepresentable {
     let session: BoardSession
 
     func makeNSView(context: Context) -> CatcherView {
