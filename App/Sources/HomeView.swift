@@ -23,9 +23,9 @@ struct HomeView: View {
 
     var body: some View {
         let found = BoardSearch.find(search, in: model.boards)
-        let pinned = found.filter(\.pinned)
-        let recent = found.filter { !$0.pinned && $0.sent == nil }
-        let sent = found.filter { !$0.pinned && $0.sent != nil }
+        let pinned = found.filter { $0.pinned && !$0.isPutAway }
+        let recent = found.filter { !$0.pinned && $0.sent == nil && !$0.isPutAway }
+        let sent = found.filter { !$0.pinned && $0.sent != nil && !$0.isPutAway }
         return ScrollView {
             VStack(alignment: .leading, spacing: 4) {
                 header
@@ -69,6 +69,12 @@ struct HomeView: View {
                 section("Pinned", pinned)
                 section("Recent", recent)
                 section("Sent to PARAGON", sent, part: .paragon)
+                // 0.9: a search also finds boards that were put away; they are marked.
+                if !BoardSearch.words(search).isEmpty {
+                    section("Put away", found.filter(\.isPutAway))
+                } else {
+                    PutAwayRow().padding(.top, 6)
+                }
 
                 if model.loaded, !model.boards.isEmpty, found.isEmpty {
                     Text("No board has these words")
@@ -136,7 +142,7 @@ struct HomeView: View {
                 .accessibilityIdentifier("home.heading.\(title)")
             LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                 ForEach(boards) { board in
-                    BoardCard(board: board) { open(board.id) }
+                    BoardCard(board: board, search: search) { open(board.id) }
                         .accessibilityIdentifier("home.board.\(board.title)")
                         // The list's own press-and-hold menu (RootView.swift `row`), word for word.
                         .contextMenu {
@@ -146,6 +152,7 @@ struct HomeView: View {
                             }
                             Button(board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(board.id) }
                             Button("Make a copy") { model.duplicate(board.id) }
+                            if board.canBeChanged && !board.isPutAway { Button("Put away") { model.putAway(board.id) } }
                             if board.canBeChanged {
                                 Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
                             }
@@ -237,6 +244,8 @@ struct StarterCard: View {
 /// One board: its small picture, its colour dot and name, and when it was changed, in plain words.
 struct BoardCard: View {
     let board: Board
+    /// The words in the search field (marks "put away" and "in a picture" follow them).
+    var search = ""
     let open: () -> Void
     @Environment(\.colorScheme) private var scheme
     /// 0.5: "5 of 13 done", read from PARAGON (EchoKeeper.swift).
@@ -266,6 +275,13 @@ struct BoardCard: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .padding(.leading, 15)
+                    // 0.9: one small line: "34 ideas · 12 done · 3 late".
+                    Text(board.listLine(doneThings: echo.doneThings(board)) + FoundMarks.words(board, search: search))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .padding(.leading, 15)
+                        .accessibilityIdentifier("home.line.\(board.title)")
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)

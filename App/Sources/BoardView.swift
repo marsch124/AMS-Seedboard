@@ -189,6 +189,10 @@ struct BoardView: View {
         .sheet(isPresented: Binding(get: { session.cropping != nil }, set: { if !$0 { session.cropping = nil } }), onDismiss: { session.takeKeys() }) {
             if let id = session.cropping { CropPage(session: session, id: id) }
         }
+        // 0.9: "Undo list" (UndoListPage in FindingViews.swift).
+        .sheet(isPresented: $session.showUndoList, onDismiss: { session.takeKeys() }) {
+            UndoListPage(session: session)
+        }
         .alert("Name of the board", isPresented: $renaming) {
             TextField("Name", text: $newName)
                 .accessibilityIdentifier("rename.field")
@@ -226,6 +230,8 @@ struct BoardView: View {
                     .help("Undo")
                     .accessibilityLabel("Undo")
                     .accessibilityIdentifier("board.undo")
+                    // Right-click on the Mac, press and hold on the iPad: the Undo list.
+                    .contextMenu { Button("Undo list…") { session.showUndoList = true } }
                 Button { session.redo(); session.takeKeys() } label: { GlyphView(glyph: .app(.redo), size: 20) }
                     .disabled(session.redoCount == 0)
                     .help("Redo")
@@ -480,6 +486,10 @@ struct BoardCommands: Commands {
             }
             .keyboardShortcut("z", modifiers: [.command, .shift])
             .disabled(session == nil || (session?.redoCount == 0 && session?.editing == nil))
+            // 0.9: the last steps with their names; a press goes back to just before one.
+            Button("Undo List…") { session?.showUndoList = true }
+                .keyboardShortcut("z", modifiers: [.command, .option])
+                .disabled(session == nil || session?.readOnly == true || session?.editing != nil || session?.undoCount == 0)
         }
         CommandMenu("Board") {
             Button("To Do") { session?.toggleTodo() }
@@ -531,6 +541,10 @@ struct UndoCluster: View {
         .buttonStyle(PressStyle())
         .disabled(!on)
         .opacity(on ? 1 : 0.35)
+        // Press and hold Undo: the Undo list (0.9).
+        .contextMenu {
+            if id == "board.undo" { Button("Undo list…") { session.showUndoList = true } }
+        }
         .accessibilityLabel(help)
         .accessibilityIdentifier(id)
     }

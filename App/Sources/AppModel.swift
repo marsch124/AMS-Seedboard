@@ -24,6 +24,8 @@ final class AppModel: ObservableObject {
     var flashAction: FlashAction?
     /// The Send to PARAGON page is asked for.
     @Published var showSend = false
+    /// 0.9: the page of boards that were put away is open.
+    @Published var showPutAway = false
     /// Boards whose newest change is on this device but not in iCloud yet (a small dot in the list).
     @Published private(set) var notInCloud: Set<UUID> = []
     /// Picture files that are on this device but not in iCloud yet: a board that shows one keeps the dot.
@@ -307,9 +309,11 @@ final class AppModel: ObservableObject {
 
     // MARK: The list
 
-    var pinned: [Board] { boards.filter(\.pinned) }
-    var recent: [Board] { boards.filter { !$0.pinned && $0.sent == nil } }
-    var sent: [Board] { boards.filter { !$0.pinned && $0.sent != nil } }
+    // 0.9: a board that is put away is in none of these; "Put away" (PutAwayPage.swift) lists those.
+    var pinned: [Board] { boards.filter { $0.pinned && !$0.isPutAway } }
+    var recent: [Board] { boards.filter { !$0.pinned && $0.sent == nil && !$0.isPutAway } }
+    var sent: [Board] { boards.filter { !$0.pinned && $0.sent != nil && !$0.isPutAway } }
+    var putAwayBoards: [Board] { PutAway.away(boards) }
 
     func open(_ id: UUID?) {
         guard id != openID || session == nil else { return }
@@ -337,6 +341,8 @@ final class AppModel: ObservableObject {
             self.keep(board)
         }
         session = new
+        // 0.9: words inside the board's pictures are read once, quietly, for the search.
+        PictureWordsReader.shared.start(new)
     }
 
     /// A working copy that is not one of the boards (changing a starter): shown like a board, never kept as one.
@@ -416,6 +422,17 @@ final class AppModel: ObservableObject {
     }
 
     func togglePin(_ id: UUID) { edit(id) { $0.pinned.toggle() } }
+
+    /// 0.9: the board leaves the list (never deleted). A pinned board is unpinned first. Saved like any change,
+    /// so it travels to the other devices.
+    func putAway(_ id: UUID) {
+        guard boards.first(where: { $0.id == id })?.canBeChanged == true else { return }
+        edit(id) { PutAway.putAway(&$0) }
+        say("Board put away. Find it under Put away.")
+    }
+
+    /// 0.9: the board is in the list again.
+    func unputAway(_ id: UUID) { edit(id) { PutAway.bringBack(&$0) } }
 
     func rename(_ id: UUID, to title: String) {
         let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)

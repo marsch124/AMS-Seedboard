@@ -35,6 +35,14 @@ struct RootView: View {
                 }
             }
         }
+        // 0.9: the boards that were put away.
+        .sheet(isPresented: $model.showPutAway) {
+            PutAwayPage { id in
+                model.open(id)
+                compactColumn = .detail
+            }
+            .environmentObject(model)
+        }
         #if !os(macOS)
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(model)
@@ -130,6 +138,12 @@ struct BoardList: View {
                     section("Pinned", BoardSearch.find(search, in: model.pinned))
                     section("Recent", BoardSearch.find(search, in: model.recent))
                     section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
+                    // 0.9: a search also finds boards that were put away; they are marked.
+                    if !BoardSearch.words(search).isEmpty {
+                        section("Put away", BoardSearch.find(search, in: model.putAwayBoards))
+                    } else {
+                        PutAwayRow()
+                    }
                     if FeelRules.showsFirstSeeds(loaded: model.loaded, boards: model.boards.count, phone: phone) {
                         // 0.5: the iPhone's first start shows the starters themselves (EmptyBoard.swift).
                         FirstSeeds(open: open)
@@ -263,7 +277,7 @@ struct BoardList: View {
                         .font(.body.weight(chosen ? .bold : .regular))
                         .foregroundStyle(chosen ? Part.boards.text : Color.primary)
                         .lineLimit(1)
-                    Text(phone ? "\(board.changedWords())\(echo.doneTail(board)) · \(board.countLine)" : board.countLine)
+                    Text((phone ? "\(board.changedWords())\(echo.doneTail(board)) · " : "") + board.listLine(doneThings: echo.doneThings(board)) + FoundMarks.words(board, search: search))
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .lineLimit(1)
@@ -300,6 +314,7 @@ struct BoardList: View {
             }
             Button(board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(board.id) }
             Button("Make a copy") { model.duplicate(board.id) }
+            if board.canBeChanged && !board.isPutAway { Button("Put away") { model.putAway(board.id) } }
             if board.canBeChanged {
                 Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
             }

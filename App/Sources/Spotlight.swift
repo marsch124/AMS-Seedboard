@@ -19,8 +19,9 @@ final class SpotlightIndex {
 
     /// What the search was told last: each board's id with the time of its last change.
     /// 0.5 renamed the key once, so every board is told again — now with all its words and its picture.
-    private static let key = "seedboard.searchTold.2"
+    private static let key = "seedboard.searchTold.3"
     private static let oldKey = "seedboard.searchTold"
+    private static let oldKey2 = "seedboard.searchTold.2"
     private var watch: AnyCancellable?
     private var titles: [String] = []
     private var busy = false
@@ -29,6 +30,12 @@ final class SpotlightIndex {
     func watch(_ model: AppModel) {
         guard watch == nil, !LaunchOptions.sampleData, CSSearchableIndex.isIndexingAvailable() else { return }
         UserDefaults.standard.removeObject(forKey: SpotlightIndex.oldKey)
+        // 0.9: boards are told under the domain "boards" (they were "board"): the old ones are dropped once,
+        // and every board is told again (put-away boards too, they stay findable).
+        if UserDefaults.standard.object(forKey: SpotlightIndex.oldKey2) != nil {
+            UserDefaults.standard.removeObject(forKey: SpotlightIndex.oldKey2)
+            CSSearchableIndex.default().deleteSearchableItems(withDomainIdentifiers: ["board"]) { _ in }
+        }
         watch = model.$boards
             .combineLatest(model.$loaded)
             .filter { $0.1 }
@@ -128,14 +135,15 @@ final class SpotlightIndex {
         let about = CSSearchableItemAttributeSet(contentType: .content)
         about.title = board.title
         about.displayName = board.title
-        let words = Outside.searchWords(of: board)
-        about.contentDescription = words.isEmpty ? board.countLine : words
-        about.textContent = Outside.searchText(of: board)
+        let told = Outside.spotlight(of: board)
+        about.contentDescription = told.line
+        about.textContent = told.text
+        about.kind = told.kind
         about.thumbnailData = picture
-        about.keywords = ["Seedboard", "board"]
+        about.keywords = ["Seedboard", "board", Outside.kindWord(of: board)]
         about.contentCreationDate = board.created
         about.contentModificationDate = board.changed
-        let item = CSSearchableItem(uniqueIdentifier: board.id.uuidString, domainIdentifier: "board", attributeSet: about)
+        let item = CSSearchableItem(uniqueIdentifier: board.id.uuidString, domainIdentifier: SpotlightWords.domain, attributeSet: about)
         // A board stays findable for as long as it is there (the default would drop it after a month).
         item.expirationDate = .distantFuture
         // The result is also the board as Siri and Shortcuts know it.

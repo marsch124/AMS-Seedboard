@@ -19,7 +19,8 @@ public enum BoardSearch {
     public static func find(_ query: String, in boards: [Board]) -> [Board] {
         let wanted = words(query)
         guard !wanted.isEmpty else { return boards }
-        return boards.filter { $0.holds(wanted) }
+        // 0.9: words read inside a board's pictures count too (`BoardSearch.way` says which it was).
+        return boards.filter { $0.holds(wanted) || $0.holdsWithPictures(wanted) }
     }
 }
 
