@@ -45,6 +45,8 @@ public extension Board {
         var k = max(Double(r.width) / items[i].w, Double(r.height) / items[i].h)
         k = max(k, 44 / items[i].w, 28 / items[i].h)
         let w = items[i].w * k, h = items[i].h * k
+        // 0.9: marks drawn on the picture grow and shrink with it.
+        if let marks = items[i].strokes, !marks.isEmpty { items[i].strokes = Ink.scaled(marks, kx: w / items[i].w, ky: h / items[i].h) }
         // The corner opposite the one that was dragged is the one that did not move.
         let anchorRight = abs(r.maxX - old.maxX) < abs(r.minX - old.minX)
         let anchorBottom = abs(r.maxY - old.maxY) < abs(r.minY - old.minY)
@@ -72,6 +74,7 @@ public extension Board {
             new = [0, 0, 1, 1]
         }
         let old = items[i].crop ?? [0, 0, 1, 1]
+        let corner = CGPoint(x: items[i].x, y: items[i].y)
         // The whole picture as it lies on the board now.
         let wholeW = items[i].w / old[2], wholeH = items[i].h / old[3]
         items[i].x += (new[0] - old[0]) * wholeW
@@ -79,6 +82,10 @@ public extension Board {
         items[i].w = new[2] * wholeW
         items[i].h = new[3] * wholeH
         items[i].crop = Item.cleanCrop(new)
+        // 0.9: marks drawn on the picture stay where they were on it (the box's corner moved; the box clips them).
+        if let marks = items[i].strokes, !marks.isEmpty {
+            items[i].strokes = Ink.shifted(marks, dx: items[i].x - Double(corner.x), dy: items[i].y - Double(corner.y))
+        }
         return true
     }
 

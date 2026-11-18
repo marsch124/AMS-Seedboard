@@ -122,6 +122,17 @@ final class AppModel: ObservableObject {
         }
         // For pictures: `-draw` opens the board with the Draw tool on and its plate showing.
         if LaunchOptions.arguments.contains("-draw") { session?.ink.on = true }
+        // 0.9: `-highlighter`, `-rubber`, `-lasso` (with -draw) pick that pen; `-rubberSize small|medium|large`;
+        // `-drawOnPicture` opens Draw on the first picture.
+        if let desk = session?.ink {
+            if LaunchOptions.arguments.contains("-highlighter") { desk.highlighter = true }
+            if LaunchOptions.arguments.contains("-rubber") { desk.rubber = true }
+            if LaunchOptions.arguments.contains("-lasso") { desk.lasso = true }
+            if let word = LaunchOptions.value(for: "-rubberSize"), let size = RubberSize(rawValue: word) { desk.rubberSize = size }
+            if LaunchOptions.arguments.contains("-drawOnPicture"), let id = session?.board.items.first(where: { $0.kind == .picture })?.id {
+                session?.drawOnPicture(id)
+            }
+        }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // For pictures: `-makeTimeline` makes the timeline of the opened board (TimelineOfIt.swift).
         makeTimelineAtLaunch()

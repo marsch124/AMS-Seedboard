@@ -91,9 +91,10 @@ struct BarActions {
     }
 
     private func act(_ key: String, _ word: String, _ glyph: Glyph, show: BarAction.Show = .icon, tone: BarAction.Tone = .plain,
-                     on: Bool = false, enabled: Bool = true, drop: Int = 0, gap: Bool = false, _ run: @escaping () -> Void) -> BarAction {
+                     on: Bool = false, enabled: Bool = true, drop: Int = 0, gap: Bool = false, exact: String? = nil,
+                     _ run: @escaping () -> Void) -> BarAction {
         let session = session
-        return BarAction(id: prefix + key, word: word, glyph: glyph,
+        return BarAction(id: exact ?? prefix + key, word: word, glyph: glyph,
                          kind: .press { run(); session.takeKeys() },
                          show: show, tone: tone, on: on, enabled: enabled, drop: drop, gap: gap)
     }
@@ -116,6 +117,18 @@ struct BarActions {
         let session = session, id = item.id
         let here = item.picture.map { PictureStore.shared.image($0) != nil } ?? false
         return act("crop", "Crop", .new(.crop), show: .wideWord, enabled: here, drop: drop) { session.commitEdit(); session.cropping = id }
+    }
+
+    /// "Make typed" (0.9): a chosen sketch's handwriting becomes a Text thing with the words (InkWords.swift).
+    private func makeTyped(_ id: UUID, drop: Int = 1) -> BarAction {
+        let session = session
+        return act("totext", "Make typed", .new(.words), show: .wideWord, drop: drop, exact: "ink.totext") { session.makeTyped(id) }
+    }
+
+    /// "Draw on it" (0.9): the Draw tool opens with this picture as its target.
+    private func drawOn(_ id: UUID, drop: Int = 1) -> BarAction {
+        let session = session
+        return act("draw", "Draw on it", .new(.draw), show: .wideWord, drop: drop, exact: "picture.draw") { session.drawOnPicture(id) }
     }
 
     private func words(_ id: UUID, show: BarAction.Show = .wideWord, drop: Int = 1) -> BarAction {
@@ -154,7 +167,7 @@ struct BarActions {
         let paint = Paint(night: night)
         let isNote = item?.kind == .note
         let names = isNote ? Palette.notes : Palette.names
-        let plain = item.map { $0.kind.isShape } ?? (link != nil)
+        let plain = item.map { $0.kind.isShape || $0.kind == .drawing } ?? (link != nil)
         let inUse = (item?.id ?? link?.id).flatMap { session.board.colourInUse(of: $0) }
         var all: [BarAction] = []
         if plain {
@@ -277,8 +290,17 @@ struct BarActions {
             return all
         case .picture:
             // A picture has no words, no tick and no colour: a caption under it, a crop, copy it, line it up, remove it.
-            all.append(caption(item.id, drop: 1))
-            all.append(crop(item, drop: 2))
+            all.append(drawOn(item.id, drop: 1))
+            all.append(caption(item.id, drop: 2))
+            all.append(crop(item, drop: 3))
+            all.append(duplicate(drop: 0))
+            all += chooseMore()
+            all.append(remove(gap: true))
+            return all
+        case .drawing:
+            // A sketch (0.9): its colour, its handwriting as typed words, copy it, remove it.
+            all.append(colour(for: item, show: .wideWord, drop: 2))
+            all.append(makeTyped(item.id, drop: 1))
             all.append(duplicate(drop: 0))
             all += chooseMore()
             all.append(remove(gap: true))
@@ -364,9 +386,10 @@ struct BarActions {
         if item.kind == .door { return doorMenu(item, [copy, cut, twin]) + [remove(gap: true)] }
         // (A sketch has no words and carries no tick.)
         if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
-        if item.kind == .picture { all += [caption(item.id), crop(item)] }
+        if item.kind == .picture { all += [drawOn(item.id), caption(item.id), crop(item)] }
+        if item.kind == .drawing { all.append(makeTyped(item.id)) }
         let isBranch = item.kind == .idea && item.parent != nil
-        if item.kind.isShape || item.kind == .note || item.kind == .frame || isBranch { all.append(colour(for: item)) }
+        if item.kind.isShape || item.kind == .note || item.kind == .frame || item.kind == .drawing || isBranch { all.append(colour(for: item)) }
         if item.kind != .frame && item.kind != .drawing && item.kind != .picture { all.append(todo(on: item.todo, gap: false)) }
         copy.gap = true
         all += [copy, cut, twin]

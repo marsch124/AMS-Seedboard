@@ -324,7 +324,7 @@ public enum Ink {
 public extension Item {
     /// The strokes of a drawing as they lie on the board, in board points.
     var inkLines: [[CGPoint]] {
-        guard kind == .drawing else { return [] }
+        guard kind == .drawing || kind == .picture else { return [] }
         let corner = CGPoint(x: x, y: y)
         return (strokes ?? []).map { $0.path(from: corner) }
     }
@@ -335,7 +335,7 @@ public extension Item {
         let corner = CGPoint(x: x, y: y)
         var best: Double?
         for stroke in strokes where stroke.count > 0 {
-            let far = max(0, Ink.distance(from: point, toLine: stroke.path(from: corner)) - stroke.thickness.points / 2)
+            let far = max(0, Ink.distance(from: point, toLine: stroke.path(from: corner)) - stroke.lineWidth / 2)
             if best == nil || far < best! { best = far }
         }
         return best
@@ -352,7 +352,7 @@ public extension Board {
     /// lines only — never anywhere in its box, so what lies between the lines stays easy to reach.
     func inkHit(_ point: CGPoint, reach: Double) -> UUID? {
         for item in items.reversed() where item.kind == .drawing {
-            guard item.frame.insetBy(dx: -reach, dy: -reach).contains(point) else { continue }
+            guard item.frame.insetBy(dx: -reach - Ink.highlighterWidth / 2, dy: -reach - Ink.highlighterWidth / 2).contains(point) else { continue }
             if let far = item.inkDistance(to: point), far <= reach { return item.id }
         }
         return nil
@@ -370,8 +370,8 @@ public extension Board {
     /// tenth; thin them first (`Ink.thin`). Returns the drawing.
     @discardableResult
     mutating func addStroke(_ points: [CGPoint], pressure: [Double]? = nil, colour: String = "",
-                            width: InkWidth = .medium, to drawing: UUID? = nil) -> UUID? {
-        var force = pressure?.count == points.count ? pressure : nil
+                            width: InkWidth = .medium, pen: String? = nil, to drawing: UUID? = nil) -> UUID? {
+        var force = pressure?.count == points.count && pen != Ink.highlighter ? pressure : nil
         var line: [CGPoint] = []
         var kept: [Double] = []
         for (i, p) in points.enumerated() where p.x.isFinite && p.y.isFinite {
@@ -386,7 +386,9 @@ public extension Board {
             line = [line[0]]
             force = force.map { [$0.max() ?? 0] }
         }
-        var stroke = Stroke(colour: colour, width: width)
+        var stroke = Stroke(colour: pen == Ink.highlighter ? Ink.highlighterColour(colour) : colour,
+                            width: pen == Ink.highlighter ? .thick : width)
+        stroke.pen = pen == Ink.highlighter ? Ink.highlighter : nil
         stroke.pressure = force
         if let drawing, let i = index(of: drawing), items[i].kind == .drawing {
             let lines = items[i].inkLines + [line]
@@ -403,7 +405,7 @@ public extension Board {
 
     /// The box of a drawing is the box round its lines, with `Ink.margin` round it; the points are
     /// written from the box's corner. `lines`: every stroke's points in board points.
-    private mutating func fitDrawing(at i: Int, lines: [[CGPoint]]) {
+    mutating func fitDrawing(at i: Int, lines: [[CGPoint]]) {
         guard let all = Ink.bounds(of: lines.flatMap { $0 }), var strokes = items[i].strokes, strokes.count == lines.count else { return }
         let x = Ink.tenth(Double(all.minX)) - Ink.margin
         let y = Ink.tenth(Double(all.minY)) - Ink.margin
@@ -457,11 +459,11 @@ public extension Board {
         let start = from ?? point
         let way = CGRect(x: min(start.x, point.x), y: min(start.y, point.y),
                          width: abs(start.x - point.x), height: abs(start.y - point.y))
-        for item in items where item.kind == .drawing {
-            guard let strokes = item.strokes, item.frame.insetBy(dx: -reach, dy: -reach).intersects(way.insetBy(dx: -0.01, dy: -0.01)) else { continue }
+        for item in items where item.kind == .drawing || item.kind == .picture {
+            guard let strokes = item.strokes, item.frame.insetBy(dx: -reach - Ink.highlighterWidth / 2, dy: -reach - Ink.highlighterWidth / 2).intersects(way.insetBy(dx: -0.01, dy: -0.01)) else { continue }
             let corner = CGPoint(x: item.x, y: item.y)
             for (n, stroke) in strokes.enumerated() where stroke.count > 0 {
-                let far = Ink.distance(from: start, point, toLine: stroke.path(from: corner)) - stroke.thickness.points / 2
+                let far = Ink.distance(from: start, point, toLine: stroke.path(from: corner)) - stroke.lineWidth / 2
                 if far <= reach { found.insert(InkMark(drawing: item.id, stroke: n)) }
             }
         }
@@ -474,11 +476,14 @@ public extension Board {
         guard !marks.isEmpty else { return }
         var emptied: Set<UUID> = []
         for id in Set(marks.map(\.drawing)) {
-            guard let i = index(of: id), items[i].kind == .drawing, let strokes = items[i].strokes else { continue }
+            guard let i = index(of: id), items[i].kind == .drawing || items[i].kind == .picture, let strokes = items[i].strokes else { continue }
             let lines = items[i].inkLines
             let stay = strokes.indices.filter { !marks.contains(InkMark(drawing: id, stroke: $0)) }
             guard stay.count < strokes.count else { continue }
-            if stay.isEmpty {
+            if items[i].kind == .picture {
+                // Marks on a picture: the picture stays and keeps its size.
+                items[i].strokes = stay.isEmpty ? nil : stay.map { strokes[$0] }
+            } else if stay.isEmpty {
                 emptied.insert(id)
             } else {
                 items[i].strokes = stay.map { strokes[$0] }

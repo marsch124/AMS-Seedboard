@@ -97,6 +97,9 @@ extension Sample {
         stroke(hand.line([p(404, 76), p(360, 92), p(318, 100)], sway: 1.6), "orange", .medium, into: ring, pencil: true)
         stroke(hand.line([p(333, 88), p(317, 100), p(334, 109)], sway: 0.4), "orange", .medium, into: ring, pencil: true)
 
+        // 0.9: a highlighter stripe under "Lake side" (wide, see-through, under the ink).
+        board.addStroke([p(432, 60), p(556, 57)], colour: "yellow", pen: Ink.highlighter)
+
         // A tick beside a note: a quick, firm stroke.
         stroke(hand.line([p(408, 186), p(425, 207), p(463, 158)], sway: 0.6), "green", .thick, into: nil, pencil: true, firm: 0.5)
         board.add(.note, centre: p(560, 190), text: "Permit is in", colour: "green")

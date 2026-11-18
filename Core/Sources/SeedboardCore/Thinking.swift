@@ -308,7 +308,7 @@ public extension Board {
 
     /// The chosen things that carry a colour of their own: sticky notes, shapes, frames and the ideas of a branch.
     func colourable(_ ids: Set<UUID>) -> [Item] {
-        items.filter { ids.contains($0.id) && ($0.kind == .note || $0.kind.isShape || $0.kind == .frame || ($0.kind == .idea && $0.parent != nil)) }
+        items.filter { ids.contains($0.id) && ($0.kind == .note || $0.kind.isShape || $0.kind == .frame || $0.kind == .drawing || ($0.kind == .idea && $0.parent != nil)) }
     }
 
     /// The one colour all the chosen things show ("" = no colour); nil when they differ or none carries a colour.
@@ -323,7 +323,7 @@ public extension Board {
         let all = colourable(ids)
         guard thinkingIsOn, !all.isEmpty else { return [] }
         if all.contains(where: { $0.kind == .note }) { return Palette.notes }
-        return (all.allSatisfy { $0.kind.isShape } ? [""] : []) + Palette.names
+        return (all.allSatisfy { $0.kind.isShape || $0.kind == .drawing } ? [""] : []) + Palette.names
     }
 
     /// One colour for all the chosen things that carry one. In a mind map the colour belongs to the whole branch.
@@ -332,6 +332,8 @@ public extension Board {
         for item in colourable(ids) {
             if item.kind == .idea {
                 if let branch = mainBranch(of: item.id), let b = index(of: branch) { items[b].colour = name }
+            } else if item.kind == .drawing {
+                recolourSketch(item.id, to: name)
             } else if let i = index(of: item.id) {
                 items[i].colour = name
             }

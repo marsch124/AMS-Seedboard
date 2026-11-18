@@ -219,6 +219,7 @@ extension BoardPainter {
     /// The picture for PARAGON, Share, Export and the list's small pictures (`handles` off) is read at once.
     func drawPicture(_ item: Item, _ ctx: GraphicsContext) {
         drawPictureBody(item, ctx)
+        drawPictureMarks(item, ctx)
         drawCaption(item, ctx)
     }
 

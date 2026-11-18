@@ -72,6 +72,7 @@ public extension Board {
             case .idea: return branchColour(of: id)
             case .note: return item.colour.isEmpty ? "yellow" : item.colour
             case .frame: return item.colour.isEmpty ? "teal" : item.colour
+            case .drawing: return item.sketchColour
             default: return item.colour
             }
         }

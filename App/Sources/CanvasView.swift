@@ -338,6 +338,8 @@ struct CanvasView: View {
             case .size(let corner): return .size(id, corner)
             }
         }
+        // 0.9: inside the box round what the lasso chose, a press moves it all.
+        if let id = session.lassoBoxHit(p) { return .item(id) }
         if let id = board.hit(p, scale: Double(session.scale), least: byFinger ? Fingers.button : 0) { return .item(id) }
         if let id = board.hitLink(p, within: Double(9 / session.scale)) { return .link(id) }
         return .empty
@@ -722,6 +724,14 @@ struct CanvasView: View {
         let typed = press.characters
         guard let first = typed.unicodeScalars.first, typed.count == 1,
               !CharacterSet.controlCharacters.contains(first), first.value < 0xF700 || first.value > 0xF8FF else { return .ignored }
+        // 0.9: while drawing, H is the highlighter and L the lasso (L is the arrow tool otherwise).
+        if session.ink.on, !session.readOnly {
+            switch typed.lowercased() {
+            case "h": session.ink.highlighter.toggle(); return .handled
+            case "l": session.ink.lasso.toggle(); return .handled
+            default: break
+            }
+        }
         if let item {
             // Just start typing: the words go on after what is there.
             session.beginEdit(item.id)

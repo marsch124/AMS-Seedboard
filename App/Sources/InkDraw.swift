@@ -39,15 +39,45 @@ enum InkDraw {
                        style: StrokeStyle(lineWidth: run.width, lineCap: .round, lineJoin: .round))
         }
     }
+
+    /// A highlighter line (0.9): wide, see-through (35 %), flat ends, one width whatever the pressure.
+    /// Drawn as one path in one go, so its own overlaps do not darken.
+    static func highlight(_ points: [CGPoint], colour: Color, in ctx: GraphicsContext) {
+        var path = Path()
+        if let first = points.first {
+            path.move(to: first)
+            for p in points.dropFirst() { path.addLine(to: p) }
+            if points.count == 1 { path.addLine(to: CGPoint(x: first.x + 0.01, y: first.y)) }
+        }
+        ctx.stroke(path, with: .color(colour.opacity(Ink.highlighterOpacity)),
+                   style: StrokeStyle(lineWidth: CGFloat(Ink.highlighterWidth), lineCap: .butt, lineJoin: .round))
+    }
+
+    /// One stored stroke, the highlighter's way or the pen's.
+    static func paint(_ stroke: Stroke, from corner: CGPoint, paint: Paint, in ctx: GraphicsContext) {
+        let colour = InkDraw.colour(stroke.colour, paint: paint)
+        if stroke.isHighlighter {
+            highlight(stroke.path(from: corner), colour: colour, in: ctx)
+        } else {
+            InkDraw.stroke(stroke.path(from: corner), pressure: stroke.pressure, base: stroke.thickness.points, colour: colour, in: ctx)
+        }
+    }
 }
 
 extension BoardPainter {
     /// A drawing: every stroke in its own colour and thickness, in the order they were drawn.
     func drawInk(_ item: Item, _ ctx: GraphicsContext) {
         let corner = CGPoint(x: item.x, y: item.y)
-        for stroke in item.strokes ?? [] where stroke.count > 0 {
-            InkDraw.stroke(stroke.path(from: corner), pressure: stroke.pressure, base: stroke.thickness.points,
-                           colour: InkDraw.colour(stroke.colour, paint: paint), in: ctx)
-        }
+        // The highlighter lies under the ordinary ink of the same drawing (Ink.swift: `paintedStrokes`).
+        for stroke in item.paintedStrokes { InkDraw.paint(stroke, from: corner, paint: paint, in: ctx) }
+    }
+
+    /// Marks drawn on a picture (0.9): measured from its corner, above the picture, cut off at its edge.
+    func drawPictureMarks(_ item: Item, _ ctx: GraphicsContext) {
+        guard let marks = item.strokes, !marks.isEmpty else { return }
+        var inside = ctx
+        inside.clip(to: Path(roundedRect: item.frame, cornerRadius: 4))
+        let corner = CGPoint(x: item.x, y: item.y)
+        for stroke in item.paintedStrokes { InkDraw.paint(stroke, from: corner, paint: paint, in: inside) }
     }
 }
