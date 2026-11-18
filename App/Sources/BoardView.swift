@@ -213,7 +213,7 @@ struct BoardView: View {
                     .fixedSize()
                 #endif
             }
-            .buttonStyle(FilledButton(.boards))
+            .buttonStyle(ParagonButton())
             .help("Send this board to PARAGON")
             .accessibilityIdentifier("board.send")
         }
@@ -433,12 +433,15 @@ struct SelectionBar: View {
         let isNote = item?.kind == .note
         let names = isNote ? Palette.notes : Palette.names
         let plain = item.map { $0.kind.isShape } ?? (link != nil)
+        let inUse = (item?.id ?? link?.id).flatMap { session.board.colourInUse(of: $0) }
         return HStack(spacing: 7) {
             if plain {
                 dot(paint.plate, edge: paint.edge, id: "colour.none", label: "No colour") { session.setColour("") }
+                    .modifier(InUseRing(on: inUse == ""))
             }
             ForEach(names, id: \.self) { name in
                 dot(isNote ? paint.note(name) : paint.line(name), edge: nil, id: "colour.\(name)", label: name.capitalized) { session.setColour(name) }
+                    .modifier(InUseRing(on: inUse == name))
             }
         }
         .padding(.horizontal, 9)

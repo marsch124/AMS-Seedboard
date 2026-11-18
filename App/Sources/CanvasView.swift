@@ -220,7 +220,7 @@ struct CanvasView: View {
         case .note:
             align = .topLeading; textAlign = .leading
             pad = 10 * s; topPad = 10 * s
-            darkInk = !paint.night
+            darkInk = true   // a note is bright paper by night too
         case .frame:
             align = .topLeading; textAlign = .leading
             pad = 12 * s; topPad = 6 * s

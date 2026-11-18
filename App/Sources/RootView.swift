@@ -12,10 +12,13 @@ struct RootView: View {
     @State private var columns: NavigationSplitViewVisibility = .all
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
     @State private var showSettings = false
+    /// The words in the search field over the list. For pictures: `-search <word>` fills it in.
+    @State private var search = LaunchOptions.value(for: "-search") ?? ""
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columns, preferredCompactColumn: $compactColumn) {
-            BoardList(showSettings: $showSettings) { id in
+            BoardList(showSettings: $showSettings, search: $search, phone: sizeClass == .compact) { id in
                 model.open(id)
                 compactColumn = .detail
             }
@@ -25,7 +28,11 @@ struct RootView: View {
                 BoardView(session: session)
                     .id(session.board.id)
             } else {
-                NoBoard()
+                // No board is open: the home page (on the iPhone the list itself is the home).
+                HomeView(search: search) { id in
+                    model.open(id)
+                    compactColumn = .detail
+                }
             }
         }
         #if !os(macOS)
@@ -50,32 +57,13 @@ struct RootView: View {
     }
 }
 
-private struct NoBoard: View {
-    @EnvironmentObject private var model: AppModel
-
-    var body: some View {
-        VStack(spacing: 10) {
-            AppMarkView(.seedSprout, size: 46, colour: Part.boards.text)
-            Text(model.loaded && model.boards.isEmpty ? "Start a thought" : "Choose a board")
-                .font(Txt.big)
-            Text("Every idea starts on a board.")
-                .font(Txt.label)
-                .foregroundStyle(.secondary)
-            Button("New board") { model.newBoard(.blank) }
-                .buttonStyle(FilledButton(.boards))
-                .accessibilityIdentifier("empty.newBoard")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("board.none")
-    }
-}
-
 /// The boards: Pinned, Recent, Sent to PARAGON.
 struct BoardList: View {
     @EnvironmentObject private var model: AppModel
     @Binding var showSettings: Bool
+    @Binding var search: String
+    /// The narrow layout (iPhone): the list is the home, so every row shows its small picture.
+    var phone = false
     let open: (UUID) -> Void
 
     @State private var showStarters = false
@@ -114,19 +102,29 @@ struct BoardList: View {
                     showStarterSheet = false
                     open(model.newBoard(starter))
                 }
-                .presentationDetents([.height(CGFloat(Starter.allCases.count) * 46 + 60)])
+                .presentationDetents(StarterPicker.sheetDetents)
             }
+
+            SearchField(text: $search)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
-                    section("Pinned", model.pinned)
-                    section("Recent", model.recent)
-                    section("Sent to PARAGON", model.sent, part: .paragon)
+                    section("Pinned", BoardSearch.find(search, in: model.pinned))
+                    section("Recent", BoardSearch.find(search, in: model.recent))
+                    section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
                     if model.loaded && model.boards.isEmpty {
                         Text("No boards yet. Press New board.")
                             .font(Txt.label)
                             .foregroundStyle(.secondary)
                             .padding(10)
+                    } else if model.loaded && BoardSearch.find(search, in: model.boards).isEmpty {
+                        Text("No board has these words")
+                            .font(Txt.label)
+                            .foregroundStyle(.secondary)
+                            .padding(10)
+                            .accessibilityIdentifier("boards.noMatch")
                     }
                 }
                 .padding(.horizontal, 8)
@@ -214,23 +212,24 @@ struct BoardList: View {
         return Button { open(board.id) } label: {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(chosen ? Color.white : paint.line(board.colour))
+                    .fill(paint.line(board.colour))
                     .frame(width: 9, height: 9)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(board.title)
-                        .font(.body.weight(chosen ? .semibold : .regular))
+                        .font(.body.weight(chosen ? .bold : .regular))
+                        .foregroundStyle(chosen ? Part.boards.text : Color.primary)
                         .lineLimit(1)
-                    Text(board.countLine)
+                    Text(phone ? "\(board.changedWords()) · \(board.countLine)" : board.countLine)
                         .font(.caption)
-                        .foregroundStyle(chosen ? Color.white.opacity(0.85) : Color.secondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                if phone { RowPicture(board: board) }
             }
-            .foregroundStyle(chosen ? Color.white : Color.primary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(chosen ? Part.boards.fill : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(chosen ? Look.chosenRow : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -252,65 +251,6 @@ struct BoardList: View {
             }
             Divider()
             Button("Remove…", role: .destructive) { removing = board }
-        }
-    }
-}
-
-/// The ways to begin a board.
-private struct StarterPicker: View {
-    var wide = false
-    let pick: (Starter) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Start with")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Part.boards.text)
-                .padding(.horizontal, 8)
-                .padding(.top, 4)
-            ForEach(Starter.allCases) { starter in
-                Button { pick(starter) } label: {
-                    HStack(spacing: 9) {
-                        AppMarkView(mark(starter), size: 22, colour: part(starter).text)
-                            .frame(width: 34, height: 34)
-                            .background(part(starter).soft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(starter.name).font(.body.weight(.medium))
-                            Text(starter.hint).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("starter.\(starter.rawValue)")
-            }
-        }
-        .padding(8)
-        // A fixed size: on the iPhone a pop-up without one comes out empty.
-        .frame(width: wide ? nil : 300, height: CGFloat(Starter.allCases.count) * 46 + 34, alignment: .top)
-        .frame(maxWidth: wide ? .infinity : nil)
-    }
-
-    private func mark(_ starter: Starter) -> AppMark {
-        switch starter {
-        case .blank: return .seedBoard
-        case .mindMap: return .seedMindMap
-        case .flow: return .seedArrow
-        case .prosCons: return .seedNote
-        case .steps: return .seedBox
-        }
-    }
-
-    private func part(_ starter: Starter) -> Part {
-        switch starter {
-        case .blank: return .boards
-        case .mindMap: return .mindMap
-        case .flow: return .arrows
-        case .prosCons: return .notes
-        case .steps: return .shapes
         }
     }
 }

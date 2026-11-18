@@ -34,9 +34,10 @@ struct Paint {
         "yellow": (0xC99A0A, 0xF0C850), "red": (0xD5485C, 0xF08A98), "grey": (0x7B8794, 0xA9B4C4),
     ]
 
+    // By night a note stays bright paper with dark ink, only a little dimmer than by day.
     private static let notes: [String: (Int, Int)] = [
-        "yellow": (0xFBE38A, 0x6B5A1E), "pink": (0xF9C2D4, 0x6B3048), "blue": (0xBFD9FA, 0x2C4A73),
-        "green": (0xBFE8C8, 0x2C5A3B), "orange": (0xFBD0A0, 0x6E4520), "purple": (0xDCC9F7, 0x49367A),
+        "yellow": (0xFBE38A, 0xD9BC55), "pink": (0xF9C2D4, 0xD98AA8), "blue": (0xBFD9FA, 0x86AEDD),
+        "green": (0xBFE8C8, 0x86C79A), "orange": (0xFBD0A0, 0xDDA066), "purple": (0xDCC9F7, 0xB39AE0),
     ]
 
     private func lineRGB(_ name: String) -> RGB {
@@ -58,6 +59,9 @@ struct Paint {
         let pair = Paint.notes[name] ?? Paint.notes["yellow"]!
         return Paint.colour(Paint.rgb(night ? pair.1 : pair.0))
     }
+
+    /// The ink on a sticky note: dark by day and by night, the paper is always bright.
+    static let noteInk = Color(red: 0.12, green: 0.14, blue: 0.19)
 
     var canvas: Color { Paint.colour(Paint.rgb(night ? 0x17181B : 0xF6F7F9)) }
     var plate: Color { Paint.colour(Paint.rgb(night ? 0x26282D : 0xFFFFFF)) }
@@ -412,11 +416,14 @@ struct BoardPainter {
                 shape = p
             default: shape = Path(roundedRect: f, cornerRadius: 9)
             }
+            // By day a shape lies a little above the board: a faint shadow, one point down.
+            var body = ctx
+            if !paint.night { body.addFilter(.shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)) }
             if item.colour.isEmpty {
-                ctx.fill(shape, with: .color(paint.plate))
+                body.fill(shape, with: .color(paint.plate))
                 ctx.stroke(shape, with: .color(paint.edge), lineWidth: 1.4)
             } else {
-                ctx.fill(shape, with: .color(paint.soft(item.colour)))
+                body.fill(shape, with: .color(paint.soft(item.colour)))
                 ctx.stroke(shape, with: .color(paint.line(item.colour)), style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
             }
         case .note:
@@ -427,7 +434,7 @@ struct BoardPainter {
             align = .leading
             anchorLeading = true
             textBox = f.insetBy(dx: 10, dy: 10)
-            if !paint.night { textColour = Color(red: 0.12, green: 0.14, blue: 0.19) }
+            textColour = Paint.noteInk
         case .text:
             align = .leading
         case .frame:
