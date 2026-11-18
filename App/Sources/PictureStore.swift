@@ -35,6 +35,9 @@ final class PictureStore: @unchecked Sendable {
     private var tries: [String: (count: Int, last: Date)] = [:]
     private var cloudPictures: URL?
     private var coming: Set<String> = []
+    /// Picture files that are on this device but that iCloud has not taken yet (the amber dot in the list).
+    private var goingUp: Set<String> = []
+    private var upTimer: Timer?
 
     let sample = LaunchOptions.sampleData
 
@@ -49,6 +52,7 @@ final class PictureStore: @unchecked Sendable {
             self.lock.lock(); self.cloudPictures = found; self.lock.unlock()
             self.arrived.send()
             self.housekeepingSoon()
+            self.lookAtUploads()
         }
     }
 
@@ -92,6 +96,7 @@ final class PictureStore: @unchecked Sendable {
             NSFileCoordinator().coordinate(writingItemAt: cloud.appendingPathComponent(name), options: .forReplacing, error: &problem) { url in
                 try? bytes.write(to: url, options: .atomic)
             }
+            watchUpload([name])
         }
         cache.setObject(Box(flat), forKey: name as NSString, cost: flat.width * flat.height * 4)
         return (name, CGSize(width: flat.width, height: flat.height))
@@ -219,6 +224,62 @@ final class PictureStore: @unchecked Sendable {
             return true
         }
         return false
+    }
+
+    // MARK: Not in iCloud yet
+
+    /// At the start: every picture on this device is looked at. One that iCloud's folder does not hold at all
+    /// (a write that failed) is put there again; one that is there but not sent yet is watched.
+    private func lookAtUploads() {
+        guard let cloud else { return }
+        let local = self.local
+        DispatchQueue.global(qos: .utility).async {
+            let fm = FileManager.default
+            var waiting: Set<String> = []
+            for url in (try? fm.contentsOfDirectory(at: local, includingPropertiesForKeys: nil)) ?? [] {
+                let name = url.lastPathComponent
+                guard PictureKeeping.isPlainName(name), name.lowercased().hasSuffix(".jpg") else { continue }
+                let there = cloud.appendingPathComponent(name)
+                if fm.fileExists(atPath: there.path) || fm.fileExists(atPath: cloud.appendingPathComponent(".\(name).icloud").path) {
+                    if !Self.isUploaded(there) { waiting.insert(name) }
+                } else if let bytes = try? Data(contentsOf: url) {
+                    var problem: NSError?
+                    NSFileCoordinator().coordinate(writingItemAt: there, options: .forReplacing, error: &problem) { try? bytes.write(to: $0, options: .atomic) }
+                    waiting.insert(name)
+                }
+            }
+            if !waiting.isEmpty { self.watchUpload(waiting) }
+        }
+    }
+
+    /// iCloud has this file. A file it does not know (iCloud off) counts as sent: nothing waits for ever.
+    private static func isUploaded(_ file: URL) -> Bool {
+        guard let values = try? file.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemIsUploadedKey]),
+              values.isUbiquitousItem == true else { return true }
+        return values.ubiquitousItemIsUploaded ?? true
+    }
+
+    /// These files were just handed to iCloud: they count as "not in iCloud yet" until it has taken them.
+    private func watchUpload(_ names: Set<String>) {
+        lock.lock(); goingUp.formUnion(names); let now = goingUp; lock.unlock()
+        DispatchQueue.main.async {
+            AppModel.shared.picturesNotInCloud = now
+            guard self.upTimer == nil else { return }
+            self.upTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in self?.checkUploads() }
+        }
+    }
+
+    private func checkUploads() {
+        guard let cloud else { return }
+        lock.lock(); let waiting = goingUp; lock.unlock()
+        DispatchQueue.global(qos: .utility).async {
+            let done = waiting.filter { Self.isUploaded(cloud.appendingPathComponent($0)) }
+            self.lock.lock(); self.goingUp.subtract(done); let now = self.goingUp; self.lock.unlock()
+            DispatchQueue.main.async {
+                if AppModel.shared.picturesNotInCloud != now { AppModel.shared.picturesNotInCloud = now }
+                if now.isEmpty { self.upTimer?.invalidate(); self.upTimer = nil }
+            }
+        }
     }
 
     // MARK: Housekeeping

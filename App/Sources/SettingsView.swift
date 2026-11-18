@@ -44,6 +44,15 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("settings.notInCloud")
                     }
+                    if !model.picturesNotInCloud.isEmpty {
+                        Text(model.picturesNotInCloud.count == 1
+                             ? "1 picture is not in iCloud yet. It is safe on this device."
+                             : "\(model.picturesNotInCloud.count) pictures are not in iCloud yet. They are safe on this device.")
+                            .font(Txt.label)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("settings.picturesNotInCloud")
+                    }
                     if let warning = model.saveWarning {
                         Text(warning)
                             .font(Txt.label)

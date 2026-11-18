@@ -41,8 +41,8 @@ enum Guide {
             "A pinned board always stays under Pinned, even after it was sent.",
             "Each row shows a coloured dot, the name, and a count such as 12 ideas · 4 shapes · 2 notes. An empty board says Empty. A timeline says, for example, 6 bars · 1 milestone · 2 phases.",
             "The board that is open has a soft green row with its name in bold green.",
-            "A tiny amber dot at the end of a row means: the newest change of this board is on this device, but not in iCloud yet. It goes away by itself.",
-            "Search boards, under New board, finds boards by their name and by every word written on them: ideas, shapes, notes, text, frames and the words on arrows. So timber finds the board with the note Check timber prices in May.",
+            "A tiny amber dot at the end of a row means: the newest change of this board is on this device, but not in iCloud yet. The pictures on the board count too: the dot stays until every picture the board shows is in iCloud as well. It goes away by itself.",
+            "Search boards, under New board, finds boards by their name and by every word written on them: ideas, shapes, notes, text, frames, the words on arrows and the words under a picture. So timber finds the board with the note Check timber prices in May.",
             "Type two words and only boards with both are shown. Capitals and accents do not matter, and the start of a word is enough. The round cross empties the search; on the Mac, Escape does too. If nothing fits, it says No board has these words.",
             "Press New board at the top. The starters, each a card with a small drawing: the seven that come with Seedboard (Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timeline, Who does what) and your own after them. Press Edit there to change them. See Starters. On the iPad and the Mac they show in a small pop-up under the button, three in a row. On the iPhone they come up from the bottom, two in a row.",
             "Flow and Plan in steps come coloured. Change any colour with Colour in the bar.",
@@ -84,7 +84,7 @@ enum Guide {
             "Diamond: a diamond, for a yes or no question.",
             "Arrow: switches the arrow tool on. See Shapes and arrows.",
             "Sticky note: a yellow note. Text: free words with no box. Frame: a frame to group things.",
-            "Picture: a photo or a screenshot. See Pictures.",
+            "Picture: a photo or a screenshot, with a line of words under it if you like. See Pictures.",
             "Draw: the last tool. Lines drawn by hand. See Drawing by hand.",
             "On a narrow iPhone the nine tiles shrink to fit: 40 points wide, else 36, else 32. The row slides sideways only when even 32 does not fit.",
             "At the bottom right: Smaller, the zoom in percent, Bigger, and Show the whole board.",
@@ -297,15 +297,23 @@ enum Guide {
             "A new picture is laid at most 320 by 320 points big and keeps its shape. A tiny one is made at least 120 long. It is chosen at once.",
             "To make a picture bigger or smaller, drag one of its corner squares. It keeps its shape and the opposite corner stays where it is. It never gets smaller than 44 by 28 points.",
             "Arrows can start and end at a picture, as at a shape. Line up and Even gaps work on pictures. Same size leaves them alone, because a picture keeps its own shape.",
-            "The bar of a chosen picture has Duplicate, Choose more (iPhone and iPad) and Remove. Its menu has Copy, Cut, Duplicate, Arrow from here and Remove. A picture has no words, no colour and no To do. Two quick presses on it, or a letter key, do not start typing.",
-            "The board's count line says 1 picture, or 2 pictures. Copy the board as text writes A picture.",
+            "The bar of a chosen picture has Caption, Crop, Duplicate, Choose more (iPhone and iPad) and Remove. Its menu has Caption, Crop, Copy, Cut, Duplicate, Arrow from here and Remove. A picture has no colour and no To do. A letter key does not start typing.",
+            "Caption: a picture can have a line of words under it, for example After the makeover. Press Caption in the bar or in the menu (press and hold, or right-click), or press twice quickly on the picture. The typing starts right under the picture. Return ends it. Escape cancels it. Shift and Return make a new line. Empty words mean no caption.",
+            "The caption stands a little under the picture, in the middle, as wide as the picture, in small grey letters. Longer words wrap onto more lines. The caption moves, grows and is copied with its picture. Press on the caption and the picture is chosen. The board's whole view, the picture for PARAGON, Share and Export, and the small pictures in the list all leave room for it.",
+            "A caption is found by Search boards. Copy the board as text writes it, for example A picture: After the makeover. A picture without words is still written A picture.",
+            "Crop: show only a part of a picture. Press Crop in the bar or in the menu. A page called Crop the picture opens. It shows the whole picture, with a frame over it and a round grip in each corner. Everything outside the frame is dimmed. Drag a grip to change the frame, or drag inside the frame to move it. The frame stays inside the picture and is never very small.",
+            "The page has Cancel (Escape on the Mac), Whole picture and Save. Whole picture makes the frame cover everything. Save is in full colour. The page opens with the part the picture shows now.",
+            "After Save the picture on the board shows only that part, at the same size as before. The part you kept stays exactly where it was. The picture itself is never cut. Press Crop again and Whole picture, then Save, and everything is back. One Undo takes a crop back too.",
+            "If you make a cropped picture bigger or smaller by its corner, it keeps its cropped shape. Duplicate, Copy and Paste take the crop and the caption along. Crop is grey while a picture says Picture not here yet.",
+            "The room kept for a caption is a careful guess. On a very narrow picture with long words the real words can take one line more, and the last line can reach a little past the edge that Show the whole board measures. Line up and Even gaps look at the picture only, not at its caption.",
+            "The board's count line says 1 picture, or 2 pictures.",
             "Picture not here yet: when a picture has not arrived on this device yet, a soft plate with a picture mark says so. The board fills in by itself when the picture comes.",
             "If something cannot be read as a picture, a line says That could not be read as a picture. For several, it says, for example, 3 could not be read as pictures.",
             "A picture cannot be put on a Timeline board or on a Who does what board. The line says: A picture cannot be put on this board.",
             "A big picture is made smaller when you put it on: its long side is at most 2048 dots. A see-through picture gets a white background. The picture is saved once and never changed. Pictures are kept on all your devices, next to your boards.",
             "Removing a picture from a board never deletes the picture itself, so Undo always works. A picture that no board uses any more is tidied away after 30 days, and only when no board, no removed board and no safety copy and no starter uses it. Seedboard checks this once, a little after it starts. If anything is unclear, it deletes nothing.",
-            "Sent to PARAGON, a picture is in the board's picture. In the note or project text it is one plain line under Notes: A picture (see the picture). It never becomes a task.",
-            "Seedboard 0.2 shows a board with a picture on it, but cannot change it.",
+            "Sent to PARAGON, a picture is in the board's picture. In the note or project text it is one plain line under Notes: A picture (see the picture), or with a caption, A picture: After the makeover (see the picture). It never becomes a task.",
+            "Seedboard 0.2 shows a board with a picture on it, but cannot change it. Seedboard 0.3 and older show a board with a cropped picture, but cannot change it.",
         ]),
         Part(title: "Who does what", text: [
             "A Who does what board shows who asks whom for what, and in which order. The names stand in a row at the top, and the messages run from top to bottom, numbered by the app. Start one with New board, then Who does what. It opens with a small example: Alex, Bank, Builder.",
@@ -352,7 +360,7 @@ enum Guide {
         ]),
         Part(title: "The menu of a thing", text: [
             "Mac: right-click, or hold Control and click. iPad with a trackpad or mouse: click with two fingers. Finger or Pencil: rest it on the thing for half a second without moving.",
-            "On a thing: Words, Colour, To do, Copy, Cut, Duplicate, Arrow from here and Remove. An idea also has Idea under, Next idea and Fold. A frame has Lanes. A shape has Shape. A picture has Copy, Cut, Duplicate, Arrow from here and Remove.",
+            "On a thing: Words, Colour, To do, Copy, Cut, Duplicate, Arrow from here and Remove. An idea also has Idea under, Next idea and Fold. A frame has Lanes. A shape has Shape. A picture has Caption, Crop, Copy, Cut, Duplicate, Arrow from here and Remove.",
             "With several things chosen: To do, Copy, Cut, Duplicate, Line up, Even gaps, Same size and Remove.",
             "On an arrow: Words, Line, Ends, Dashed, Turn round, Colour and Remove.",
             "On empty board: Paste, New note here, New box here, New idea here, Picture…, Select all and Show the whole board. The new thing, or the paste, lands exactly where you pressed.",
@@ -403,7 +411,7 @@ enum Guide {
             "The link in such a note still opens the whole board. The board does not move to Sent to PARAGON and shows no Last sent line for a branch.",
             "A timeline is sent in its own way. See Timeline board. A Who does what board too. See Who does what.",
             "A sketch is in the picture. In the note or project text it is one plain line under Notes: A sketch (see the picture). It never becomes a task.",
-            "A picture is in the picture too. In the note or project text it is one plain line under Notes: A picture (see the picture). It never becomes a task.",
+            "A picture is in the picture too, cropped as it shows on the board, with its caption. In the note or project text it is one plain line under Notes: A picture (see the picture), or with a caption, A picture: After the makeover (see the picture). It never becomes a task.",
             "PARAGON files the Inbox lines itself, the next time it opens. They do not show at once.",
             "If the Inbox cannot be reached from this device, Send stays greyed for the third choice. A note or a project still works.",
             "The picture is the board in daylight colours on white, without the dots.",
@@ -420,7 +428,7 @@ enum Guide {
         Part(title: "Safety", text: [
             "Every board is its own file. It is kept on the device at once, and in iCloud a moment later. Saving never waits for iCloud. Your Mac, iPad and iPhone show the same boards.",
             "Without iCloud the app still works. Boards then stay on that device.",
-            "A tiny amber dot at the end of a board's row means its newest change is not in iCloud yet. Settings, under Your boards, says how many boards wait, and that they are safe on this device.",
+            "A tiny amber dot at the end of a board's row means its newest change is not in iCloud yet. Settings, under Your boards, says how many boards wait, and that they are safe on this device. While pictures wait, a second line says, for example, 1 picture is not in iCloud yet. It is safe on this device. A photo is much bigger than a board, so it can take longer. A picture that never reached iCloud's folder is put there again when the app starts.",
             "If a board cannot be saved, Seedboard says so, in Settings and once in a line on the board, and tries again by itself.",
             "If two devices change the same board, the newer change is kept. The other one is not thrown away: it is kept under Earlier versions for 30 days, and a line at the top of the window tells you. See Removed boards and earlier versions.",
             "When a newer version of the board you have open arrives from another device, it takes the place of yours, and Undo starts over.",
@@ -431,7 +439,7 @@ enum Guide {
             "When you remove a board, it goes from every device and is kept for 30 days, counted from the day of removal. Bring it back in Settings. See Removed boards and earlier versions.",
             "A removal never beats a newer change. If the board was changed on another device after it was removed, the board stays and comes back on every device.",
             "A board made by a newer Seedboard is shown, so you can look at it, but not change it. This version never writes over it. Update the app on that device to change the board.",
-            "Boards changed by this version cannot be changed in Seedboard 0.2 or 0.1. They show there, to look at, until that device is updated.",
+            "Boards changed by this version cannot be changed in Seedboard 0.3, 0.2 or 0.1. They show there, to look at, until that device is updated.",
             "What a newer Seedboard wrote into a board and this version does not know is carried along untouched, never dropped.",
             "A file that cannot be read is never written over either.",
             "Seedboard sends nothing anywhere except to PARAGON, when you press Send.",
@@ -523,6 +531,28 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.4", date: "2026-11-18", items: [
+            // Caption
+            "Caption: words under a picture. Before: a picture had no words at all. Now: a chosen picture has a button, Caption, in its bar and in its menu (press and hold, or right-click). Two quick presses on the picture do the same. The typing starts right under the picture. Return ends it, Escape cancels it, Shift and Return make a new line. Empty words mean no caption.",
+            "Caption: how it looks. It stands a little under the picture, in the middle, as wide as the picture, in small grey letters, and longer words wrap onto more lines. It moves, grows and is copied with its picture. Press on the caption and the picture is chosen. Show the whole board, the picture for PARAGON, Share and Export, and the small pictures in the list leave room for it.",
+            "Caption: found and carried along. Search boards finds the words under a picture. Copy the board as text writes, for example, A picture: After the makeover (before: A picture). The PARAGON note says A picture: After the makeover (see the picture). A picture without a caption reads as before.",
+            // Crop
+            "Crop: show only a part of a picture. Before: a picture was always shown whole. Now: a chosen picture has a button, Crop, in its bar and in its menu. It opens a page, Crop the picture, with the whole picture, a frame over it with a round grip in each corner, and the outside dimmed. Drag a grip, or drag inside the frame. The frame stays inside the picture and is never very small.",
+            "Crop: the page has Cancel (Escape on the Mac), Whole picture and Save, in full colour. After Save the picture on the board shows only that part, at the same size as before, and the part you kept stays exactly where it was.",
+            "Crop: never cut for good. The picture itself is not changed. Press Crop again and Whole picture, then Save, and everything is back. One Undo takes a crop back too. Making a cropped picture bigger by its corner keeps its cropped shape. Duplicate, Copy and Paste take the crop and the caption along.",
+            "Crop: grey while a picture says Picture not here yet, because there is nothing to crop until it has arrived.",
+            "Pictures: the bar of a chosen picture now has Caption, Crop, Duplicate, Choose more (iPhone and iPad) and Remove. Its menu has Caption, Crop, Copy, Cut, Duplicate, Arrow from here and Remove. Before: no Caption, no Crop, and two quick presses did nothing.",
+            // iCloud and the starter choice
+            "The amber dot waits for pictures. Before: the tiny amber dot at the end of a board's row, and the line in Settings, Your boards, only said that the board's newest change was not in iCloud yet. A photo is much bigger than a board, so the dot could go out while the photo was still on its way up. Now: the dot stays until every picture the board shows is in iCloud too.",
+            "Settings, Your boards: a second line while pictures wait, 1 picture is not in iCloud yet. It is safe on this device. or, for several, for example, 3 pictures are not in iCloud yet. They are safe on this device. It is checked every 3 seconds while something waits. At the start of the app, a picture that never reached iCloud's folder (a write that failed) is put there again. Not seen with real iCloud yet.",
+            "New board, the choice of starters: its heading. Before: it read Start with, in small letters at the left. Now: it reads Starters, large, in the middle. Edit stays small at the right.",
+            // Names
+            "Who does what: the example person in the starter, and in the sample boards, is now called Alex. Before: Anna. Nothing else about the starter changed.",
+            // Never losing a board
+            "Never losing a board: a board changed in 0.4 is stored in a fourth format, because of the crop. A device still on 0.3 or older can look at such a board but not change it, until that device is updated. This is the same rule as before.",
+            "Limits: the room kept for a caption is a careful guess. On a very narrow picture with long words the real words can take one line more, and the last line can reach a little past the edge that Show the whole board measures. Line up and Even gaps look at the picture only, not at its caption.",
+            "Two new hand-drawn marks: Crop and Caption.",
+        ]),
         Release(version: "0.3", date: "2026-11-18", items: [
             // Pictures
             "Pictures: put a picture on a board. Before: a board held ideas, shapes, notes, text, frames, arrows and drawings, and no pictures. Now: a photo or a screenshot lies on the same endless board, between everything else, and travels to your other devices with the board.",

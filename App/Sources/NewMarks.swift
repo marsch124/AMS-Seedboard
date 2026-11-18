@@ -67,8 +67,8 @@ enum NewMark: String, CaseIterable {
         case .picture: return .seedPicture
         case .saveStarter: return .seedSaveStarter
         // Stand-ins until the lead swaps them for the real drawings.
-        case .caption: return .seedText
-        case .crop: return .seedFrame
+        case .caption: return .seedCaption
+        case .crop: return .seedCrop
         }
     }
 }

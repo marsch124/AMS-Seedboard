@@ -22,7 +22,7 @@ packages:
   # The shared AMS icon hub, pinned to one commit so a hub change never arrives by surprise.
   AMSIcons:
     url: https://github.com/marsch124/AMS-Icons
-    revision: d80e15dc8a896cf3358e20604eea1cca8867698b
+    revision: 12961b604e22ab95b60217c6849384ff1eb28518
 targets:
   AMSSeedboard:
     type: application

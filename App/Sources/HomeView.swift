@@ -269,7 +269,7 @@ struct StarterPicker: View {
         let rows = CGFloat((max(count, 1) + perRow - 1) / perRow)
         let card = (cardWidth / Thumbs.shape).rounded(.up) + 1 + StarterCard.wordsRoom
         return CGSize(width: CGFloat(perRow) * cardWidth + CGFloat(perRow - 1) * gap + 20,
-                      height: rows * card + (rows - 1) * gap + 46)
+                      height: rows * card + (rows - 1) * gap + 60)
     }
 
     /// The iPhone's page: most of the screen, so three rows of two are in sight; it can be pulled up all the way.
@@ -280,10 +280,14 @@ struct StarterPicker: View {
             ? [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: StarterPicker.gap, alignment: .top)]
             : Array(repeating: GridItem(.fixed(StarterPicker.cardWidth), spacing: StarterPicker.gap, alignment: .top), count: StarterPicker.perRow)
         return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Start with")
-                    .font(.caption.weight(.bold))
+            // The heading: large and in the middle; Edit stays small at the right.
+            ZStack {
+                Text("Starters")
+                    .font(Txt.big)
                     .foregroundStyle(Part.boards.text)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("starters.heading")
+                HStack {
                 Spacer()
                 Button {
                     close()
@@ -299,6 +303,7 @@ struct StarterPicker: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Edit the starters")
                 .accessibilityIdentifier("starters.edit")
+                }
             }
             .padding(.horizontal, 2)
             .padding(.top, wide ? 8 : 0)

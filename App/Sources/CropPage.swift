@@ -87,7 +87,9 @@ struct CropPage: View {
 
     private func stage(_ image: CGImage, in room: CGSize) -> some View {
         let shape = CGSize(width: CGFloat(image.width), height: CGFloat(image.height))
-        let k = min(room.width / shape.width, room.height / shape.height)
+        // Half a grip of air all round, so the corner grips are whole and can be pressed at the page's edge too.
+        let air = Self.grip / 2
+        let k = min(max(room.width - 2 * air, 1) / shape.width, max(room.height - 2 * air, 1) / shape.height)
         let fitted = CGSize(width: shape.width * k, height: shape.height * k)
         let origin = CGPoint(x: (room.width - fitted.width) / 2, y: (room.height - fitted.height) / 2)
         let whole = CGRect(origin: origin, size: fitted)

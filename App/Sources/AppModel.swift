@@ -23,6 +23,14 @@ final class AppModel: ObservableObject {
     @Published var showSend = false
     /// Boards whose newest change is on this device but not in iCloud yet (a small dot in the list).
     @Published private(set) var notInCloud: Set<UUID> = []
+    /// Picture files that are on this device but not in iCloud yet: a board that shows one keeps the dot.
+    @Published var picturesNotInCloud: Set<String> = []
+
+    /// The board's newest change, or one of its pictures, is on this device but not in iCloud yet.
+    func waitsForCloud(_ board: Board) -> Bool {
+        if notInCloud.contains(board.id) { return true }
+        return !picturesNotInCloud.isEmpty && !picturesNotInCloud.isDisjoint(with: board.pictureNames)
+    }
     /// Plain words when a board could not be saved; nil when all is well (shown in Settings).
     @Published private(set) var saveWarning: String?
     /// A link led to a board that was removed: which one, and when. The place for a "Bring back" button

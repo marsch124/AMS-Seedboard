@@ -7,7 +7,15 @@ lay out a flow with shapes and arrows, and stick notes anywhere. A Timeline boar
 over time, with a bar for each thing to do. When the board is ready, one button sends it to
 PARAGON as a note, as a project, or as to-dos for the Inbox.
 
-What is in 0.3 (build 3):
+What is in 0.4 (build 4):
+
+- Caption: a line of words under a picture (Caption in its bar or menu, or two quick presses). Search boards finds it, and it goes into the copied text and the PARAGON note.
+- Crop: show only a part of a picture (Crop in its bar or menu; the page Crop the picture with Cancel, Whole picture and Save). The picture itself is never cut, and one Undo takes a crop back.
+- The amber "not in iCloud yet" dot now waits for the pictures too; Settings says how many wait.
+- The starter choice is headed Starters. The example person in Who does what is Alex.
+- Boards changed by 0.4 are stored in format 4: Seedboard 0.3 shows them but cannot change them.
+
+And all of 0.3, which is:
 
 - Pictures on boards: the ninth tool, Picture (key P), or Paste, or drop one on the board. Move it, resize it, copy it, point arrows at it. It goes with the board to your other devices, and shows in the picture sent to PARAGON.
 - Your own starters: More, Save as a starter. A Starters page renames, moves, changes and removes every starter, the built-in seven too (Back to the original, Bring back the built-in starters). Shortcuts and Siri still offer the seven built-in ones.
@@ -40,7 +48,7 @@ And all of 0.2, which is:
 - Undo and Redo (120 steps), zoom 20 % to 300 %, day and night colours.
 - Settings has How it works and What's new (on the Mac its own window, ⌘,).
 - Also in 0.2: Apple Pencil drawing (a Draw tool, a rubber, three thicknesses, ten colours), the "Who does what" board (a sequence diagram: people in a row, messages in order), the bar beside the chosen thing (one row on the iPhone), a right-click / press-and-hold menu on every thing, copy, cut and paste (also between boards, and dragged-in text), and a Home row in the boards list.
-- Not in 0.3: find in a board, notes on ideas, shared editing.
+- Not in 0.4: find in a board, notes on ideas, shared editing.
 
 Build:
 
@@ -57,7 +65,7 @@ Apple facts:
 
 Where things are:
 
-- `Core/` has the rules (Swift package SeedboardCore, no screens; 284 data tests).
+- `Core/` has the rules (Swift package SeedboardCore, no screens; 291 data tests).
 - `App/Sources/` has the screens. `Guide.swift` holds the in-app How it works and What's new.
 - `UITests/` has the screen tests, one file for each new screen.
-- `Docs/SPEC.md` is the full written specification. `Docs/PANEL-0.2.md` is the expert panel's list before 0.2; `Docs/notes-0.2/` and `Docs/notes-0.3/` hold each builder's notes.
+- `Docs/SPEC.md` is the full written specification. `Docs/PANEL-0.2.md` is the expert panel's list before 0.2; `Docs/notes-0.2/`, `Docs/notes-0.3/` and `Docs/notes-0.4/` hold each builder's notes.
