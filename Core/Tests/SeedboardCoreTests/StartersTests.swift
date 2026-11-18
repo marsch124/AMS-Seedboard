@@ -16,7 +16,7 @@ final class StartersTests: XCTestCase {
             XCTAssertEqual(board.title, starter.name)
             XCTAssertFalse(starter.hint.isEmpty)
         }
-        XCTAssertEqual(Starter.allCases.map(\.name), ["Blank board", "Mind map", "Flow", "Pros and cons", "Plan in steps", "Timeline", "Who does what"])
+        XCTAssertEqual(Starter.allCases.map(\.name), ["Blank board", "Mind map", "Flow", "Pros and cons", "Plan in steps", "Timeline", "Who does what", "Decision grid", "Weekly review", "SWOT"])
     }
 
     func testNoStarterOverlapsItsShapes() {

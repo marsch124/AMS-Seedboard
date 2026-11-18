@@ -17,7 +17,7 @@ final class StarterShelfTests: XCTestCase {
         let s = shelf.starter("flow")
         XCTAssertEqual(s?.name, "My flow")
         XCTAssertEqual(s?.hint, "Mine")
-        XCTAssertEqual(shelf.shown.count, 7)
+        XCTAssertEqual(shelf.shown.count, Starter.allCases.count)
     }
 
     func testMoveGoesBetweenNeighbours() {
@@ -33,17 +33,17 @@ final class StarterShelfTests: XCTestCase {
     func testRemoveAndBringBack() {
         var shelf = StarterShelf()
         XCTAssertTrue(shelf.remove("steps", now: now))
-        XCTAssertEqual(shelf.shown.count, 6)
+        XCTAssertEqual(shelf.shown.count, Starter.allCases.count - 1)
         XCTAssertTrue(shelf.missingBuiltins)
         shelf.bringBackBuiltins(now: now.addingTimeInterval(5))
-        XCTAssertEqual(shelf.shown.count, 7)
+        XCTAssertEqual(shelf.shown.count, Starter.allCases.count)
         XCTAssertFalse(shelf.missingBuiltins)
     }
 
     func testBlankCannotBeRemoved() {
         var shelf = StarterShelf()
         XCTAssertFalse(shelf.remove("blank", now: now))
-        XCTAssertEqual(shelf.shown.count, 7)
+        XCTAssertEqual(shelf.shown.count, Starter.allCases.count)
         shelf.rename("blank", name: "Empty", hint: "", now: now)
         XCTAssertEqual(shelf.shown.first?.name, "Empty")
     }

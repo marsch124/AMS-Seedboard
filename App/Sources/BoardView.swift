@@ -51,9 +51,13 @@ struct BoardView: View {
 
             // 0.5: an empty board invites — the sprout, "What is on your mind?", three ways to begin (EmptyBoard.swift).
             EmptyInvite(session: session, desk: session.ink)
+            // 0.9: the swipe layer of the frame show and the small map (ViewsDesk.swift).
+            ViewsOverlay(session: session)
 
             VStack(spacing: 6) {
                 // 0.5: what PARAGON says about a board that is a note or a project there (SentLine.swift).
+                // 0.9: "Focus · name  Done" while Focus runs.
+                FocusPill(session: session)
                 SentLine(session: session)
                 // A starter is being changed: this board is its working copy (StartersPage.swift).
                 if session.starterDraft { StarterChangeBanner() }
@@ -81,6 +85,8 @@ struct BoardView: View {
                     .background(Theme.plate, in: Capsule())
                     .overlay(Capsule().stroke(Part.arrows.text.opacity(0.35)))
                     .transition(.message)
+                } else if session.views.showing {
+                    EmptyView()
                 } else {
                     // The iPhone's one-row bar; on the Mac and the iPad the bar floats beside the chosen thing (ChosenBar.swift).
                     ChosenBarTop(session: session)
@@ -126,6 +132,7 @@ struct BoardView: View {
                 DrawPlate(session: session, desk: session.ink)
                 // Wide enough: the tools in the middle, the zoom buttons at the right.
                 // Otherwise the zoom buttons sit in their own row above the tools.
+                if session.views.showing { ShowBar(session: session) } else {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .bottom, spacing: 8) {
                         // An iPhone on its side: Undo and Redo sit here, the top bar has no room for them.
@@ -155,6 +162,7 @@ struct BoardView: View {
                         }
                     }
                 }
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
@@ -172,6 +180,11 @@ struct BoardView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { toolbar }
+        #if os(iOS)
+        // While frames are shown the top bar and the swipe-back are out of the way, so a swipe goes to the next frame.
+        .toolbar(session.views.showing ? .hidden : .automatic, for: .navigationBar)
+        .navigationBarBackButtonHidden(session.views.showing)
+        #endif
         .focusedSceneObject(session)
         // 0.5: the open board offers itself on his other devices (Handoff).
         .modifier(BoardHandoff(session: session))
@@ -257,6 +270,8 @@ struct BoardView: View {
                     session.takeKeys()
                 }
                 .disabled(session.board.isSequence)
+                // 0.9: Show frames, Tidy into a grid, Small map (ViewsDesk.swift).
+                ViewsMoreLines(session: session)
                 Button("Copy the board as text") {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")

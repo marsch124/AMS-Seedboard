@@ -330,7 +330,7 @@ enum StarterSample {
 
     static func entries() -> [StarterEntry] {
         let now = Date()
-        var review = Starter.prosCons.board(title: "Weekly review", now: now)
+        var review = Starter.prosCons.board(title: "Friday look-back", now: now)
         var frames = ["Went well", "Needs work"], notes = ["Shipped the plan", "Quiet mornings", "Too many meetings", "Late lunches"]
         for i in review.items.indices {
             switch review.items[i].kind {
@@ -346,8 +346,8 @@ enum StarterSample {
             if let n = plan.index(of: id) { plan.items[n].text = names[i] }
         }
         return [
-            StarterEntry(id: weekly, name: "Weekly review", hint: "What went well, what did not", order: 7, board: review, changed: now),
-            StarterEntry(id: trip, name: "Trip plan", hint: "Book, pack, travel, arrive", order: 8, board: plan, changed: now),
+            StarterEntry(id: weekly, name: "Friday look-back", hint: "What went well, what did not", order: 10, board: review, changed: now),
+            StarterEntry(id: trip, name: "Trip plan", hint: "Book, pack, travel, arrive", order: 11, board: plan, changed: now),
         ]
     }
 }

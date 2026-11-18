@@ -6,6 +6,7 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
     case blank, mindMap, flow, prosCons, steps
     case timeline
     case sequence
+    case decisionGrid, weeklyReview, swot
 
     public var id: String { rawValue }
 
@@ -18,6 +19,9 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
         case .steps: return "Plan in steps"
         case .timeline: return "Timeline"
         case .sequence: return "Who does what"
+        case .decisionGrid: return "Decision grid"
+        case .weeklyReview: return "Weekly review"
+        case .swot: return "SWOT"
         }
     }
 
@@ -30,6 +34,9 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
         case .steps: return "Five steps in a row, each with a note"
         case .timeline: return "Bars on days, with what comes after what"
         case .sequence: return "People in a row, messages in order"
+        case .decisionGrid: return "Options down, what matters across"
+        case .weeklyReview: return "Done, Stuck, Next week and Ideas"
+        case .swot: return "Strengths, weaknesses, chances, threats"
         }
     }
 
@@ -45,6 +52,14 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
             break
         case .sequence:
             break
+        case .decisionGrid:
+            board.decisionGridStart()
+        case .weeklyReview:
+            board.framesStart([("Done", "green", "Finished a thing"), ("Stuck", "red", "Waiting on something"),
+                               ("Next week", "blue", "Plan a thing"), ("Ideas", "purple", "Try something new")])
+        case .swot:
+            board.framesStart([("Strengths", "green", "What goes well"), ("Weaknesses", "red", "What is hard"),
+                               ("Opportunities", "blue", "What could help"), ("Threats", "orange", "What could go wrong")])
         case .mindMap:
             let centre = board.addMap(from: [OutlineNode("Main idea", [
                 OutlineNode("First thought"), OutlineNode("Second thought"),
@@ -108,5 +123,49 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
             }
         }
         return board
+    }
+}
+
+// 0.9 starters: a decision grid, and boards made of four frames (Weekly review, SWOT).
+extension Board {
+    /// Four frames in two rows of two, 360 x 250 with 20 between, each with a name, a colour and one note inside.
+    mutating func framesStart(_ parts: [(String, String, String)]) {
+        let w = 360.0, h = 250.0, gap = 20.0
+        for (n, part) in parts.enumerated() {
+            let col = Double(n % 2), row = Double(n / 2)
+            let x = -w - gap / 2 + col * (w + gap), y = -h - gap / 2 + row * (h + gap)
+            let frame = add(.frame, centre: CGPoint(x: x + w / 2, y: y + h / 2), text: part.0, colour: part.1)
+            resize(frame, to: CGRect(x: x, y: y, width: w, height: h))
+            add(.note, centre: CGPoint(x: x + w / 2, y: y + h / 2 + 15), text: part.2, colour: part.1 == "red" ? "pink" : part.1)
+        }
+    }
+
+    /// One frame with three row lanes (the options, down) and three words above it (what matters, across);
+    /// one note in every cell.
+    mutating func decisionGridStart() {
+        let left = -282.0, top = -210.0, width = 564.0, height = 420.0
+        let frame = add(.frame, centre: CGPoint(x: left + width / 2, y: top + height / 2), text: "Which one?", colour: "blue")
+        resize(frame, to: CGRect(x: left, y: top, width: width, height: height))
+        if let i = index(of: frame) {
+            var lanes = Lanes(way: .rows, count: 3)
+            lanes.names = ["Option A", "Option B", "Option C"]
+            items[i].lanes = lanes
+        }
+        let columns = ["Price", "Effort", "Fun"]
+        let laneRoom = (height - Lanes.titleBand) / 3
+        for (c, word) in columns.enumerated() {
+            let cx = left + Lanes.header + 90 + Double(c) * 180
+            let head = add(.text, centre: CGPoint(x: cx, y: top - 34), text: word)
+            if let i = index(of: head) {
+                let size = Board.roughSize(for: word)
+                items[i].w = Double(size.width)
+                items[i].x = cx - items[i].w / 2
+            }
+            for r in 0..<3 {
+                let cy = top + Lanes.titleBand + laneRoom * (Double(r) + 0.5)
+                let note = add(.note, centre: CGPoint(x: cx, y: cy), text: r == 0 ? "How it looks" : "", colour: Palette.notes[c % Palette.notes.count])
+                if let i = index(of: note) { items[i].w = 150; items[i].h = 100; items[i].x = cx - 75; items[i].y = cy - 50 }
+            }
+        }
     }
 }

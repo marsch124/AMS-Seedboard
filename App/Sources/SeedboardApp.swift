@@ -39,6 +39,7 @@ struct SeedboardApp: App {
         .commands {
             SeedMenus(model: model)
             BoardCommands()
+            ViewsCommands()
             ClipCommands()
             // 0.5: Help ▸ How Seedboard Works and What's New; File ▸ Import from iPhone or iPad.
             MacCommands()
@@ -57,6 +58,7 @@ struct SeedboardApp: App {
             .commands {
                 SeedMenus(model: model)
                 BoardCommands()
+                ViewsCommands()
                 ClipCommands()
             }
         #endif
