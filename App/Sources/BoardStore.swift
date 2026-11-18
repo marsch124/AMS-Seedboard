@@ -29,6 +29,8 @@ final class BoardStore {
     private var checking = false
 
     var onCloudChange: (([Board]) -> Void)?
+    /// Boards another device removed: they left this device's list too.
+    var onCloudGone: ((Set<UUID>) -> Void)?
 
     init(sample: Bool) {
         self.sample = sample
@@ -43,33 +45,37 @@ final class BoardStore {
     func loadAll() async -> [Board] {
         if sample { return Array(memory.values).sorted { $0.changed > $1.changed } }
         let disk = self.disk
-        let boards = await Task.detached(priority: .userInitiated) { disk.loadAll() }.value
-        for board in boards { known[board.id] = board.changed }
+        let found = await Task.detached(priority: .userInitiated) { disk.loadAll() }.value
+        for board in found.boards { known[board.id] = board.changed }
+        for id in found.gone { known[id] = nil }
         startWatching()
-        return boards
+        return found.boards
     }
 
     /// Writes the device copy at once, the iCloud copy off the main thread.
     func save(_ board: Board) {
         known[board.id] = board.changed
         if sample { memory[board.id] = board; return }
-        let disk = self.disk
-        disk.writeLocal(board)
-        Task.detached(priority: .utility) { [weak self] in
-            if let newer = disk.writeCloud(board) {
-                // iCloud held a newer version: it was kept, and mine went to the safety copies.
-                await self?.tell([newer])
-            }
+        // One after the other on the store's own line of work, so the main thread never waits for a file
+        // and a later change is never written before an earlier one.
+        disk.save(board) { [weak self] newer in
+            // iCloud held a newer version: it was kept, and mine went to the safety copies.
+            Task { @MainActor in self?.tell([newer]) }
         }
+    }
+
+    /// Waits (at most two seconds) until everything handed to `save` is on the device.
+    /// Called when the app is left, so nothing typed is lost.
+    func flush() {
+        guard !sample else { return }
+        disk.flush()
     }
 
     /// Moves both copies into the Removed folder (kept 30 days). Never deletes outright.
     func remove(id: UUID) {
         known[id] = nil
         if sample { memory[id] = nil; return }
-        let disk = self.disk
-        disk.removeLocal(id: id)
-        Task.detached(priority: .utility) { disk.removeCloud(id: id) }
+        disk.remove(id: id)
     }
 
     /// Plain words for Settings, e.g. "12 boards · last safety copy today 08:10".
@@ -77,7 +83,8 @@ final class BoardStore {
         let count = sample ? memory.count : known.count
         let boards = count == 1 ? "1 board" : "\(count) boards"
         if sample { return "\(boards) · example boards, nothing is saved" }
-        guard let when = disk.lastSafetyCopy() else { return "\(boards) · no safety copy yet" }
+        let cloud = cloudIsOn ? "" : " · iCloud is off: the boards are on this device only"
+        guard let when = disk.lastSafetyCopy() else { return "\(boards) · no safety copy yet\(cloud)" }
         let time = DateFormatter()
         time.dateFormat = "HH:mm"
         let day: String
@@ -90,7 +97,7 @@ final class BoardStore {
             d.dateFormat = "d MMM"
             day = d.string(from: when)
         }
-        return "\(boards) · last safety copy \(day) \(time.string(from: when))"
+        return "\(boards) · last safety copy \(day) \(time.string(from: when))\(cloud)"
     }
 
     // MARK: Watching iCloud
@@ -130,17 +137,22 @@ final class BoardStore {
         let disk = self.disk
         let seen = known
         Task.detached(priority: .utility) { [weak self] in
-            let boards = disk.loadAll()
-            let news = boards.filter { board in
+            let found = disk.loadAll()
+            let news = found.boards.filter { board in
                 guard let before = seen[board.id] else { return true }
                 return board.changed > before
             }
-            await self?.finishedCheck(news)
+            await self?.finishedCheck(news, gone: found.gone)
         }
     }
 
-    private func finishedCheck(_ news: [Board]) {
+    private func finishedCheck(_ news: [Board], gone: Set<UUID>) {
         checking = false
+        let left = gone.filter { known[$0] != nil }
+        if !left.isEmpty {
+            for id in left { known[id] = nil }
+            onCloudGone?(left)
+        }
         // `known` may have moved on while the check ran: pass on only what is still news.
         let fresh = news.filter { board in
             guard let now = known[board.id] else { return true }
@@ -163,16 +175,11 @@ private final class BoardDisk: @unchecked Sendable {
     private var cloudRoot: URL?
     private var cloudAsked = Date.distantPast
 
-    /// Just enough of a file to know its format, without reading the rest.
-    private struct FormatPeek: Decodable { var format: Int? }
-
     private enum Read {
         /// No file there.
         case absent
         /// The file is there but could not be read: never write over it.
         case unreadable
-        /// The file is from a newer version of the app: never write over it, never read it.
-        case newer
         case got(Board)
     }
 
@@ -219,20 +226,45 @@ private final class BoardDisk: @unchecked Sendable {
 
     private func name(_ id: UUID) -> String { "\(id.uuidString).seedboard" }
 
+    /// A small empty file that says "this board was removed", so the removal reaches every device.
+    private func goneName(_ id: UUID) -> String { "\(id.uuidString).gone" }
+
+    private func isGone(_ id: UUID) -> Bool {
+        if FileManager.default.fileExists(atPath: localBoards.appendingPathComponent(goneName(id)).path) { return true }
+        if let cloud = cloudBoards(), FileManager.default.fileExists(atPath: cloud.appendingPathComponent(goneName(id)).path) { return true }
+        return false
+    }
+
     // MARK: Coding
 
     private func encode(_ board: Board) -> Data? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        // Times are written to the thousandth of a second, so "which change is newer" is never a tie.
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var box = encoder.singleValueContainer()
+            try box.encode(Self.fine.string(from: date))
+        }
         return try? encoder.encode(board)
     }
 
     private func decode(_ data: Data) -> Board? {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let text = try decoder.singleValueContainer().decode(String.self)
+            if let date = Self.fine.date(from: text) ?? Self.plain.date(from: text) { return date }
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "not a date"))
+        }
         return try? decoder.decode(Board.self, from: data)
     }
+
+    private static let fine: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let plain = ISO8601DateFormatter()
 
     private func same(_ a: Board, _ b: Board) -> Bool {
         guard let x = encode(a), let y = encode(b) else { return false }
@@ -240,8 +272,8 @@ private final class BoardDisk: @unchecked Sendable {
     }
 
     private func interpret(_ data: Data) -> Read {
-        if let peek = try? JSONDecoder().decode(FormatPeek.self, from: data),
-           let format = peek.format, format > Board.currentFormat { return .newer }
+        // A board from a newer version of the app is read too (it can be looked at); `canBeChanged`
+        // is false for it, and the writing rules below never put anything over such a file.
         if let board = decode(data) { return .got(board) }
         return .unreadable
     }
@@ -259,6 +291,12 @@ private final class BoardDisk: @unchecked Sendable {
     private func readCloud(_ id: UUID) -> Read {
         guard let folder = cloudBoards() else { return .absent }
         let file = folder.appendingPathComponent(name(id))
+        // Still on its way from iCloud (it shows as ".<name>.icloud"): ask for it, and never write over it.
+        let waiting = folder.appendingPathComponent(".\(name(id)).icloud")
+        if FileManager.default.fileExists(atPath: waiting.path) {
+            try? FileManager.default.startDownloadingUbiquitousItem(at: file)
+            return .unreadable
+        }
         try? FileManager.default.startDownloadingUbiquitousItem(at: file)
         var result: Read = .absent
         var problem: NSError?
@@ -299,7 +337,13 @@ private final class BoardDisk: @unchecked Sendable {
 
     /// The newer of two; the other, when it differs, goes to the safety copies.
     private func winner(_ a: Board, _ b: Board) -> Board {
-        let (win, lose) = b.changed > a.changed ? (b, a) : (a, b)
+        let (win, lose): (Board, Board)
+        if a.canBeChanged != b.canBeChanged {
+            // The one from a newer version of the app stays: this version would lose what it does not know.
+            (win, lose) = a.canBeChanged ? (b, a) : (a, b)
+        } else {
+            (win, lose) = b.changed > a.changed ? (b, a) : (a, b)
+        }
         if !same(win, lose) { keepLoser(lose) }
         return win
     }
@@ -309,18 +353,21 @@ private final class BoardDisk: @unchecked Sendable {
         let stamp = DateFormatter()
         stamp.dateFormat = "yyyyMMdd-HHmmss"
         stamp.locale = Locale(identifier: "en_US_POSIX")
-        let file = safety.appendingPathComponent("\(board.id.uuidString)-\(stamp.string(from: Date())).seedboard")
+        // A few random letters at the end: two set-aside versions in one second never share a name.
+        let file = safety.appendingPathComponent("\(board.id.uuidString)-\(stamp.string(from: Date()))-\(UUID().uuidString.prefix(6)).seedboard")
         try? bytes.write(to: file, options: .atomic)
     }
 
     // MARK: Loading
 
-    func loadAll() -> [Board] {
+    func loadAll() -> (boards: [Board], gone: Set<UUID>) {
         queue.sync {
             purgeRemoved()
             var ids = Set<UUID>()
+            var gone = Set<UUID>()
             for url in (try? FileManager.default.contentsOfDirectory(at: localBoards, includingPropertiesForKeys: nil)) ?? [] {
-                if let id = UUID(uuidString: url.deletingPathExtension().lastPathComponent) { ids.insert(id) }
+                guard let id = UUID(uuidString: url.deletingPathExtension().lastPathComponent) else { continue }
+                if url.pathExtension == "gone" { gone.insert(id) } else if url.pathExtension == "seedboard" { ids.insert(id) }
             }
             if let folder = cloudBoards() {
                 for url in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [] {
@@ -330,8 +377,14 @@ private final class BoardDisk: @unchecked Sendable {
                         base = String(base.dropFirst().dropLast(".icloud".count))
                         try? FileManager.default.startDownloadingUbiquitousItem(at: url)
                     }
-                    if let id = UUID(uuidString: (base as NSString).deletingPathExtension) { ids.insert(id) }
+                    guard let id = UUID(uuidString: (base as NSString).deletingPathExtension) else { continue }
+                    if (base as NSString).pathExtension == "gone" { gone.insert(id) } else if (base as NSString).pathExtension == "seedboard" { ids.insert(id) }
                 }
+            }
+            // A board removed on any device leaves every device: its copies move to Removed, nothing is put back.
+            for id in gone {
+                moveAway(id)
+                ids.remove(id)
             }
             var out: [Board] = []
             for id in ids {
@@ -348,7 +401,7 @@ private final class BoardDisk: @unchecked Sendable {
                     if cloudBoards() != nil { writeCloud(l, reading: cloud) }
                 case let (.got(l), _):
                     out.append(l)   // cloud unreadable or newer: shown from the device copy, cloud untouched
-                case let (.absent, .got(c)), let (.unreadable, .got(c)), let (.newer, .got(c)):
+                case let (.absent, .got(c)), let (.unreadable, .got(c)):
                     out.append(c)
                     if case .absent = local { writeLocalFile(c) }
                 default:
@@ -356,30 +409,43 @@ private final class BoardDisk: @unchecked Sendable {
                 }
             }
             dailySafetyCopy()
-            return out.sorted { $0.changed > $1.changed }
+            return (out.sorted { $0.changed > $1.changed }, gone)
         }
     }
 
     // MARK: Writing
 
     private func writeLocalFile(_ board: Board) {
+        // Never write a board this version only half understands, and never write over one.
+        guard board.canBeChanged else { return }
         switch readLocal(board.id) {
-        case .unreadable, .newer: return
+        case .unreadable: return
+        case let .got(old) where !old.canBeChanged: return
         default: break
         }
         guard let bytes = encode(board) else { return }
         try? bytes.write(to: localBoards.appendingPathComponent(name(board.id)), options: .atomic)
     }
 
-    func writeLocal(_ board: Board) {
-        queue.sync {
-            dailySafetyCopy()
-            if case let .got(old) = readLocal(board.id), !same(old, board), old.changed > board.changed {
-                keepLoser(board)
-                return
+    /// The device copy first, then iCloud, in the order the changes were made. Never blocks the caller.
+    func save(_ board: Board, newerInCloud: @escaping @Sendable (Board) -> Void) {
+        queue.async {
+            guard !self.isGone(board.id) else { return }
+            self.dailySafetyCopy()
+            if case let .got(old) = self.readLocal(board.id), !self.same(old, board), old.changed > board.changed {
+                self.keepLoser(board)
+            } else {
+                self.writeLocalFile(board)
             }
-            writeLocalFile(board)
+            if let newer = self.writeCloudNow(board) { newerInCloud(newer) }
         }
+    }
+
+    /// Waits until the work handed over so far is done, two seconds at most.
+    func flush() {
+        let done = DispatchSemaphore(value: 0)
+        queue.async { done.signal() }
+        _ = done.wait(timeout: .now() + 2)
     }
 
     private func writeCloudFile(_ board: Board, to file: URL) {
@@ -391,8 +457,10 @@ private final class BoardDisk: @unchecked Sendable {
     }
 
     private func writeCloud(_ board: Board, reading state: Read) {
+        guard board.canBeChanged else { return }
         switch state {
-        case .unreadable, .newer: return
+        case .unreadable: return
+        case let .got(there) where !there.canBeChanged: return
         default: break
         }
         guard let folder = cloudBoards() else { return }
@@ -401,14 +469,15 @@ private final class BoardDisk: @unchecked Sendable {
 
     /// Writes the cloud copy. If iCloud already holds a newer version, that one stays, mine goes to the
     /// safety copies, and the newer one is given back so the app can show it.
-    func writeCloud(_ board: Board) -> Board? {
-        queue.sync {
+    private func writeCloudNow(_ board: Board) -> Board? {
+        do {
             guard cloudBoards() != nil else { return nil }
             let state = readCloud(board.id)
             switch state {
-            case .unreadable, .newer:
+            case .unreadable:
                 return nil
             case let .got(there):
+                if !there.canBeChanged { return nil }
                 if there.changed > board.changed, !same(there, board) {
                     keepLoser(board)
                     writeLocalFile(there)
@@ -432,38 +501,68 @@ private final class BoardDisk: @unchecked Sendable {
         return f.string(from: Date())
     }
 
-    func removeLocal(id: UUID) {
-        queue.sync {
-            let file = localBoards.appendingPathComponent(name(id))
-            guard FileManager.default.fileExists(atPath: file.path) else { return }
-            let target = localRemoved.appendingPathComponent("\(id.uuidString)-\(stamp()).seedboard")
-            try? FileManager.default.moveItem(at: file, to: target)
+    /// Removes a board: a mark that it is gone is left on the device and in iCloud (so no device puts it
+    /// back), and both copies move to the Removed folders.
+    func remove(id: UUID) {
+        queue.async {
+            FileManager.default.createFile(atPath: self.localBoards.appendingPathComponent(self.goneName(id)).path, contents: Data())
+            self.moveAway(id)
         }
     }
 
-    func removeCloud(id: UUID) {
-        queue.sync {
-            guard let folder = cloudBoards(), let removed = cloudRemoved() else { return }
-            let file = folder.appendingPathComponent(name(id))
-            guard FileManager.default.fileExists(atPath: file.path) else { return }
-            let target = removed.appendingPathComponent("\(id.uuidString)-\(stamp()).seedboard")
-            var problem: NSError?
-            NSFileCoordinator().coordinate(writingItemAt: file, options: .forMoving,
-                                           writingItemAt: target, options: .forReplacing, error: &problem) { from, to in
-                try? FileManager.default.moveItem(at: from, to: to)
-            }
+    /// Moves a removed board's copies to the Removed folders and makes sure the mark is in both places.
+    private func moveAway(_ id: UUID) {
+        let fm = FileManager.default
+        let localMark = localBoards.appendingPathComponent(goneName(id))
+        if !fm.fileExists(atPath: localMark.path) { fm.createFile(atPath: localMark.path, contents: Data()) }
+        let file = localBoards.appendingPathComponent(name(id))
+        if fm.fileExists(atPath: file.path) {
+            try? fm.moveItem(at: file, to: localRemoved.appendingPathComponent("\(id.uuidString)-\(stamp()).seedboard"))
         }
+        guard let folder = cloudBoards(), let removed = cloudRemoved() else { return }
+        let cloudMark = folder.appendingPathComponent(goneName(id))
+        if !fm.fileExists(atPath: cloudMark.path) { try? Data().write(to: cloudMark) }
+        let cloudFile = folder.appendingPathComponent(name(id))
+        guard fm.fileExists(atPath: cloudFile.path) else { return }
+        let target = removed.appendingPathComponent("\(id.uuidString)-\(stamp()).seedboard")
+        var problem: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: cloudFile, options: .forMoving,
+                                       writingItemAt: target, options: .forReplacing, error: &problem) { from, to in
+            try? fm.moveItem(at: from, to: to)
+        }
+    }
+
+    /// The day a file was moved to Removed, read from its name ("<id>-20261118-091500.seedboard").
+    /// The file's own date is no use: it still says when the board was last changed.
+    private func removedDay(_ url: URL) -> Date? {
+        let base = url.deletingPathExtension().lastPathComponent
+        guard base.count > 16 else { return nil }
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd-HHmmss"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f.date(from: String(base.suffix(15)))
     }
 
     /// Boards removed more than 30 days ago are let go for good, on the device and in iCloud.
+    /// A file whose removal day cannot be read is kept. Marks of removed boards are kept a year.
     private func purgeRemoved() {
         let limit = Date().addingTimeInterval(-Self.keepRemovedDays * 86_400)
         var folders = [localRemoved]
         if let cloud = cloudRemoved() { folders.append(cloud) }
         for folder in folders {
-            for url in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [] {
-                let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
-                if date < limit { try? FileManager.default.removeItem(at: url) }
+            for url in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [] {
+                if let day = removedDay(url), day < limit { try? FileManager.default.removeItem(at: url) }
+            }
+        }
+        let markLimit = Date().addingTimeInterval(-365 * 86_400)
+        var markFolders = [localBoards]
+        if let cloud = cloudBoards() { markFolders.append(cloud) }
+        for folder in markFolders {
+            for url in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.creationDateKey])) ?? []
+            where url.pathExtension == "gone" {
+                if let made = try? url.resourceValues(forKeys: [.creationDateKey]).creationDate, made < markLimit {
+                    try? FileManager.default.removeItem(at: url)
+                }
             }
         }
     }
@@ -491,13 +590,12 @@ private final class BoardDisk: @unchecked Sendable {
         }
     }
 
+    /// Only looks at folder names, so it never has to wait for the store's other work.
     func lastSafetyCopy() -> Date? {
-        queue.sync {
-            let days = ((try? FileManager.default.contentsOfDirectory(atPath: safety.path)) ?? [])
-                .filter { $0.count == 10 && $0.hasPrefix("20") }.sorted()
-            guard let last = days.last else { return nil }
-            return try? safety.appendingPathComponent(last)
-                .resourceValues(forKeys: [.creationDateKey]).creationDate
-        }
+        let days = ((try? FileManager.default.contentsOfDirectory(atPath: safety.path)) ?? [])
+            .filter { $0.count == 10 && $0.hasPrefix("20") }.sorted()
+        guard let last = days.last else { return nil }
+        return try? safety.appendingPathComponent(last)
+            .resourceValues(forKeys: [.creationDateKey]).creationDate
     }
 }

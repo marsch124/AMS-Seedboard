@@ -122,9 +122,11 @@ enum ParagonGate {
             let tasks = ParagonExport.inboxTasks(board: board)
             guard !tasks.isEmpty else { throw SendProblem.nothingToSend }
             guard let outbox = place.outbox else { throw SendProblem.noInbox }
-            for (n, task) in tasks.enumerated() {
-                try append(WaitingLine(text: task.text, asTask: true, createdAt: now.addingTimeInterval(Double(n) * 0.001)), to: outbox)
+            // All of them in one write: either every task is on its way, or none is.
+            let lines = tasks.enumerated().map { n, task in
+                WaitingLine(text: task.text, asTask: true, createdAt: now.addingTimeInterval(Double(n)))
             }
+            do { try append(lines, to: outbox) } catch { throw SendProblem.noInbox }
             let count = tasks.count == 1 ? "1 task is" : "\(tasks.count) tasks are"
             return SendResult(info: nil, todos: tasks.map(\.id), message: "\(count) on the way to the PARAGON Inbox. They show the next time PARAGON opens.")
 
@@ -166,7 +168,7 @@ enum ParagonGate {
             // A note also gets one line in the Inbox that points to it, so it can be filed from there.
             var inInbox = false
             if kind == .note, let outbox = place.outbox {
-                inInbox = (try? append(WaitingLine(text: "[[\(title)]] — a board from Seedboard", asTask: false, createdAt: now), to: outbox)) != nil
+                inInbox = (try? append([WaitingLine(text: "[[\(title)]] — a board from Seedboard", asTask: false, createdAt: now)], to: outbox)) != nil
             }
             let info = SentInfo(when: now, kind: kind.rawValue, title: title, path: "\(folder)/\(title).md")
             let todos = board.items.filter(\.todo).map(\.id)
@@ -188,12 +190,15 @@ enum ParagonGate {
         var createdAt: Date
     }
 
-    private static func append(_ line: WaitingLine, to url: URL) throws {
+    private static func append(_ lines: [WaitingLine], to url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        var data = try encoder.encode(line)
-        data.append(0x0A)
+        var data = Data()
+        for line in lines {
+            data.append(try encoder.encode(line))
+            data.append(0x0A)
+        }
         // Added at the end in one step, so PARAGON and Seedboard can never write into each other.
         let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
         guard fd >= 0 else { throw SendProblem.noInbox }

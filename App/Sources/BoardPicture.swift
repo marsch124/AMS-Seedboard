@@ -23,6 +23,7 @@ enum BoardPicture {
             sheet.translateBy(x: -box.minX, y: -box.minY)
             var painter = BoardPainter(board: fitted, facts: facts, paint: paint)
             painter.handles = false
+            painter.ground = .white
             painter.draw(&sheet)
         }
         .frame(width: box.width, height: box.height)

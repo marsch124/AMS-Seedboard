@@ -161,7 +161,7 @@ final class OutlineTests: XCTestCase {
         (empty) → End (yes)
 
         Notes:
-        - line one / line two
+        - line one line two
         - free
 
         Shapes:

@@ -160,7 +160,7 @@ public extension Board {
     var outlineText: String {
         func one(_ s: String) -> String {
             let parts = s.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            return parts.isEmpty ? "(empty)" : parts.joined(separator: " / ")
+            return parts.isEmpty ? "(empty)" : parts.joined(separator: " ")
         }
         var sections: [String] = []
 

@@ -42,8 +42,13 @@ targets:
         # Seedboard's own container first; PARAGON's second, so a board can be handed over.
         com.apple.developer.icloud-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
         com.apple.developer.ubiquity-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
+        # PARAGON's shared folder: Inbox lines wait there until PARAGON files them (iPhone and iPad spelling).
+        com.apple.security.application-groups: [group.com.schabbauer.amspara]
     settings:
       base:
+        # The Mac spells the same shared folder with the Team ID in front, so it has its own file.
+        CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: App/Config/AMSSeedboard-macOS.entitlements
+        ENABLE_HARDENED_RUNTIME: true
         PRODUCT_BUNDLE_IDENTIFIER: com.schabbauer.AMSSeedboard
         # iPhone AND iPad. iPad means all four orientations (upload error 90474).
         TARGETED_DEVICE_FAMILY: "1,2"

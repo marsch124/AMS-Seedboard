@@ -19,6 +19,7 @@ enum LaunchOptions {
 @main
 struct SeedboardApp: App {
     @StateObject private var model = AppModel()
+    @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
         #if os(macOS)
@@ -45,5 +46,9 @@ struct SeedboardApp: App {
             .environmentObject(model)
             .tint(Theme.text(.boards))
             .onOpenURL { model.open(url: $0) }
+            // Leaving the app keeps what is being typed and writes everything at once.
+            .onChange(of: phase) { _, new in
+                if new != .active { model.leaving() }
+            }
     }
 }

@@ -71,8 +71,8 @@ final class ParagonTests: XCTestCase {
         board.links = [Link(from: a.id, to: b.id, text: "yes"), Link(from: b.id, to: a.id)]
         let text = ParagonExport.note(board: board, title: "Flow", picture: nil, now: now)
         XCTAssertTrue(text.contains("## Flow\n\n- Start → (empty) (yes)\n- (empty) → Start\n"))
-        XCTAssertTrue(text.contains("## Notes\n\n- Line one / Line two\n"))
-        XCTAssertTrue(text.contains("## Tasks\n\n- [ ] Line one / Line two\n"))
+        XCTAssertTrue(text.contains("## Notes\n\n- Line one Line two\n"))
+        XCTAssertTrue(text.contains("## Tasks\n\n- [ ] Line one Line two\n"))
     }
 
     func testProjectTasksFromBranches() {
@@ -103,7 +103,7 @@ final class ParagonTests: XCTestCase {
         let empty = Item(kind: .box, text: "  ", todo: true)
         let plain = Item(kind: .box, text: "Plain")
         var board = Board(items: [one, plain, two, empty])
-        XCTAssertEqual(ParagonExport.inboxTasks(board: board).map(\.text), ["One", "Two / lines"])
+        XCTAssertEqual(ParagonExport.inboxTasks(board: board).map(\.text), ["One", "Two lines"])
         board.sentTodos = [one.id]
         let left = ParagonExport.inboxTasks(board: board)
         XCTAssertEqual(left.map(\.id), [two.id])

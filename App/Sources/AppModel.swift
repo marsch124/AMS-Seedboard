@@ -30,6 +30,12 @@ final class AppModel: ObservableObject {
     init() {
         store = BoardStore(sample: LaunchOptions.sampleData)
         store.onCloudChange = { [weak self] news in self?.cloudBrought(news) }
+        store.onCloudGone = { [weak self] ids in self?.cloudRemoved(ids) }
+        #if os(macOS)
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.leaving() }
+        }
+        #endif
         Task { await load() }
     }
 
@@ -52,12 +58,25 @@ final class AppModel: ObservableObject {
         }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         checkParagon()
+        #if DEBUG
+        // For trying the hand-over without a press: `-sendNow note|project|todos` (with `-paragonFolder`).
+        if let word = LaunchOptions.value(for: "-sendNow"), let kind = SendKind(rawValue: word) {
+            Task {
+                for _ in 0..<50 where place == nil { try? await Task.sleep(nanoseconds: 100_000_000) }
+                let problem = await send(kind: kind, title: "")
+                print("SENDNOW \(word): \(problem ?? "ok") — \(flash ?? "")")
+            }
+        }
+        #endif
     }
 
     private func cloudBrought(_ news: [Board]) {
         for board in news {
             if let i = boards.firstIndex(where: { $0.id == board.id }) {
                 guard board.changed > boards[i].changed else { continue }
+                // In the middle of typing or dragging the open board is left alone: the next save
+                // settles it (the newer change wins, the other is kept as a safety copy).
+                if openID == board.id, session?.busy == true { continue }
                 boards[i] = board
                 if openID == board.id { session?.replace(with: board) }
             } else {
@@ -68,9 +87,31 @@ final class AppModel: ObservableObject {
         safetyLine = store.safetyLine()
     }
 
+    /// Another device removed these boards: they leave this device's list too.
+    private func cloudRemoved(_ ids: Set<UUID>) {
+        if let open = openID, ids.contains(open) {
+            session = nil
+            openID = nil
+            pendingSave = nil
+            saveWork?.cancel()
+        }
+        boards.removeAll { ids.contains($0.id) }
+        safetyLine = store.safetyLine()
+    }
+
+    /// The app is being left or closed: what is being typed is kept and everything is written.
+    func leaving() {
+        session?.commitEdit()
+        saveNow()
+        store.flush()
+    }
+
     /// The open board changed: the list shows it at once, the file follows half a second later.
     private func keep(_ board: Board) {
+        // A board that was removed meanwhile is not put back.
+        guard openID == board.id || boards.contains(where: { $0.id == board.id }) else { return }
         if let i = boards.firstIndex(where: { $0.id == board.id }) { boards[i] = board } else { boards.insert(board, at: 0) }
+        boards.sort { $0.changed > $1.changed }
         pendingSave = board
         saveWork?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.saveNow() }
@@ -89,6 +130,7 @@ final class AppModel: ObservableObject {
 
     private func write(_ board: Board) {
         if let i = boards.firstIndex(where: { $0.id == board.id }) { boards[i] = board } else { boards.insert(board, at: 0) }
+        boards.sort { $0.changed > $1.changed }
         store.save(board)
         safetyLine = store.safetyLine()
     }
@@ -146,8 +188,19 @@ final class AppModel: ObservableObject {
     func duplicate(_ id: UUID) {
         guard var copy = boards.first(where: { $0.id == id }) else { return }
         if openID == id, let live = session?.board { copy = live }
+        guard copy.canBeChanged else {
+            say("This board was made by a newer Seedboard. Update the app to copy it.")
+            return
+        }
         copy.id = UUID()
-        copy.title += " copy"
+        let names = Set(boards.map { $0.title.lowercased() })
+        let base = copy.title + " copy"
+        copy.title = base
+        var n = 2
+        while names.contains(copy.title.lowercased()) {
+            copy.title = "\(base) \(n)"
+            n += 1
+        }
         copy.created = Date()
         copy.changed = Date()
         copy.sent = nil
@@ -223,8 +276,16 @@ final class AppModel: ObservableObject {
             let result = try await Task.detached(priority: .userInitiated) {
                 try ParagonGate.send(board: board, kind: kind, title: title, png: png, place: place)
             }.value
-            session.markSent(result.info, todos: result.todos)
-            saveNow()
+            if self.session === session {
+                session.markSent(result.info, todos: result.todos)
+                saveNow()
+            } else if var other = boards.first(where: { $0.id == board.id }) {
+                // Another board was opened meanwhile: the sent mark goes onto the board itself.
+                if let info = result.info { other.sent = info }
+                other.sentTodos = Array(Set(other.sentTodos).union(result.todos))
+                other.touch()
+                write(other)
+            }
             say(result.message)
             return nil
         } catch {

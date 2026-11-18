@@ -17,7 +17,7 @@ struct SendSheet: View {
     private var todoCount: Int { session.board.items.filter(\.todo).count }
 
     private var canSend: Bool {
-        guard model.paragonReady, !busy else { return false }
+        guard model.paragonReady, !busy, !session.readOnly else { return false }
         if kind == .todos { return waiting > 0 && model.place?.outbox != nil }
         return !session.board.isEmpty
     }

@@ -53,9 +53,12 @@ public extension Board {
     /// Every idea below this one, at any depth.
     func descendants(of id: UUID) -> [UUID] {
         var found: [UUID] = []
+        // `seen` stops a damaged file (an idea hanging under itself) from going round for ever.
+        var seen: Set<UUID> = [id]
         var queue = [id]
         while let next = queue.popLast() {
-            for child in children(of: next) {
+            for child in children(of: next) where !seen.contains(child.id) {
+                seen.insert(child.id)
                 found.append(child.id)
                 queue.append(child.id)
             }
@@ -201,17 +204,34 @@ public extension Board {
     /// (the app measures the words first); only x and y of the non-centre ideas change.
     mutating func layoutMaps() {
         var kids: [UUID: [Int]] = [:]
-        for (i, item) in items.enumerated() where item.kind == .idea {
-            if let parent = item.parent { kids[parent, default: []].append(i) }
+        func gatherKids() {
+            kids = [:]
+            for (i, item) in items.enumerated() where item.kind == .idea {
+                if let parent = item.parent { kids[parent, default: []].append(i) }
+            }
+            for key in kids.keys {
+                kids[key]?.sort { (items[$0].order, items[$0].id.uuidString) < (items[$1].order, items[$1].id.uuidString) }
+            }
         }
-        for key in kids.keys {
-            kids[key]?.sort { (items[$0].order, items[$0].id.uuidString) < (items[$1].order, items[$1].id.uuidString) }
-        }
-        // An idea whose parent is gone becomes a centre rather than vanishing.
+        // An idea whose parent is gone (or that hangs under itself) becomes a centre rather than vanishing.
         let ids = Set(items.map(\.id))
         for i in items.indices where items[i].kind == .idea {
-            if let parent = items[i].parent, !ids.contains(parent) { items[i].parent = nil }
+            if let parent = items[i].parent, !ids.contains(parent) || parent == items[i].id { items[i].parent = nil }
         }
+        gatherKids()
+        // Ideas that hang in a ring (a damaged file) can be reached from no centre: each becomes a centre.
+        var reached: Set<UUID> = []
+        var open = items.filter { $0.kind == .idea && $0.parent == nil }.map(\.id)
+        while let next = open.popLast() {
+            guard reached.insert(next).inserted else { continue }
+            for i in kids[next] ?? [] { open.append(items[i].id) }
+        }
+        var healed = false
+        for i in items.indices where items[i].kind == .idea && !reached.contains(items[i].id) {
+            items[i].parent = nil
+            healed = true
+        }
+        if healed { gatherKids() }
 
         func height(_ i: Int) -> Double {
             let own = items[i].h

@@ -1,6 +1,9 @@
 import SwiftUI
 import SeedboardCore
 import AMSIcons
+#if os(macOS)
+import AppKit
+#endif
 
 /// The window: the boards on the left, the open board beside them.
 /// On the iPhone the list comes first and a board opens over it.
@@ -25,17 +28,24 @@ struct RootView: View {
                 NoBoard()
             }
         }
+        #if !os(macOS)
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(model)
-            #if os(macOS)
-                .frame(width: 460, height: 520)
-            #endif
         }
+        #endif
         .onChange(of: model.openID) { _, new in
             compactColumn = new == nil ? .sidebar : .detail
         }
         .onAppear {
-            if LaunchOptions.settings { showSettings = true }
+            guard LaunchOptions.settings else { return }
+            #if os(macOS)
+            // The Mac has its own Settings window (⌘,).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
+            #else
+            showSettings = true
+            #endif
         }
     }
 }
@@ -56,6 +66,8 @@ private struct NoBoard: View {
                 .accessibilityIdentifier("empty.newBoard")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("board.none")
     }
 }
@@ -67,13 +79,18 @@ struct BoardList: View {
     let open: (UUID) -> Void
 
     @State private var showStarters = false
+    @State private var showStarterSheet = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var renaming: Board?
     @State private var newName = ""
     @State private var removing: Board?
 
     var body: some View {
         VStack(spacing: 0) {
-            Button { showStarters = true } label: {
+            Button {
+                // On the iPhone the choices come up from the bottom; a small pop-up there comes out empty.
+                if sizeClass == .compact { showStarterSheet = true } else { showStarters = true }
+            } label: {
                 HStack(spacing: 6) {
                     ControlMarkView(.add, size: 15, colour: .white)
                     Text("New board")
@@ -91,6 +108,13 @@ struct BoardList: View {
                     open(model.newBoard(starter))
                 }
                 .presentationCompactAdaptation(.popover)
+            }
+            .sheet(isPresented: $showStarterSheet) {
+                StarterPicker(wide: true) { starter in
+                    showStarterSheet = false
+                    open(model.newBoard(starter))
+                }
+                .presentationDetents([.height(CGFloat(Starter.allCases.count) * 46 + 60)])
             }
 
             ScrollView {
@@ -112,15 +136,15 @@ struct BoardList: View {
 
             Divider()
             HStack {
-                Button { showSettings = true } label: {
-                    HStack(spacing: 5) {
-                        ControlMarkView(.settings, size: 17, colour: Part.boards.text)
-                        Text("Settings").font(Txt.label)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("boards.settings")
+                #if os(macOS)
+                SettingsLink { settingsLabel }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("boards.settings")
+                #else
+                Button { showSettings = true } label: { settingsLabel }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("boards.settings")
+                #endif
                 Spacer()
                 Text(version)
                     .font(.caption)
@@ -131,6 +155,9 @@ struct BoardList: View {
             .padding(.vertical, 7)
         }
         .navigationTitle("Seedboard")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .alert("Name of the board", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $newName)
             Button("Cancel", role: .cancel) { renaming = nil }
@@ -150,6 +177,14 @@ struct BoardList: View {
         } message: {
             Text("It is kept for 30 days in the Removed folder.")
         }
+    }
+
+    private var settingsLabel: some View {
+        HStack(spacing: 5) {
+            ControlMarkView(.settings, size: 17, colour: Part.boards.text)
+            Text("Settings").font(Txt.label)
+        }
+        .contentShape(Rectangle())
     }
 
     private var version: String {
@@ -223,6 +258,7 @@ struct BoardList: View {
 
 /// The ways to begin a board.
 private struct StarterPicker: View {
+    var wide = false
     let pick: (Starter) -> Void
 
     var body: some View {
@@ -253,7 +289,9 @@ private struct StarterPicker: View {
             }
         }
         .padding(8)
-        .frame(width: 300)
+        // A fixed size: on the iPhone a pop-up without one comes out empty.
+        .frame(width: wide ? nil : 300, height: CGFloat(Starter.allCases.count) * 46 + 34, alignment: .top)
+        .frame(maxWidth: wide ? .infinity : nil)
     }
 
     private func mark(_ starter: Starter) -> AppMark {

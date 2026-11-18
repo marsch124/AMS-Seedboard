@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- PARAGON's shared folder, in the Mac's spelling (Team ID in front): Inbox lines wait there. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>D24ENP83QQ.group.com.schabbauer.amspara</string>
+	</array>
+	<!-- Seedboard's own iCloud folder first; PARAGON's second, so a board can be handed over. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.schabbauer.AMSSeedboard</string>
+		<string>iCloud.com.schabbauer.AMSPara</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudDocuments</string>
+	</array>
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.com.schabbauer.AMSSeedboard</string>
+		<string>iCloud.com.schabbauer.AMSPara</string>
+	</array>
+</dict>
+</plist>

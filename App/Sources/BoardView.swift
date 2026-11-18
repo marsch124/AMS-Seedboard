@@ -1,6 +1,11 @@
 import SwiftUI
 import SeedboardCore
 import AMSIcons
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 /// A hand-drawn mark from the shared icon library, whichever family it is in.
 enum Glyph {
@@ -36,6 +41,8 @@ struct BoardView: View {
 
     var body: some View {
         ZStack {
+            // The board's own colour runs to every edge of the screen, also under the home bar.
+            Paint(scheme).canvas.ignoresSafeArea()
             CanvasView(session: session)
 
             if session.board.isEmpty {
@@ -83,15 +90,33 @@ struct BoardView: View {
                         .background(Part.boards.fill, in: Capsule())
                         .accessibilityIdentifier("board.flash")
                 }
-                HStack(alignment: .bottom) {
-                    if !compact { Color.clear.frame(width: 150, height: 1) }
-                    Spacer(minLength: 0)
-                    if !session.readOnly { ToolPill(session: session) }
-                    Spacer(minLength: 0)
-                    if !compact { ZoomCluster(session: session).frame(width: 150, alignment: .trailing) }
-                }
-                if compact {
-                    ZoomCluster(session: session)
+                // Wide enough: the tools in the middle, the zoom buttons at the right.
+                // Otherwise the zoom buttons sit in their own row above the tools.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        // An iPhone on its side: Undo and Redo sit here, the top bar has no room for them.
+                        Group {
+                            if compact && !session.readOnly { UndoCluster(session: session) } else { Color.clear.frame(height: 1) }
+                        }
+                        .frame(width: 150, alignment: .leading)
+                        Spacer(minLength: 0)
+                        if !session.readOnly { ToolPill(session: session) }
+                        Spacer(minLength: 0)
+                        ZoomCluster(session: session).frame(width: 150, alignment: .trailing)
+                    }
+                    VStack(spacing: 6) {
+                        HStack(spacing: 8) {
+                            if compact && !session.readOnly { UndoCluster(session: session) }
+                            Spacer(minLength: 0)
+                            ZoomCluster(session: session)
+                        }
+                        if !session.readOnly {
+                            ViewThatFits(in: .horizontal) {
+                                ToolPill(session: session)
+                                ScrollView(.horizontal, showsIndicators: false) { ToolPill(session: session) }
+                            }
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 10)
@@ -132,16 +157,19 @@ struct BoardView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Button { session.undo() } label: { GlyphView(glyph: .app(.undo), size: 20) }
-                .disabled(session.undoCount == 0)
-                .help("Undo")
-                .accessibilityLabel("Undo")
-                .accessibilityIdentifier("board.undo")
-            Button { session.redo() } label: { GlyphView(glyph: .app(.redo), size: 20) }
-                .disabled(session.redoCount == 0)
-                .help("Redo")
-                .accessibilityLabel("Redo")
-                .accessibilityIdentifier("board.redo")
+            // On the iPhone Undo and Redo sit at the bottom, so the board's name has room up here.
+            if !compact {
+                Button { session.undo() } label: { GlyphView(glyph: .app(.undo), size: 20) }
+                    .disabled(session.undoCount == 0)
+                    .help("Undo")
+                    .accessibilityLabel("Undo")
+                    .accessibilityIdentifier("board.undo")
+                Button { session.redo() } label: { GlyphView(glyph: .app(.redo), size: 20) }
+                    .disabled(session.redoCount == 0)
+                    .help("Redo")
+                    .accessibilityLabel("Redo")
+                    .accessibilityIdentifier("board.redo")
+            }
             Menu {
                 Button("Rename…") {
                     newName = session.board.title
@@ -156,8 +184,10 @@ struct BoardView: View {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
                 }
-                ShareLink(item: BoardPNG(board: session.board), preview: SharePreview(session.board.title)) {
-                    Text("Share a picture…")
+                if !session.board.isEmpty {
+                    ShareLink(item: BoardPNG(board: session.board), preview: SharePreview(session.board.title)) {
+                        Text("Share a picture…")
+                    }
                 }
                 Divider()
                 Button("Remove the board…", role: .destructive) { removing = true }
@@ -169,10 +199,16 @@ struct BoardView: View {
             .accessibilityIdentifier("board.more")
 
             Button { model.showSend = true } label: {
+                #if os(macOS)
                 HStack(spacing: 5) {
                     GlyphView(glyph: .app(.send), size: 15, colour: .white)
-                    Text(compact ? "Send" : "Send to PARAGON")
+                    Text("Send to PARAGON")
                 }
+                #else
+                Text(compact ? "Send" : "Send to PARAGON")
+                    .lineLimit(1)
+                    .fixedSize()
+                #endif
             }
             .buttonStyle(FilledButton(.boards))
             .help("Send this board to PARAGON")
@@ -186,7 +222,7 @@ struct ToolPill: View {
     @ObservedObject var session: BoardSession
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        Group {
             HStack(spacing: 6) {
                 tool(.seedMindMap, .mindMap, "tool.mindmap", "Mind map (M)") { session.add(.idea) }
                 tool(.seedBox, .shapes, "tool.box", "Box (B)") { session.add(.box) }
@@ -203,11 +239,12 @@ struct ToolPill: View {
             }
             .padding(6)
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: 7 * 46 + 12)
+        .fixedSize()
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color.primary.opacity(0.10)))
         .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+        // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("board.tools")
     }
 
@@ -270,14 +307,12 @@ struct SelectionBar: View {
             EmptyView()
         } else {
             VStack(spacing: 5) {
-                ViewThatFits(in: .horizontal) {
-                    chips(item, link)
-                    ScrollView(.horizontal, showsIndicators: false) { chips(item, link) }
-                }
-                .fixedSize(horizontal: false, vertical: true)
+                chips(item, link)
                 .background(Theme.plate, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Color.primary.opacity(0.10)))
                 .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
+                // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("board.selectionBar")
 
                 if showColours {
@@ -289,7 +324,8 @@ struct SelectionBar: View {
     }
 
     private func chips(_ item: Item?, _ link: SeedboardCore.Link?) -> some View {
-        HStack(spacing: 5) {
+        // The buttons wrap onto a second row on a narrow screen: none is ever cut off.
+        WrapRow(spacing: 5) {
             if let item {
                 itemChips(item)
             } else if let link {
@@ -302,6 +338,9 @@ struct SelectionBar: View {
                 chip("To do", .control(.ticked), "sel.todo", .paragon) { session.toggleTodo() }
                 chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
             }
+            #if !os(macOS)
+            chip("Choose more", .control(.addCircle), "sel.more", .boards, on: session.choosingMore) { session.choosingMore.toggle() }
+            #endif
             chip("Remove", .app(.bin), "sel.remove", .arrows) { session.deleteSelection() }
         }
         .padding(5)
@@ -324,6 +363,7 @@ struct SelectionBar: View {
                 chip("Colour", .app(.palette), "sel.colour", .mindMap, on: showColours) { showColours.toggle() }
             }
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
+            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
         case .box, .round, .diamond, .oval:
             shape(.seedBox, .box, item)
             shape(.seedRound, .round, item)
@@ -403,6 +443,8 @@ struct SelectionBar: View {
         .background(Theme.plate, in: Capsule())
         .overlay(Capsule().stroke(Color.primary.opacity(0.10)))
         .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
+        // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("board.colours")
     }
 
@@ -425,9 +467,18 @@ struct BoardCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .undoRedo) {
-            Button("Undo") { session?.undo() }
-                .keyboardShortcut("z", modifiers: .command)
-                .disabled(session == nil || session?.undoCount == 0)
+            Button("Undo") {
+                // While words are being typed, Undo belongs to the typing.
+                if session?.editing != nil {
+                    #if os(macOS)
+                    NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+                    #endif
+                } else {
+                    session?.undo()
+                }
+            }
+            .keyboardShortcut("z", modifiers: .command)
+            .disabled(session == nil || (session?.undoCount == 0 && session?.editing == nil))
             Button("Redo") { session?.redo() }
                 .keyboardShortcut("z", modifiers: [.command, .shift])
                 .disabled(session == nil || session?.redoCount == 0)
@@ -437,6 +488,15 @@ struct BoardCommands: Commands {
                 .keyboardShortcut("d", modifiers: .command)
             Button("To Do") { session?.toggleTodo() }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
+            Button("Paste a List as a Mind Map") {
+                #if os(macOS)
+                let text = NSPasteboard.general.string(forType: .string)
+                #else
+                let text = UIPasteboard.general.string
+                #endif
+                if let text { session?.paste(text) }
+            }
+            .keyboardShortcut("v", modifiers: [.command, .shift])
             Divider()
             Button("Bigger") { if let session { session.zoom(to: session.scale * 1.25) } }
                 .keyboardShortcut("+", modifiers: .command)
@@ -444,6 +504,77 @@ struct BoardCommands: Commands {
                 .keyboardShortcut("-", modifiers: .command)
             Button("Show the Whole Board") { session?.fit() }
                 .keyboardShortcut("0", modifiers: .command)
+        }
+    }
+}
+
+/// Undo and Redo as a small pair of buttons (on the iPhone, where the top bar has no room for them).
+struct UndoCluster: View {
+    @ObservedObject var session: BoardSession
+
+    var body: some View {
+        HStack(spacing: 2) {
+            button(.undo, "board.undo", "Undo", on: session.undoCount > 0) { session.undo() }
+            button(.redo, "board.redo", "Redo", on: session.redoCount > 0) { session.redo() }
+        }
+        .padding(4)
+        .background(Theme.plate, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.primary.opacity(0.10)))
+    }
+
+    private func button(_ mark: AppMark, _ id: String, _ help: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            AppMarkView(mark, size: 18, colour: Part.arrows.text)
+                .frame(width: 30, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!on)
+        .opacity(on ? 1 : 0.35)
+        .accessibilityLabel(help)
+        .accessibilityIdentifier(id)
+    }
+}
+
+/// Lays its children out in a row and starts a new row when the width runs out. Rows are centred.
+struct WrapRow: Layout {
+    var spacing: CGFloat = 5
+
+    private func rows(_ subviews: Subviews, width: CGFloat) -> [[(index: Int, size: CGSize)]] {
+        var rows: [[(index: Int, size: CGSize)]] = [[]]
+        var used: CGFloat = 0
+        for (i, view) in subviews.enumerated() {
+            let size = view.sizeThatFits(.unspecified)
+            let extra = rows[rows.count - 1].isEmpty ? size.width : spacing + size.width
+            if used + extra > width, !rows[rows.count - 1].isEmpty {
+                rows.append([])
+                used = 0
+            }
+            used += rows[rows.count - 1].isEmpty ? size.width : spacing + size.width
+            rows[rows.count - 1].append((i, size))
+        }
+        return rows.filter { !$0.isEmpty }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let limit = proposal.width ?? .infinity
+        let all = rows(subviews, width: limit)
+        let widths = all.map { row in row.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(row.count - 1, 0)) }
+        let heights = all.map { row in row.map(\.size.height).max() ?? 0 }
+        return CGSize(width: widths.max() ?? 0, height: heights.reduce(0, +) + spacing * CGFloat(max(all.count - 1, 0)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in rows(subviews, width: bounds.width) {
+            let width = row.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(row.count - 1, 0))
+            let height = row.map(\.size.height).max() ?? 0
+            var x = bounds.minX + (bounds.width - width) / 2
+            for entry in row {
+                subviews[entry.index].place(at: CGPoint(x: x, y: y + (height - entry.size.height) / 2), proposal: ProposedViewSize(entry.size))
+                x += entry.size.width + spacing
+            }
+            y += height + spacing
         }
     }
 }

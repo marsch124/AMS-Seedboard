@@ -220,13 +220,13 @@ public enum ParagonExport {
         return words.isEmpty ? "(empty)" : words
     }
 
-    /// Line breaks become " / ", runs of spaces become one.
+    /// Line breaks become spaces, runs of spaces become one.
     static func oneLine(_ text: String) -> String {
         text.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
             .split(separator: "\n", omittingEmptySubsequences: true)
             .map { $0.split(separator: " ").joined(separator: " ") }
             .filter { !$0.isEmpty }
-            .joined(separator: " / ")
+            .joined(separator: " ")
     }
 
     private static func bullets(of item: Item, in board: Board, level: Int, depth: Int = 0) -> [String] {

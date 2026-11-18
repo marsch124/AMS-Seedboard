@@ -231,7 +231,9 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public var canBeChanged: Bool { format <= Board.currentFormat }
 
     /// Stamps the board as changed now.
-    public mutating func touch(_ now: Date = Date()) { changed = now }
+    /// Always later than the stamp it had (even when this device's clock runs behind another's),
+    /// so "the newer change wins" can never throw away the change just made.
+    public mutating func touch(_ now: Date = Date()) { changed = max(now, changed.addingTimeInterval(0.001)) }
 }
 
 /// Reads one element of a list without failing the whole list.

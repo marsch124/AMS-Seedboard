@@ -8,6 +8,7 @@ import AppKit
 struct CanvasView: View {
     @ObservedObject var session: BoardSession
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var phase
     @FocusState private var typing: Bool
     @FocusState private var keys: Bool
 
@@ -19,6 +20,10 @@ struct CanvasView: View {
     @State private var lastTapAt = Date.distantPast
     @State private var lastTapID: UUID?
     @State private var pinchBase: CGFloat?
+    /// A pinch began during this press: the rest of the press is not a drag or a tap.
+    @State private var pinched = false
+    @State private var pressing = false
+    @State private var lastTapBare = false
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
@@ -81,6 +86,14 @@ struct CanvasView: View {
                 .accessibilityLabel("Board")
                 .accessibilityValue(session.board.countLine)
 
+                // The count as words of its own, for the screen tests (too small and faint to see).
+                Text(session.board.countLine)
+                    .font(.system(size: 1))
+                    .foregroundStyle(.clear)
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                    .accessibilityIdentifier("board.count")
+
                 editor
             }
             #if os(macOS)
@@ -93,18 +106,33 @@ struct CanvasView: View {
             }
             #endif
             .onAppear { session.placeIfNeeded(geo.size) }
-            .onChange(of: geo.size) { _, new in session.placeIfNeeded(new) }
+            .onChange(of: geo.size) { _, new in session.resized(new) }
         }
         .clipped()
         .focusable()
         .focused($keys)
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in handleKey(press) }
+        // A press the system took away (an edge swipe, a call, leaving the app) never ends by itself.
+        .onChange(of: phase) { _, _ in resetPress() }
+        .onDisappear { resetPress() }
         .onChange(of: session.editing, initial: true) { _, new in
             DispatchQueue.main.async {
                 if new != nil { typing = true } else { keys = true }
             }
         }
+    }
+
+    private func resetPress() {
+        session.liveEnd(keep: true)
+        drag = .idle
+        marquee = nil
+        rubber = nil
+        ghost = nil
+        dropTarget = nil
+        pinchBase = nil
+        pinched = false
+        pressing = false
     }
 
     // MARK: Typing in place
@@ -148,9 +176,19 @@ struct CanvasView: View {
                 return .handled
             }
             .onKeyPress(.escape, phases: .down) { _ in
-                session.commitEdit()
+                session.cancelEdit()
                 return .handled
             }
+            #if os(iOS)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { session.commitEdit() }
+                        .fontWeight(.semibold)
+                        .accessibilityIdentifier("board.fieldDone")
+                }
+            }
+            #endif
     }
 
     private func itemField(_ item: Item) -> some View {
@@ -219,7 +257,7 @@ struct CanvasView: View {
         let board = session.board
         if !session.readOnly, session.editing == nil, session.selection.count == 1,
            let id = session.selection.first, let item = board.item(id), !session.linking {
-            let slack = 7 / session.scale
+            let slack = 9 / session.scale
             for handle in BoardPainter.handles(for: item, side: session.facts.side[id] ?? .right, scale: session.scale) {
                 if handle.rect.insetBy(dx: -slack, dy: -slack).contains(p) {
                     switch handle.kind {
@@ -237,13 +275,14 @@ struct CanvasView: View {
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
             .onChanged { value in
-                guard pinchBase == nil else { return }
+                pressing = true
+                guard !pinched else { return }
                 switch drag {
                 case .idle:
                     let t = target(at: session.toBoard(value.startLocation))
                     // Pressing somewhere else ends the typing.
                     if session.editing != nil { session.commitEdit() }
-                    if case .item(let id) = t, !session.linking, !session.selection.contains(id), !shiftDown {
+                    if case .item(let id) = t, !session.linking, !session.selection.contains(id), !shiftDown, !session.choosingMore {
                         session.select(id)
                     }
                     drag = .waiting(t)
@@ -263,8 +302,10 @@ struct CanvasView: View {
                     ghost = nil
                     dropTarget = nil
                 }
-                guard pinchBase == nil else {
+                pressing = false
+                guard !pinched else {
                     session.liveEnd(keep: true)
+                    if pinchBase == nil { pinched = false }
                     return
                 }
                 finish(value)
@@ -363,7 +404,8 @@ struct CanvasView: View {
                 if let made { session.beginEdit(made, isNew: true) }
             }
         case .joining(let id):
-            if let over = session.board.hit(here), over != id {
+            // Dropped on a frame (it takes no arrows) or on nothing: the arrow tool stays on.
+            if let over = session.board.hit(here), over != id, session.board.item(over)?.kind != .frame {
                 session.join(id, over)
                 session.linking = false
                 session.linkFrom = nil
@@ -383,7 +425,9 @@ struct CanvasView: View {
             break
         case .item(let id):
             if session.linking {
-                if let from = session.linkFrom, from != id {
+                if session.board.item(id)?.kind == .frame {
+                    // A frame takes no arrows: the press is passed over, the arrow tool stays on.
+                } else if let from = session.linkFrom, from != id {
                     session.join(from, id)
                     session.linking = false
                     session.linkFrom = nil
@@ -392,7 +436,7 @@ struct CanvasView: View {
                 }
             } else if double(id) {
                 session.beginEdit(id)
-            } else if shiftDown {
+            } else if shiftDown || session.choosingMore {
                 session.select(id, adding: true)
             } else {
                 session.select(id)
@@ -412,12 +456,14 @@ struct CanvasView: View {
             if session.linking {
                 session.linking = false
                 session.linkFrom = nil
-            } else if double(nil), session.selection.isEmpty, session.selectedLink == nil {
-                // Two presses on empty board: a sticky note right there.
+            } else if double(nil), lastTapBare, session.selection.isEmpty, session.selectedLink == nil {
+                // Two presses on empty board (with nothing chosen before the first): a sticky note right there.
                 session.add(.note, at: p)
                 lastTapAt = .distantPast
+                lastTapBare = false
                 return
             } else {
+                lastTapBare = session.selection.isEmpty && session.selectedLink == nil
                 session.clearSelection()
             }
             lastTapID = nil
@@ -429,10 +475,23 @@ struct CanvasView: View {
     private var pinchGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                if pinchBase == nil { pinchBase = session.scale }
+                if pinchBase == nil {
+                    pinchBase = session.scale
+                    pinched = true
+                    // Whatever one finger had begun is settled as it stands.
+                    session.liveEnd(keep: true)
+                    drag = .idle
+                    marquee = nil
+                    rubber = nil
+                    ghost = nil
+                    dropTarget = nil
+                }
                 session.zoom(to: (pinchBase ?? 1) * value.magnification, around: value.startLocation)
             }
-            .onEnded { _ in pinchBase = nil }
+            .onEnded { _ in
+                pinchBase = nil
+                if !pressing { pinched = false }
+            }
     }
     #endif
 
@@ -535,7 +594,7 @@ private struct ScrollCatcher: NSViewRepresentable {
                     if event.type == .magnify {
                         session.zoom(to: session.scale * (1 + event.magnification), around: p)
                     } else if event.modifierFlags.contains(.command) {
-                        session.zoom(to: session.scale * (1 + event.scrollingDeltaY * 0.01), around: p)
+                        session.zoom(to: session.scale * exp(min(max(event.scrollingDeltaY, -60), 60) * 0.01), around: p)
                     } else {
                         let k: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 8
                         session.pan(by: CGSize(width: event.scrollingDeltaX * k, height: event.scrollingDeltaY * k))

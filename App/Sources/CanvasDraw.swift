@@ -208,9 +208,11 @@ struct BoardPainter {
     /// The idea a dragged idea would hang under.
     var dropTarget: UUID?
     var handles = true
+    /// What lies behind the board (white for a picture), so the words on an arrow sit on the same colour.
+    var ground: Color?
 
-    static let handleGap: CGFloat = 20
-    static let handleSize: CGFloat = 20
+    static let handleGap: CGFloat = 17
+    static let handleSize: CGFloat = 18
 
     func draw(_ ctx: inout GraphicsContext) {
         let byID = board.items.reduce(into: [UUID: Item]()) { $0[$1.id] = $1 }
@@ -284,8 +286,10 @@ struct BoardPainter {
 
     /// The little controls round one chosen item, in board points.
     static func handles(for item: Item, side: Side, scale: CGFloat) -> [Handle] {
-        let s = handleSize / scale
-        let gap = handleGap / scale
+        // Their size on screen stays the same when zoomed in and shrinks a little when zoomed out.
+        let k = min(1, max(scale, 0.55))
+        let s = handleSize * k / scale
+        let gap = handleGap * k / scale
         let f = item.frame
         func plus(_ d: Direction) -> Handle {
             let c: CGPoint
@@ -300,7 +304,7 @@ struct BoardPainter {
         let knob = Handle(kind: .size, rect: CGRect(x: f.maxX - s * 0.2, y: f.maxY - s * 0.2, width: s * 0.7, height: s * 0.7))
         switch item.kind {
         case .idea:
-            if item.parent == nil { return [plus(.right), plus(.left)] }
+            if item.parent == nil { return [plus(.right)] }
             return [plus(side == .right ? .right : .left)]
         case .frame:
             return [knob]
@@ -373,7 +377,7 @@ struct BoardPainter {
             let size = text.measure(in: CGSize(width: 200, height: 100))
             let plate = CGRect(x: route.label.x - size.width / 2 - 5, y: route.label.y - size.height / 2 - 2,
                                width: size.width + 10, height: size.height + 4)
-            ctx.fill(Path(roundedRect: plate, cornerRadius: 5), with: .color(paint.canvas))
+            ctx.fill(Path(roundedRect: plate, cornerRadius: 5), with: .color(ground ?? paint.canvas))
             ctx.draw(text, at: route.label, anchor: .center)
         }
     }

@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 BUILD="${1:?build number, e.g. 1}"; WHAT="${2:-both}"
 # The App Store Connect app id is not known yet. Fill it in once the app exists there.
-APP_ID=""
+APP_ID="6836228189"
 KEY="/Users/martinschabbauer/Documents/01 Leisure/30 App Development/Apple Developer/AMS PARA/p8 file - Admin/AuthKey_63M2792NNV.p8"
 ASC="${ASC_PY:-/Users/martinschabbauer/Documents/01 Leisure/30 App Development/AMS Packing App/private/release-tools/asc.py}"
 ISSUER=$(python3 -c "import importlib.util,sys; s=importlib.util.spec_from_file_location('asc','$ASC'); m=importlib.util.module_from_spec(s); sys.argv=['x']; s.loader.exec_module(m); print(m.issuer())")

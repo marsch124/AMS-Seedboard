@@ -19,11 +19,13 @@ final class BoardSession: ObservableObject {
     /// The arrow tool is on: the next two shapes pressed are joined.
     @Published var linking = false
     @Published var linkFrom: UUID?
+    /// iPhone and iPad: each press adds to what is chosen (the Mac holds Shift instead).
+    @Published var choosingMore = false
     @Published private(set) var undoCount = 0
     @Published private(set) var redoCount = 0
 
     var viewSize: CGSize = .zero
-    private var placed = false
+    private var moved = false
     private var undoStack: [Board] = []
     private var redoStack: [Board] = []
     private var liveBase: Board?
@@ -99,10 +101,18 @@ final class BoardSession: ObservableObject {
 
     /// A newer version of this board arrived from another device.
     func replace(with newer: Board) {
-        guard editing == nil, liveBase == nil else { return }
+        guard !busy else { return }
         set(newer)
         tidySelection()
+        // Steps taken before the other device's change must not be put back over it.
+        undoStack = []
+        redoStack = []
+        undoCount = 0
+        redoCount = 0
     }
+
+    /// In the middle of typing or dragging.
+    var busy: Bool { editing != nil || liveBase != nil }
 
     private func tidySelection() {
         let ids = Set(board.items.map(\.id))
@@ -173,10 +183,13 @@ final class BoardSession: ObservableObject {
         }
         draft = text
         apply(text, to: id)
+        // Kept as it is typed, so leaving the app in the middle of a sentence loses nothing.
+        onChange?(board)
     }
 
     private func apply(_ text: String, to id: UUID) {
         var new = board
+        new.touch()
         if let i = new.index(of: id) {
             new.items[i].text = text
         } else if let l = new.links.firstIndex(where: { $0.id == id }) {
@@ -212,20 +225,39 @@ final class BoardSession: ObservableObject {
         let base = editBase ?? board
         editBase = nil
         draft = ""
-        if new != base {
-            new.touch()
+        new.touch()
+        if new.items != base.items || new.links != base.links || new.title != base.title {
             pushUndo(base)
-            set(new)
-            onChange?(board)
-        } else {
-            set(new)
         }
+        set(new)
+        onChange?(board)
         guard !removed else { return }
         switch after {
         case .nothing: break
         case .child: addChild(of: id)
         case .sister: addSister(of: id)
         }
+    }
+
+    /// Escape: the words go back to what they were, and a thing just made goes away again.
+    func cancelEdit() {
+        guard let id = editing else { return }
+        editing = nil
+        draft = ""
+        var back = editBase ?? board
+        editBase = nil
+        back.touch()
+        set(back)
+        if editIsNew, let item = board.item(id), let before = undoStack.popLast() {
+            // The step that made it is taken back, so it leaves no trace.
+            let parent = item.parent
+            var old = before
+            old.touch()
+            set(old)
+            undoCount = undoStack.count
+            selection = parent.map { [$0] } ?? []
+        }
+        onChange?(board)
     }
 
     // MARK: Adding
@@ -328,6 +360,7 @@ final class BoardSession: ObservableObject {
         selection = []
         selectedLink = nil
         linkFrom = nil
+        choosingMore = false
     }
 
     func selectAll() {
@@ -366,6 +399,8 @@ final class BoardSession: ObservableObject {
             for id in ids {
                 if let i = board.index(of: id), board.items[i].kind != .frame { board.items[i].todo = !allOn }
             }
+            // Taking the tick off forgets that it was sent, so ticking it again sends it again.
+            if allOn { board.sentTodos.removeAll { ids.contains($0) } }
         }
     }
 
@@ -481,12 +516,14 @@ final class BoardSession: ObservableObject {
     }
 
     func pan(by delta: CGSize) {
+        moved = true
         offset = CGSize(width: offset.width + delta.width, height: offset.height + delta.height)
     }
 
     /// Zooms so the board point under the screen point stays where it is.
     func zoom(to newScale: CGFloat, around point: CGPoint? = nil) {
         let anchor = point ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
+        moved = true
         let clamped = min(max(newScale, 0.2), 3)
         let under = toBoard(anchor)
         scale = clamped
@@ -503,16 +540,24 @@ final class BoardSession: ObservableObject {
         }
         let room = CGSize(width: max(viewSize.width - 80, 80), height: max(viewSize.height - 170, 80))
         let s = min(1, min(room.width / max(all.width, 1), room.height / max(all.height, 1)))
-        scale = max(s, 0.2)
+        // Never so small that the words cannot be read: on a small screen the middle of the board shows.
+        scale = max(s, 0.5)
         offset = CGSize(width: viewSize.width / 2 - all.midX * scale, height: viewSize.height / 2 - all.midY * scale)
     }
 
     /// The first time the board's place on screen is known, it is shown whole.
     func placeIfNeeded(_ size: CGSize) {
         viewSize = size
-        guard !placed, size.width > 10 else { return }
-        placed = true
+        // Until the owner has moved or zoomed the board, it is shown whole again whenever its room changes
+        // (a window still settling, a page opening over it).
+        guard !moved, size.width > 10 else { return }
         fit()
+    }
+
+    /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.
+    func resized(_ size: CGSize) {
+        placeIfNeeded(size)
+        if let id = editing { reveal(id) }
     }
 
     /// Moves the view just enough to bring an item into sight.
