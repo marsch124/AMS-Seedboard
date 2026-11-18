@@ -54,6 +54,8 @@ struct SeedboardApp: App {
         RootView()
             // The lines about a clash or a removed board, and "Removed and earlier versions" over the window.
             .modifier(BringBackHost())
+            // The Starters page, and the questions a starter card or menu asks (StartersPage.swift).
+            .modifier(StarterHost())
             .environmentObject(model)
             .tint(Theme.text(.boards))
             // For pictures: `-night` shows the app by night whatever the device is set to.

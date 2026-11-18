@@ -58,6 +58,9 @@ final class BoardSession: ObservableObject {
     private var editBase: Board?
     private var editIsNew = false
 
+    /// This is the working copy of a starter being changed (StarterModel.swift), not one of the boards.
+    var starterDraft = false
+
     /// Called with the board after every change that should be kept.
     var onChange: ((Board) -> Void)?
 
