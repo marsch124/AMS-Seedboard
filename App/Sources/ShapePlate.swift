@@ -140,7 +140,7 @@ struct ShapePlate: View {
                         .background(on ? Part.shapes.fill : Part.shapes.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(PressStyle())
+                    .buttonStyle(PressStyle(tint: Part.shapes.text))
                     .accessibilityLabel(kind.word)
                     .accessibilityIdentifier(prefix + kind.rawValue)
                 }
@@ -173,6 +173,8 @@ struct ShapeTool: View {
     @State private var shown = LaunchOptions.value(for: "-plate") == "shapes"
     /// The shape picked from the plate: it is added when the plate has gone, so the typing can begin.
     @State private var picked: ItemKind?
+    /// A finger or the pointer is down on the tile (0.5: it answers like the other tiles).
+    @State private var held = false
     @Environment(\.toolSide) private var side
 
     var body: some View {
@@ -182,12 +184,13 @@ struct ShapeTool: View {
             GlyphView(glyph: kind.mark, size: ToolSize.mark(side), colour: Part.shapes.text)
                 .frame(width: side, height: side)
                 .background(Part.shapes.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .modifier(TileAnswer(tint: Part.shapes.text, down: held))
                 .contentShape(Rectangle())
                 .onTapGesture {
                     session.add(kind)
                     session.takeKeys()
                 }
-                .onLongPressGesture(minimumDuration: 0.4) { shown = true }
+                .onLongPressGesture(minimumDuration: 0.4) { shown = true } onPressingChanged: { held = $0 }
                 .help("\(name) — hold for all shapes")
                 .accessibilityElement()
                 .accessibilityAddTraits(.isButton)
@@ -207,7 +210,7 @@ struct ShapeTool: View {
                     .frame(width: 18, height: 18, alignment: .bottomTrailing)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(PressStyle())
+            .buttonStyle(PressStyle(wash: nil))
             // On the iPhone the corner is too small for a finger: it only shows that there is more (hold the tile).
             .allowsHitTesting(ShapeTool.cornerTakesPresses)
             .help("All shapes")
@@ -283,7 +286,7 @@ struct ShapeChip: View {
         Button { shown = true } label: {
             BarChip(word: "Shape", glyph: item.kind.mark, part: .shapes, on: shown)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: Part.shapes.text))
         .help("Change it into another shape")
         .accessibilityIdentifier("sel.shape")
         .modifier(PlatePresenter(shown: $shown, edge: .bottom, closed: { session.takeKeys() }) {

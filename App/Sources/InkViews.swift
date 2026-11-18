@@ -26,7 +26,7 @@ struct DrawTool: View {
                 .background(desk.on ? Part.drawing.fill : Part.drawing.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: Part.drawing.text))
         .help("Draw (S)")
         .accessibilityLabel("Draw")
         .accessibilityValue(desk.on ? "On" : "Off")
@@ -108,7 +108,7 @@ struct DrawPlate: View {
                         .frame(width: Finger.on ? 26 : Finger.dot, height: Finger.on ? 26 : Finger.dot)
                         .pressRoom(5, 9)
                 }
-                .buttonStyle(PressStyle())
+                .buttonStyle(PressStyle(wash: nil))
                 .modifier(InUseRing(on: !desk.rubber && desk.colour == name))
                 .accessibilityLabel(name.isEmpty ? "Ink" : name.capitalized)
                 .accessibilityIdentifier("draw.colour." + (name.isEmpty ? "ink" : name))
@@ -128,7 +128,7 @@ struct DrawPlate: View {
                 .background(on ? Part.drawing.fill : Part.drawing.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .pressRoom(4, 4)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: Part.drawing.text))
         .help(help)
         .accessibilityLabel(help)
         .accessibilityAddTraits(on ? .isSelected : [])

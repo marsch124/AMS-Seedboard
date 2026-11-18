@@ -121,6 +121,8 @@ final class AppModel: ObservableObject {
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // For pictures: `-removed` opens "Removed and earlier versions", `-clash` shows the clash notice.
         bringBackLaunch()
+        // For pictures of 0.5's feel: `-emptyBoard`, `-noBoards`, `-say good|problem|paragon` (FeelLooks.swift).
+        feelLaunch()
         // A link that arrived before the boards were loaded is followed now.
         if let id = waitingLink { follow(id) }
         checkParagon()
@@ -228,7 +230,7 @@ final class AppModel: ObservableObject {
         let warning = store.warning
         if saveWarning != warning {
             // A board that cannot be saved on the device is said at once, not only in Settings.
-            if let warning, saveWarning == nil { say(warning) }
+            if let warning, saveWarning == nil { say(warning, tone: .problem) }
             saveWarning = warning
         }
     }
@@ -360,7 +362,7 @@ final class AppModel: ObservableObject {
         guard var copy = boards.first(where: { $0.id == id }) else { return }
         if openID == id, let live = session?.board { copy = live }
         guard copy.canBeChanged else {
-            say("This board was made by a newer Seedboard. Update the app to copy it.")
+            say("This board was made by a newer Seedboard. Update the app to copy it.", tone: .problem)
             return
         }
         copy.id = UUID()
@@ -439,7 +441,7 @@ final class AppModel: ObservableObject {
                 // Shown as a line with a "Bring back" button (BringBack.swift).
                 removedLink = RemovedBoard(id: id, removed: date)
             case .missing:
-                say("That board is not on this device yet. It opens when it arrives.")
+                say("That board is not on this device yet. It opens when it arrives.", tone: .problem)
             }
         }
     }
@@ -449,7 +451,7 @@ final class AppModel: ObservableObject {
     func bringBack(_ id: UUID) {
         Task {
             guard let board = await store.bringBack(id: id) else {
-                say("That board could not be brought back: no copy of it is left.")
+                say("That board could not be brought back: no copy of it is left.", tone: .problem)
                 return
             }
             if let i = boards.firstIndex(where: { $0.id == id }) { boards[i] = board } else { boards.append(board) }
@@ -531,7 +533,7 @@ final class AppModel: ObservableObject {
                 other.touch()
                 write(other)
             }
-            say(result.message)
+            sayHandedOver(result)
             return nil
         } catch {
             if let ticked {

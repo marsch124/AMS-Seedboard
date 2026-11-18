@@ -80,7 +80,7 @@ struct SeedMenus: Commands {
             Button("Share a Picture…") {
                 if let session {
                     session.commitEdit()
-                    if !SharePicture.show(session.board) { model.say("The picture could not be made.") }
+                    if !SharePicture.show(session.board) { model.say("The picture could not be made.", tone: .problem) }
                 }
             }
             .disabled(session?.board.isEmpty ?? true)

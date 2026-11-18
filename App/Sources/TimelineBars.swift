@@ -48,7 +48,7 @@ struct TimelineToolPill: View {
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: part.text))
         .help(help)
         .accessibilityLabel(word)
         .accessibilityIdentifier(id)
@@ -88,7 +88,7 @@ struct TimelineZoomCluster: View {
                 .background(Part.timeline.fill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(PressStyle())
+            .buttonStyle(PressStyle(tint: .black))
             .help("Bring today into view (T)")
             .accessibilityLabel("Today")
             .accessibilityIdentifier("timeline.today")
@@ -98,6 +98,7 @@ struct TimelineZoomCluster: View {
         .fixedSize()
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.primary.opacity(0.10)))
+        .plateShadow()
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline.zoom")
@@ -231,7 +232,7 @@ struct TimelineSelectionBar: View {
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: part.text))
         .accessibilityIdentifier(id)
     }
 
@@ -246,7 +247,7 @@ struct TimelineSelectionBar: View {
                         .frame(width: 22, height: 22)
                         .overlay(Circle().stroke(paint.ink, lineWidth: item.colour == name ? 2 : 0).padding(-3))
                 }
-                .buttonStyle(PressStyle())
+                .buttonStyle(PressStyle(wash: nil))
                 .accessibilityLabel(name.capitalized)
                 .accessibilityIdentifier("colour.\(name)")
             }

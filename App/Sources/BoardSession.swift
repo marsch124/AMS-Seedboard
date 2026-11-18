@@ -548,6 +548,7 @@ final class BoardSession: ObservableObject {
         let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .picture && board.item($0)?.kind != .phase }
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
+        if !allOn { Feel.todoOn() }
         change { board in
             for id in ids {
                 if let i = board.index(of: id), board.items[i].kind != .frame { board.items[i].todo = !allOn }
@@ -621,6 +622,7 @@ final class BoardSession: ObservableObject {
         var made: UUID?
         change { made = $0.link(from: from, to: to) }
         if let made {
+            Feel.joined()
             selection = []
             selectedLink = made
         }

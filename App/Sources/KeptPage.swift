@@ -153,7 +153,7 @@ struct KeptPage: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
                 .background(Color.white.opacity(0.22), in: Capsule())
-                .buttonStyle(PressStyle())
+                .buttonStyle(PressStyle(wash: nil))
                 .accessibilityIdentifier("kept.open")
             }
             .padding(.leading, 12)

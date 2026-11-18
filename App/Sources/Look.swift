@@ -44,8 +44,7 @@ struct ParagonButton: ButtonStyle {
             .foregroundStyle(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Look.paragonButton, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.5)
+            .modifier(MainPlate(fill: Look.paragonButton, pressed: configuration.isPressed))
             .contentShape(Rectangle())
     }
 }

@@ -140,6 +140,8 @@ struct HomeView: View {
 /// The plate of a card: the small picture on top, words below, a thin edge all round.
 private struct CardPlate: ViewModifier {
     @Environment(\.colorScheme) private var scheme
+    /// 0.5: the pointer is over the card (the Mac, an iPad's trackpad): a green edge and a deeper shadow.
+    @State private var over = false
 
     func body(content: Content) -> some View {
         let paint = Paint(scheme)
@@ -147,10 +149,11 @@ private struct CardPlate: ViewModifier {
         return content
             .background(paint.plate)
             .clipShape(outline)
-            .overlay(outline.stroke(paint.edge, lineWidth: 1))
+            .overlay(outline.stroke(over ? Part.boards.text.opacity(0.6) : paint.edge, lineWidth: 1))
             // The same faint shadow as a shape on the board, by day only.
-            .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.06), radius: 2, y: 1)
+            .shadow(color: .black.opacity(scheme == .dark ? 0 : (over ? 0.12 : 0.06)), radius: over ? 6 : 2, y: 1)
             .contentShape(outline)
+            .modifier(CardPointer(over: $over, outline: outline))
     }
 }
 
@@ -196,7 +199,7 @@ struct StarterCard: View {
             }
             .modifier(CardPlate())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(pressed: FeelRules.mainPressed, wash: nil))
         .starterMenu(starter, ask: ask)
         .accessibilityLabel("\(starter.name). \(starter.hint)")
     }
@@ -214,11 +217,8 @@ struct BoardCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
                     BoardThumb(board: board)
-                    if board.isEmpty {
-                        Text("Empty")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    // 0.5: an empty board's card shows a faint sprout instead of the word "Empty".
+                    if board.isEmpty { EmptySprout() }
                 }
                 Rectangle().fill(paint.edge).frame(height: 1)
                 VStack(alignment: .leading, spacing: 0) {
@@ -242,7 +242,7 @@ struct BoardCard: View {
             }
             .modifier(CardPlate())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(pressed: FeelRules.mainPressed, wash: nil))
         .accessibilityLabel("\(board.title). \(board.changedWords())")
     }
 }

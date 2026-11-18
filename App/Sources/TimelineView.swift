@@ -388,7 +388,8 @@ struct TimelineView: View {
     }
 
     private func join(_ follower: UUID, after forerunner: UUID) {
-        if let words = session.timelineJoin(follower, after: forerunner) { model.say(words) }
+        // 0.5: a join that was refused is said in brick red, one that worked in green.
+        if let words = session.timelineJoin(follower, after: forerunner) { model.say(words, tone: words.hasPrefix("Joined") ? .good : .problem) }
     }
 
     private func tap(_ t: Target) {

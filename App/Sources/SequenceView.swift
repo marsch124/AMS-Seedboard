@@ -362,7 +362,7 @@ struct SequenceView: View {
                 drag = .panning(session.offset)
                 return
             }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Feel.lift()
             #endif
             session.select(id)
             drag = .lifting(id)

@@ -58,7 +58,7 @@ enum Feel {
         guard !still else { return }
         if moment == .catch {
             let now = Date()
-            guard now.timeIntervalSince(lastCatch) >= 0.12 else { return }
+            guard FeelRules.mayCatch(last: lastCatch, now: now) else { return }
             lastCatch = now
         }
         #if os(macOS)

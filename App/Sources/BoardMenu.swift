@@ -78,7 +78,7 @@ enum BoardMenu {
     }
 
     static func close() {
-        if BarDesk.shared.menu != nil { BarDesk.shared.menu = nil }
+        if BarDesk.shared.menu != nil { withAnimation(Feel.moves ? .easeOut(duration: 0.10) : nil) { BarDesk.shared.menu = nil } }
     }
 
     /// For pictures: `-menu` opens the menu of the thing chosen with `-pick` (or the arrow chosen
@@ -127,6 +127,8 @@ struct BoardMenuLayer: View {
                     // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("board.menu")
+                    // 0.5: the plate fades in and grows from 96 % (0.12 s); it leaves by fading (0.10 s, `close`).
+                    .modifier(GrowIn())
                 }
             }
             .id(open.id)

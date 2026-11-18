@@ -167,7 +167,7 @@ struct ChosenBar: View {
                 ChipLook(action: action, worded: worded, tint: tint)
                     .pressRoom(0, 4)
             }
-            .buttonStyle(PressStyle())
+            .buttonStyle(PressStyle(tint: action.part(in: tint).text))
             .disabled(!action.enabled)
             .help(action.word)
             .accessibilityLabel(action.word)
@@ -177,7 +177,7 @@ struct ChosenBar: View {
                 ChipLook(action: action, worded: worded, tint: tint, lit: choosing == action.id)
                     .pressRoom(0, 4)
             }
-            .buttonStyle(PressStyle())
+            .buttonStyle(PressStyle(tint: action.part(in: tint).text))
             .help(action.word)
             .accessibilityLabel(action.word)
             .accessibilityIdentifier(action.id)
@@ -200,7 +200,7 @@ struct ChosenBar: View {
             ChipLook(action: dots, worded: false, tint: tint, lit: showMore || rest.contains { $0.on })
                 .pressRoom(0, 4)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: tint.text))
         .help("More")
         .accessibilityLabel("More")
         .accessibilityIdentifier(dots.id)
@@ -235,7 +235,7 @@ struct ColourRow: View {
                         .frame(width: Finger.dot, height: Finger.dot)
                         .pressRoom(7, 7)
                 }
-                .buttonStyle(PressStyle())
+                .buttonStyle(PressStyle(wash: nil))
                 .modifier(InUseRing(on: colour.on))
                 .accessibilityLabel(colour.word)
                 .accessibilityIdentifier(colour.id)
