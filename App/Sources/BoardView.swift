@@ -383,6 +383,9 @@ struct SelectionBar: View {
                     .padding(.horizontal, 6)
                 chip("To do", .control(.ticked), "sel.todo", .paragon) { session.toggleTodo() }
                 chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
+                if session.tidyCount >= 2 { chip("Line up", .new(.lineUp), "sel.lineUp", .shapes) { session.lineUp() } }
+                if session.tidyCount >= 3 { chip("Even gaps", .new(.evenGaps), "sel.evenGaps", .shapes) { session.evenGaps() } }
+                if session.sizeCount >= 2 { chip("Same size", .new(.sameSize), "sel.sameSize", .shapes) { session.sameSize() } }
             }
             #if !os(macOS)
             chip("Choose more", .control(.addCircle), "sel.more", .boards, on: session.choosingMore) { session.choosingMore.toggle() }
@@ -575,6 +578,9 @@ struct BoardCommands: Commands {
                 .keyboardShortcut("d", modifiers: .command)
             Button("To Do") { session?.toggleTodo() }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
+            Button("Line Up") { session?.lineUp() }.disabled((session?.tidyCount ?? 0) < 2)
+            Button("Even Gaps") { session?.evenGaps() }.disabled((session?.tidyCount ?? 0) < 3)
+            Button("Same Size") { session?.sameSize() }.disabled((session?.sizeCount ?? 0) < 2)
             Button("Paste a List as a Mind Map") {
                 #if os(macOS)
                 let text = NSPasteboard.general.string(forType: .string)
