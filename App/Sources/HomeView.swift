@@ -64,7 +64,7 @@ struct HomeView: View {
         HStack(spacing: 10) {
             AppMarkView(.seedSprout, size: 30, colour: Part.boards.text)
             VStack(alignment: .leading, spacing: 0) {
-                Text("Start a thought")
+                Text("Plant a seed")
                     .font(Txt.big)
                 Text("Every idea starts on a board.")
                     .font(Txt.label)
