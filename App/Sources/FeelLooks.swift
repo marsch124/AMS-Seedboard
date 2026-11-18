@@ -83,8 +83,9 @@ struct WindowFlash: View {
             if !boardInSight { FlashLine() }
         }
         .padding(.horizontal, 12)
-        // Clear of the list's last row (Settings and the version) on the iPhone.
-        .padding(.bottom, Finger.on ? 54 : 16)
+        // Clear of the list's last rows: on the iPhone the search row with "+" and the Settings line (ThumbRow.swift),
+        // on the iPad the Settings line.
+        .padding(.bottom, ThumbRow.onThisDevice ? 118 : (Finger.on ? 54 : 16))
         .animation(.message, value: model.flash)
     }
 }
