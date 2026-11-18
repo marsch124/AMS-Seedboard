@@ -13,8 +13,8 @@ final class OutlineTests: XCTestCase {
     }
 
     func testCheckBoxesAreStripped() {
-        let nodes = Outline.parse("- [ ] buy milk\n- [x] call Anna\n- [X] done")
-        XCTAssertEqual(nodes.map(\.text), ["buy milk", "call Anna", "done"])
+        let nodes = Outline.parse("- [ ] buy milk\n- [x] call Alex\n- [X] done")
+        XCTAssertEqual(nodes.map(\.text), ["buy milk", "call Alex", "done"])
     }
 
     func testTabsMakeDepth() {

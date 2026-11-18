@@ -199,10 +199,10 @@ public extension Board {
         return board
     }
 
-    /// The starter: Anna asks the bank, the bank answers, Anna orders the build.
+    /// The starter: Alex asks the bank, the bank answers, Alex orders the build.
     static func sequenceStart(title: String = "Who does what", now: Date = Date()) -> Board {
         var board = Board.sequence(title: title, created: now)
-        let anna = board.addWho("Anna")
+        let anna = board.addWho("Alex")
         let bank = board.addWho("Bank")
         let builder = board.addWho("Builder")
         board.addMessage("Ask for loan", from: anna, to: bank)
@@ -546,7 +546,7 @@ public extension Board {
         return parts.isEmpty ? "Empty" : parts.joined(separator: " · ")
     }
 
-    /// One step in words: "2. Bank answers Anna: Yes", a note's or a section's own words.
+    /// One step in words: "2. Bank answers Alex: Yes", a note's or a section's own words.
     func stepLine(_ id: UUID) -> String {
         guard let step = item(id) else { return "" }
         if step.kind == .message, let n = messageNumbers[id] { return "\(n). " + ParagonExport.messageLine(step, in: self) }
@@ -584,7 +584,7 @@ public extension ParagonExport {
         return words.isEmpty ? "(no name)" : words
     }
 
-    /// One message in words: "Anna → Bank: Ask for loan", "Bank answers Anna: Yes",
+    /// One message in words: "Alex → Bank: Ask for loan", "Bank answers Alex: Yes",
     /// "Bank, by itself: Check the papers". A message without words ends after the names.
     static func messageLine(_ message: Item, in board: Board) -> String {
         let from = whoName(message.from.flatMap { board.item($0) })
@@ -603,7 +603,7 @@ public extension ParagonExport {
         return out
     }
 
-    /// The steps for a note: a numbered list "1. Anna → Bank: Ask for loan", a note as a quoted line
+    /// The steps for a note: a numbered list "1. Alex → Bank: Ask for loan", a note as a quoted line
     /// and a section as a `###` heading, each in its place.
     static func sequenceList(_ board: Board) -> [String] {
         let numbers = board.messageNumbers

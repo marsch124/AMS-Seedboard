@@ -236,7 +236,7 @@ extension BoardSession {
         sequenceReveal(whos[next].id)
     }
 
-    /// The chosen thing in words, for the screen tests: "Who: Anna", "1. Anna → Bank: Ask for loan".
+    /// The chosen thing in words, for the screen tests: "Who: Alex", "1. Alex → Bank: Ask for loan".
     var sequenceChosenLine: String {
         guard let item = single else { return "" }
         return item.kind == .who ? "Who: " + item.nameLine : board.stepLine(item.id)

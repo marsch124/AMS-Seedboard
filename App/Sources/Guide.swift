@@ -308,7 +308,7 @@ enum Guide {
             "Seedboard 0.2 shows a board with a picture on it, but cannot change it.",
         ]),
         Part(title: "Who does what", text: [
-            "A Who does what board shows who asks whom for what, and in which order. The names stand in a row at the top, and the messages run from top to bottom, numbered by the app. Start one with New board, then Who does what. It opens with a small example: Anna, Bank, Builder.",
+            "A Who does what board shows who asks whom for what, and in which order. The names stand in a row at the top, and the messages run from top to bottom, numbered by the app. Start one with New board, then Who does what. It opens with a small example: Alex, Bank, Builder.",
             "Each name stands in a box of its own colour (the first 8 names get blue, teal, orange, purple, green, pink, red, yellow), with a thin dashed line hanging down. The lines stand 150 points apart, and further apart only where the words between them need room. Nothing is moved by hand.",
             "A message is a level arrow from one dashed line to another, with its words above it and a number in a small round mark. It takes the colour of the name it comes from. An answer is drawn with dashes and an open head. A message to itself is a small loop on the name's own line.",
             "A note is a soft band across all the lines. A section is a heading on a thin line across the whole diagram, for a new part. Neither is numbered.",
@@ -332,7 +332,7 @@ enum Guide {
             "Keys: ↑ and ↓ choose the message above or below, ← and → the name before or after. Space or Return, on a name, a note or a section, starts typing. Any letter starts typing in the chosen thing. Delete removes. Escape chooses nothing.",
             "A message counts only when both its names are on the board. A message with a missing name, for example one that came in from elsewhere, is not drawn, not counted, not numbered, not sent, and Select all and the arrow keys skip it. It is not thrown away.",
             "Every change is one step for Undo. The boards list counts it in its own words, for example 4 people · 9 messages · 1 note · 1 section. Search finds names and words.",
-            "To PARAGON as a note: the diagram's picture, the names, then the messages as a numbered list, for example 1. Anna → Bank: Ask for loan, then 2. Bank answers Anna: Yes, then 3. Bank, by itself: Check the papers. A note stands as a quoted line and a section as a heading, each in its place. Ticked messages are listed again under Tasks.",
+            "To PARAGON as a note: the diagram's picture, the names, then the messages as a numbered list, for example 1. Alex → Bank: Ask for loan, then 2. Bank answers Alex: Yes, then 3. Bank, by itself: Check the papers. A note stands as a quoted line and a section as a heading, each in its place. Ticked messages are listed again under Tasks.",
             "To PARAGON as a project: the messages in their order under Tasks. The ones you ticked To do become tasks and the others stay plain lines. With nothing ticked, all of them become tasks. Sections are headings, and notes go under the project's Notes.",
             "Only the to-do boxes: the ticked messages go to the Inbox as tasks, with their own words.",
             "A list cannot be pasted onto a Who does what board.",
@@ -619,7 +619,7 @@ enum Guide {
             "Who does what: the names stay in sight. Slide down a long diagram and the name boxes stay pinned at the top.",
             "Who does what: removing a name removes its messages too, and a line says how many, with Undo, for example: Bank went with its 2 messages.",
             "Who does what: the boards list counts it in its own words, for example 4 people · 9 messages · 1 note · 1 section. Search finds names and words.",
-            "Who does what: to PARAGON as a note, the picture and a numbered list, for example 1. Anna → Bank: Ask for loan and 2. Bank answers Anna: Yes, with notes and sections in place. As a project, the ticked messages become tasks (with nothing ticked, all of them do).",
+            "Who does what: to PARAGON as a note, the picture and a numbered list, for example 1. Alex → Bank: Ask for loan and 2. Bank answers Alex: Yes, with notes and sections in place. As a project, the ticked messages become tasks (with nothing ticked, all of them do).",
             "Who does what: the made-up boards got a 10th, Loan steps (4 names, 9 messages, 1 note, 1 section, 1 message to itself).",
             "Fixed: the Timeline starter's small picture on the home page was blank. Before: the starter card Timeline showed an empty picture, because its example was made for 1 January 2001 and 25 years had to fit into 240 points, so the bars became too small to see. Now: the example is made for today, and its 3 bars and its milestone show in the card. The new Who does what card shows its three names and three messages.",
 

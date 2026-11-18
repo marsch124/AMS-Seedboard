@@ -60,16 +60,16 @@ final class SequenceUITests: XCTestCase {
         XCTAssertTrue(element(app, "zoom.fit").exists)
 
         // The chosen message and its bar.
-        waitFor(app, "sequence.chosen", toSay: "1. Anna → Bank: Ask for loan")
+        waitFor(app, "sequence.chosen", toSay: "1. Alex → Bank: Ask for loan")
         XCTAssertTrue(element(app, "board.selectionBar").waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "sel.words").exists)
         XCTAssertTrue(element(app, "sel.colour").exists)
         XCTAssertTrue(element(app, "sel.todo").exists)
         XCTAssertTrue(element(app, "sel.copy").exists)
         press(app, "sel.turn")
-        waitFor(app, "sequence.chosen", toSay: "1. Bank → Anna: Ask for loan")
+        waitFor(app, "sequence.chosen", toSay: "1. Bank → Alex: Ask for loan")
         press(app, "sel.answer")
-        waitFor(app, "sequence.chosen", toSay: "1. Bank answers Anna: Ask for loan")
+        waitFor(app, "sequence.chosen", toSay: "1. Bank answers Alex: Ask for loan")
 
         // A new name, typed in place; it stays chosen and shows the bar for a name.
         press(app, "tool.who")

@@ -4,8 +4,8 @@ import CoreGraphics
 
 /// The "Who does what" board: one small data test per rule.
 final class SequenceTests: XCTestCase {
-    /// Anna, Bank, Builder with "1 Ask for loan" Anna → Bank, "2 Yes" Bank → Anna (an answer),
-    /// "3 Order the build" Anna → Builder — the owner's sketch.
+    /// Alex, Bank, Builder with "1 Ask for loan" Alex → Bank, "2 Yes" Bank → Alex (an answer),
+    /// "3 Order the build" Alex → Builder — the owner's sketch.
     private func sketch() -> (board: Board, anna: UUID, bank: UUID, builder: UUID) {
         let board = Board.sequenceStart()
         let who = board.whos.map(\.id)
@@ -24,7 +24,7 @@ final class SequenceTests: XCTestCase {
         XCTAssertTrue(back.isSequence)
         XCTAssertTrue(back.placesItself)
         XCTAssertFalse(Board(title: "Plain").isSequence)
-        XCTAssertEqual(back.whos.map(\.text), ["Anna", "Bank", "Builder"])
+        XCTAssertEqual(back.whos.map(\.text), ["Alex", "Bank", "Builder"])
         let yes = try XCTUnwrap(back.steps.first { $0.text == "Yes" })
         XCTAssertEqual(yes.from, bank)
         XCTAssertEqual(yes.to, anna)
@@ -40,7 +40,7 @@ final class SequenceTests: XCTestCase {
     func testTheStarterIsTheSketch() {
         let (board, _, _, _) = sketch()
         XCTAssertEqual(board.title, "Who does what")
-        XCTAssertEqual(words(board), ["1. Anna → Bank: Ask for loan", "2. Bank answers Anna: Yes", "3. Anna → Builder: Order the build"])
+        XCTAssertEqual(words(board), ["1. Alex → Bank: Ask for loan", "2. Bank answers Alex: Yes", "3. Alex → Builder: Order the build"])
         XCTAssertEqual(board.countLine, "3 people · 3 messages")
         XCTAssertEqual(Board.sequence().countLine, "Empty")
         // Each name wears its own colour.
@@ -101,7 +101,7 @@ final class SequenceTests: XCTestCase {
 
     func testAPulledMessageIsAnAnswerWhenTheOneAboveGoesTheOtherWay() {
         let (board, anna, bank, builder) = sketch()
-        XCTAssertTrue(board.wouldAnswer(from: bank, to: anna, at: 1))        // right under "Ask for loan" Anna → Bank
+        XCTAssertTrue(board.wouldAnswer(from: bank, to: anna, at: 1))        // right under "Ask for loan" Alex → Bank
         XCTAssertFalse(board.wouldAnswer(from: anna, to: bank, at: 1))       // the same way: a second question
         XCTAssertFalse(board.wouldAnswer(from: builder, to: anna, at: 1))    // other names
         XCTAssertFalse(board.wouldAnswer(from: anna, to: bank, at: 2))       // above it is an answer already
@@ -129,7 +129,7 @@ final class SequenceTests: XCTestCase {
         XCTAssertEqual(layout.landingY(slot: 0), layout.firstTop, accuracy: 0.001)
         // Dropped there: "Ask for loan" is now the last, and the numbers follow.
         XCTAssertTrue(board.moveStep(first, to: 2))
-        XCTAssertEqual(words(board), ["1. Bank answers Anna: Yes", "2. Anna → Builder: Order the build", "3. Anna → Bank: Ask for loan"])
+        XCTAssertEqual(words(board), ["1. Bank answers Alex: Yes", "2. Alex → Builder: Order the build", "3. Alex → Bank: Ask for loan"])
         XCTAssertFalse(board.moveStep(first, to: 2))                         // its own place: nothing changes
         XCTAssertFalse(board.moveStep(UUID(), to: 0))
     }
@@ -145,10 +145,10 @@ final class SequenceTests: XCTestCase {
         XCTAssertGreaterThan(gap, Double(layout.boxes[bank]!.maxX))
         XCTAssertLessThan(gap, Double(layout.boxes[builder]!.minX))
         XCTAssertTrue(board.moveWho(anna, to: 2))
-        XCTAssertEqual(board.whos.map(\.text), ["Bank", "Builder", "Anna"])
+        XCTAssertEqual(board.whos.map(\.text), ["Bank", "Builder", "Alex"])
         XCTAssertFalse(board.moveWho(anna, to: 2))
         // Nothing about the messages changed: they still say who to whom.
-        XCTAssertEqual(words(board).first, "1. Anna → Bank: Ask for loan")
+        XCTAssertEqual(words(board).first, "1. Alex → Bank: Ask for loan")
         let after = board.sequenceLayout()
         XCTAssertEqual(after.rows[0].fromX, after.x[anna])
         XCTAssertEqual(after.rows[0].toX, after.x[bank])
@@ -161,7 +161,7 @@ final class SequenceTests: XCTestCase {
         board.turnMessageRound(ask)
         XCTAssertEqual(board.item(ask)?.from, bank)
         XCTAssertEqual(board.item(ask)?.to, anna)
-        XCTAssertEqual(board.stepLine(ask), "1. Bank → Anna: Ask for loan")
+        XCTAssertEqual(board.stepLine(ask), "1. Bank → Alex: Ask for loan")
     }
 
     // MARK: Removing and copying
@@ -172,8 +172,8 @@ final class SequenceTests: XCTestCase {
         XCTAssertEqual(board.messageCount(of: builder), 1)
         let note = board.addBand("Stays")
         XCTAssertEqual(board.removeFromSequence([bank]), 2)
-        XCTAssertEqual(board.whos.map(\.text), ["Anna", "Builder"])
-        XCTAssertEqual(words(board), ["1. Anna → Builder: Order the build", "Stays"])
+        XCTAssertEqual(board.whos.map(\.text), ["Alex", "Builder"])
+        XCTAssertEqual(words(board), ["1. Alex → Builder: Order the build", "Stays"])
         XCTAssertEqual(board.whos.map(\.order), [1, 2])
         // A message chosen together with its name is not counted as "went along".
         let order = board.steps[0].id
@@ -193,7 +193,7 @@ final class SequenceTests: XCTestCase {
         XCTAssertTrue(board.item(copies.first!)!.isAnswer)
         // A copied name stands beside its own and has no messages yet.
         let twin = board.duplicateInSequence([anna]).first!
-        XCTAssertEqual(board.whos.map(\.text), ["Anna", "Anna", "Bank", "Builder"])
+        XCTAssertEqual(board.whos.map(\.text), ["Alex", "Alex", "Bank", "Builder"])
         XCTAssertEqual(board.messageCount(of: twin), 0)
     }
 
@@ -305,34 +305,34 @@ final class SequenceTests: XCTestCase {
         var board = loan()
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         XCTAssertEqual(ParagonExport.sequenceList(board), [
-            "1. Anna → Bank: Ask for loan",
+            "1. Alex → Bank: Ask for loan",
             "",
             "> Bank closed on Sundays",
             "",
             "2. Bank, by itself: Check the papers",
-            "3. Bank answers Anna: Yes",
-            "4. Anna → Builder: Order the build",
+            "3. Bank answers Alex: Yes",
+            "4. Alex → Builder: Order the build",
             "",
             "### If the loan is refused",
             "",
-            "5. Anna → Bank: Ask again",
+            "5. Alex → Bank: Ask again",
         ])
         var note = ParagonExport.note(board: board, title: "Loan", picture: "Seedboard Loan.png", now: now)
         XCTAssertTrue(note.contains("type: resource"))
         XCTAssertTrue(note.contains("![Picture](../Pictures/Seedboard%20Loan.png)"))
-        XCTAssertTrue(note.contains("## Who\n\nAnna · Bank · Builder\n\n"))
-        XCTAssertTrue(note.contains("## Who does what\n\n1. Anna → Bank: Ask for loan\n\n> Bank closed on Sundays\n\n2. Bank"))
+        XCTAssertTrue(note.contains("## Who\n\nAlex · Bank · Builder\n\n"))
+        XCTAssertTrue(note.contains("## Who does what\n\n1. Alex → Bank: Ask for loan\n\n> Bank closed on Sundays\n\n2. Bank"))
         XCTAssertFalse(note.contains("## Tasks"))
         // A ticked message is a task under the list.
         let order = board.steps.first { $0.text == "Order the build" }!.id
         board.items[board.index(of: order)!].todo = true
         note = ParagonExport.note(board: board, title: "Loan", picture: nil, now: now)
-        XCTAssertTrue(note.hasSuffix("## Tasks\n\n- [ ] Anna → Builder: Order the build\n\n"))
+        XCTAssertTrue(note.hasSuffix("## Tasks\n\n- [ ] Alex → Builder: Order the build\n\n"))
         // "Only the to-do boxes": the ticked message's own words.
         XCTAssertEqual(ParagonExport.inboxTasks(board: board).map(\.text), ["Order the build"])
         // Copied as text: the same order in plain lines.
-        XCTAssertTrue(board.outlineText.hasPrefix("Who: Anna, Bank, Builder\n\n1. Anna → Bank: Ask for loan\n   Note: Bank closed on Sundays\n2. Bank"))
-        XCTAssertTrue(board.outlineText.hasSuffix("If the loan is refused:\n5. Anna → Bank: Ask again"))
+        XCTAssertTrue(board.outlineText.hasPrefix("Who: Alex, Bank, Builder\n\n1. Alex → Bank: Ask for loan\n   Note: Bank closed on Sundays\n2. Bank"))
+        XCTAssertTrue(board.outlineText.hasSuffix("If the loan is refused:\n5. Alex → Bank: Ask again"))
         // Found by its words on the home page.
         XCTAssertTrue(board.holds("sundays loan"))
     }
@@ -352,20 +352,20 @@ final class SequenceTests: XCTestCase {
         }
         plan = ParagonExport.sequenceTaskLines(board)
         XCTAssertEqual(plan.lines, [
-            "- [ ] Anna → Bank: Ask for loan",
+            "- [ ] Alex → Bank: Ask for loan",
             "- Bank, by itself: Check the papers",
-            "- Bank answers Anna: Yes",
-            "- [ ] Anna → Builder: Order the build",
+            "- Bank answers Alex: Yes",
+            "- [ ] Alex → Builder: Order the build",
             "",
             "### If the loan is refused",
             "",
-            "- Anna → Bank: Ask again",
+            "- Alex → Bank: Ask again",
         ])
         XCTAssertEqual(ParagonExport.projectLine(board: board), "2 ticked messages become tasks, 3 stay as plain lines.")
         let project = ParagonExport.project(board: board, title: "Loan", picture: nil, now: now)
         XCTAssertTrue(project.contains("type: project\nstatus: active"))
-        XCTAssertTrue(project.contains("## Tasks\n\n- [ ] Anna → Bank: Ask for loan\n"))
-        XCTAssertTrue(project.contains("## Notes\n\nWho: Anna · Bank · Builder\n\n- Bank closed on Sundays\n\n## Log"))
+        XCTAssertTrue(project.contains("## Tasks\n\n- [ ] Alex → Bank: Ask for loan\n"))
+        XCTAssertTrue(project.contains("## Notes\n\nWho: Alex · Bank · Builder\n\n- Bank closed on Sundays\n\n## Log"))
         XCTAssertNil(ParagonExport.projectLine(board: Board.sequence()))
     }
 }

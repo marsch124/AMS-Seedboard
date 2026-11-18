@@ -87,14 +87,14 @@ final class ParagonTests: XCTestCase {
     func testProjectStepsAndTodoGroups() {
         let a = Item(kind: .box, text: "Draft")
         let b = Item(kind: .box, text: "Send")
-        let note = Item(kind: .note, text: "Call Anna", todo: true)
+        let note = Item(kind: .note, text: "Call Alex", todo: true)
         var board = Board(title: "Mail", items: [b, a, note])
         board.links = [Link(from: a.id, to: b.id)]
         let text = ParagonExport.project(board: board, title: "Mail", picture: nil, now: now)
         XCTAssertTrue(text.contains("### Steps\n- [ ] Draft\n- [ ] Send\n"))
-        XCTAssertTrue(text.contains("### To do\n- [ ] Call Anna\n"))
+        XCTAssertTrue(text.contains("### To do\n- [ ] Call Alex\n"))
         XCTAssertTrue(text.contains("## Outcome\n\nMail\n"))
-        XCTAssertTrue(text.contains("## Notes\n\n- Call Anna\n"))
+        XCTAssertTrue(text.contains("## Notes\n\n- Call Alex\n"))
     }
 
     func testInboxTasksSkipSentOnes() {

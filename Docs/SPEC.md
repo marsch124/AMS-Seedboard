@@ -307,7 +307,7 @@ Seven starters: Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timel
 - Pros and cons: text "What are we deciding?" at (0, -250); two frames 360 x 420, "Pros" (green, centred x -200) and "Cons" (red, x 200), each with two notes "A good thing" (green paper) / "A bad thing" (pink paper).
 - Plan in steps: five boxes "Step 1" … "Step 5" (blue), 70 apart, each with a note "What it needs" (yellow) below it (centre 113 below the box centre), arrows between the boxes (no colour).
 - Timeline: a timeline board (`kind` "timeline") with a small example that begins today.
-- Who does what: a sequence board (`kind` "sequence") with Anna, Bank and Builder and three messages (3.16).
+- Who does what: a sequence board (`kind` "sequence") with Alex, Bank and Builder and three messages (3.16).
 - Every colour a starter uses is in `Palette.names` (test).
 - 0.3: these seven are the BUILT-IN starters. What the screens show is the starter shelf (3.18): the built-in ones, as the owner changed, renamed, moved or removed them, and his own. The Shortcuts actions still use only the seven (7.1).
 
@@ -598,7 +598,7 @@ Pick 3 of the panel. A board whose names stand in a row with a dashed line down,
 - New optional item fields, each on its own coding-key line, tolerant decoding, written only when set: `from` (UUID) and `to` (UUID), the two names of a message (equal for a message to itself); `answer` (Bool, written only when true; `Item.isAnswer`).
 - Reused fields: `text` (name or words), `colour`, `todo` (messages only), `order` (a name's place in the row; a step's place from the top; names and steps are numbered 1 to n separately after every change), `w` and `h` (the room the words take, measured by the app in `Lettering.fit`; nothing else of `x y w h` is used).
 - Golden list for format 2 in `StoredFieldsTests`: the item list now also holds `answer`, `from`, `to`. An older 0.1 app shows such a board read-only (unknown kinds; its own rule).
-- The starter: "Who does what", hint "People in a row, messages in order" (`starter.sequence`, `home.starter.sequence`), a small example with Anna, Bank and Builder (3 names, 3 messages in its card). The list of starters is now seven (`StartersTests`: the list of names has "Who does what"; the overlap test passes over the sequence starter, as for the timeline). The made-up boards got a 10th, "Loan steps" (`SequenceSample.swift`; 4 names, 9 messages, 1 note, 1 section, 1 message to itself).
+- The starter: "Who does what", hint "People in a row, messages in order" (`starter.sequence`, `home.starter.sequence`), a small example with Alex, Bank and Builder (3 names, 3 messages in its card). The list of starters is now seven (`StartersTests`: the list of names has "Who does what"; the overlap test passes over the sequence starter, as for the timeline). The made-up boards got a 10th, "Loan steps" (`SequenceSample.swift`; 4 names, 9 messages, 1 note, 1 section, 1 message to itself).
 
 **Rules (`Core/Sources/SeedboardCore/Sequence.swift`)**
 - `whos`, `steps`: by `order`, ties in the order made. `messageNumbers`: 1, 2, 3 ... over messages only.
@@ -611,7 +611,7 @@ Pick 3 of the panel. A board whose names stand in a row with a dashed line down,
 - `removeFromSequence(ids)`: a name takes every message from or to it; returns how many messages went along that were not chosen themselves. `messageCount(of:)`.
 - `duplicateInSequence(ids)`: a step's copy right under it; a name's copy right beside it (no messages).
 - `sequenceCountLine`: "4 people · 9 messages · 1 note · 1 section" ("Empty" for none; singular "1 person", "1 message").
-- `stepLine(id)`: "2. Bank answers Anna: Yes"; `sequenceText` (Copy the board as text): "Who: Anna, Bank, Builder", then the numbered lines, "   Note: ...", "<section>:".
+- `stepLine(id)`: "2. Bank answers Alex: Yes"; `sequenceText` (Copy the board as text): "Who: Alex, Bank, Builder", then the numbered lines, "   Note: ...", "<section>:".
 - Search on the home page finds names and words (they are ordinary item texts).
 
 **Layout (`SequenceMetrics`, `SequenceLayout`; board points, the diagram's box starts at 0,0)**
@@ -641,8 +641,8 @@ Pick 3 of the panel. A board whose names stand in a row with a dashed line down,
 - Identifiers: `sequence.canvas`, `sequence.empty`, `sequence.chosen` (the chosen thing in words, invisible), `board.count`, `board.field`, `board.tools`, `board.selectionBar`, `board.colours`, `colour.none`, `colour.<name>`, and those named above. All existing identifiers are kept.
 
 **Send (Sequence.swift, `ParagonExport`; 5)**
-- `messageLine`: "Anna → Bank: Ask for loan"; an answer "Bank answers Anna: Yes"; to itself "Bank, by itself: Check the papers"; no words: ends after the names; a name without words is "(no name)".
-- Note (`sequenceNote`, Resources): front matter, `# title`, the picture line, the link back, `## Who` (names joined with " · "), `## Who does what` (a numbered list; a note as `> ...`, a section as `### ...`, blank lines round both), `## Tasks` (ticked messages as `- [ ] Anna → Builder: Order the build`).
+- `messageLine`: "Alex → Bank: Ask for loan"; an answer "Bank answers Alex: Yes"; to itself "Bank, by itself: Check the papers"; no words: ends after the names; a name without words is "(no name)".
+- Note (`sequenceNote`, Resources): front matter, `# title`, the picture line, the link back, `## Who` (names joined with " · "), `## Who does what` (a numbered list; a note as `> ...`, a section as `### ...`, blank lines round both), `## Tasks` (ticked messages as `- [ ] Alex → Builder: Order the build`).
 - Project (`sequenceProject`, Projects): `## Outcome` (the title), `## Tasks` (every message in order: `- [ ] ...` for a task, `- ...` for a plain line; sections as `###`), `## Notes` ("Who: ...", the notes as bullets), `## Log`.
 - Ticks: with at least one ticked message only ticked ones are tasks; with none all are (`sequenceTicksDecide`, `sequenceTaskLines`). Send page line (`sequenceProjectLine`): "2 ticked messages become tasks, 7 stay as plain lines." / "Nothing is ticked: all 9 messages become tasks."
 - Only the to-do boxes: the generic rule (ticked items with words, not yet sent); only messages can be ticked. They go with their bare words ("Order the build"), without the two names.

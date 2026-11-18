@@ -256,11 +256,11 @@ final class InkTests: XCTestCase {
 
     func testANoteForParagonSaysASketchWhereADrawingIs() {
         var board = Board(title: "Plan")
-        board.add(.note, centre: .zero, text: "Ask Anna")
+        board.add(.note, centre: .zero, text: "Ask Alex")
         let id = board.addStroke(line([(0, 0), (10, 10)]))!
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let note = ParagonExport.note(board: board, title: "Plan", picture: "p.png", now: now)
-        XCTAssertTrue(note.contains("## Notes\n\n- Ask Anna\n- A sketch (see the picture)\n"))
+        XCTAssertTrue(note.contains("## Notes\n\n- Ask Alex\n- A sketch (see the picture)\n"))
         XCTAssertTrue(ParagonExport.project(board: board, title: "Plan", picture: "p.png", now: now).contains("- A sketch (see the picture)\n"))
         XCTAssertTrue(ParagonExport.note(board: board, title: "Plan", picture: nil, now: now).contains("- A sketch (on the board)\n"))
         // A drawing never becomes a task, ticked or not.

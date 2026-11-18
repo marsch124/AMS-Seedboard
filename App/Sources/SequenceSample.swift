@@ -8,7 +8,7 @@ extension Sample {
     static func loanSteps(now: Date = Date()) -> Board {
         var board = Board.sequence(title: "Loan steps", created: now.addingTimeInterval(-86_400 * 2))
         board.colour = "teal"
-        let anna = board.addWho("Anna")
+        let anna = board.addWho("Alex")
         let bank = board.addWho("Bank")
         let builder = board.addWho("Builder")
         let council = board.addWho("Council")

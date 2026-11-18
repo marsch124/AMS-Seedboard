@@ -93,11 +93,11 @@ final class RememberTests: XCTestCase {
 
     func testTheDevicesSearchGetsTheFirstWordsAndOnlyWhatChanged() {
         var board = Board(title: "Cabin")
-        board.add(.note, centre: .zero, text: "Ask Anna\nabout the lake")
+        board.add(.note, centre: .zero, text: "Ask Alex\nabout the lake")
         board.add(.box, centre: CGPoint(x: 300, y: 0), text: "")
         board.add(.box, centre: CGPoint(x: 600, y: 0), text: "Make a plan")
-        XCTAssertEqual(Outside.searchWords(of: board), "Ask Anna about the lake · Make a plan")
-        XCTAssertEqual(Outside.searchWords(of: board, limit: 30), "Ask Anna about the lake · Make…")
+        XCTAssertEqual(Outside.searchWords(of: board), "Ask Alex about the lake · Make a plan")
+        XCTAssertEqual(Outside.searchWords(of: board, limit: 30), "Ask Alex about the lake · Make…")
         XCTAssertEqual(Outside.searchWords(of: Board(title: "Empty")), "")
 
         let old = Date(timeIntervalSince1970: 100), new = Date(timeIntervalSince1970: 200)

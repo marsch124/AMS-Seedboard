@@ -38,7 +38,7 @@ enum Sample {
             ("Budget", ["Loan", "Savings"]),
             ("Build", ["Permit", "Builder"]),
             ("Place", ["Lake", "Forest"]),
-            ("Who", ["Anna"]),
+            ("Who", ["Alex"]),
         ]
         for (name, ideas) in branches {
             guard let branch = cabin.addChild(of: centre, text: name) else { continue }
@@ -48,7 +48,7 @@ enum Sample {
         if let permit = cabin.items.first(where: { $0.text == "Permit" }), let i = cabin.index(of: permit.id) {
             cabin.items[i].todo = true
         }
-        cabin.add(.note, centre: CGPoint(x: 470, y: -90), text: "Ask Anna about\nthe lake plot", colour: "yellow")
+        cabin.add(.note, centre: CGPoint(x: 470, y: -90), text: "Ask Alex about\nthe lake plot", colour: "yellow")
         let timber = cabin.add(.note, centre: CGPoint(x: 510, y: 40), text: "Check timber\nprices in May", colour: "pink")
         if let i = cabin.index(of: timber) { cabin.items[i].todo = true }
         let idea = cabin.add(.box, centre: CGPoint(x: -260, y: 250), text: "New idea")

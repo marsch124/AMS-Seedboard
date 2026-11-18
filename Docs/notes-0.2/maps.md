@@ -22,7 +22,7 @@ Builder `maps`, branch `feat-maps`.
 - For boxes, notes, text and arrows the bar still has just "Done".
 
 **"As a project" makes sense for mind maps (pick 21)**
-- Before: every idea under a main branch became a task, ticked or not. The sample board "Summer cabin" gave PARAGON 13 tasks, among them "Lake", "Forest" and "Anna".
+- Before: every idea under a main branch became a task, ticked or not. The sample board "Summer cabin" gave PARAGON 13 tasks, among them "Lake", "Forest" and "Alex".
 - Now the To do ticks decide: when at least one idea is ticked, only ticked ideas (and ticked boxes and notes) become tasks; all the others stay as plain lines under their heading. The same sample board now gives 2 tasks ("Permit", "Check timber prices in May") and 11 plain lines.
 - When no idea is ticked, everything becomes a task as before, and the Send page says so.
 - The Send page shows one line with the counts under "As a project", for example "2 ticked things become tasks, 11 stay as plain lines." or "Nothing is ticked: all 7 ideas and 5 shapes become tasks."

@@ -126,7 +126,7 @@ final class MapsTests: XCTestCase {
         XCTAssertEqual(ParagonExport.projectLine(board: board), "Nothing is ticked: all 4 ideas become tasks.")
         // A ticked note alone does not switch the rule: no idea is ticked.
         var noted = board
-        noted.items.append(Item(kind: .note, text: "Call Anna", todo: true))
+        noted.items.append(Item(kind: .note, text: "Call Alex", todo: true))
         noted.items.append(Item(kind: .box, text: "Draft"))
         XCTAssertFalse(ParagonExport.ticksDecide(noted))
         XCTAssertEqual(ParagonExport.projectLine(board: noted), "No idea is ticked: all 4 ideas and 1 shape become tasks.")

@@ -17,7 +17,7 @@ Now: a 7th starter, **Who does what** ("People in a row, messages in order"), op
 - **The bar for a chosen message**: Words, Answer, Turn round, Colour, To do, Copy, Remove. **For a chosen name**: Name, Colour, Message to…, Remove. On iPhone and iPad a message also has Move up and Move down.
 - **The names stay in sight**: slide down a long diagram and the name boxes stay pinned at the top.
 - **Removing a name** removes its messages too, and a line says how many, with Undo ("“Bank” went with its 2 messages.").
-- **Send to PARAGON** understands it: as a note the picture plus a numbered list ("1. Anna → Bank: Ask for loan", "2. Bank answers Anna: Yes"), notes and sections in place; as a project the ticked messages become tasks (with nothing ticked, all of them do).
+- **Send to PARAGON** understands it: as a note the picture plus a numbered list ("1. Alex → Bank: Ask for loan", "2. Bank answers Alex: Yes"), notes and sections in place; as a project the ticked messages become tasks (with nothing ticked, all of them do).
 - The made-up sample boards got a 10th board, "Loan steps" (4 names, 9 messages, 1 note, 1 section, 1 message to itself).
 
 **Fixed: the Timeline starter's small picture on the home page was blank.**
@@ -30,7 +30,7 @@ Now: the Timeline starter's example is made for today; its 3 bars and its milest
 
 **Who does what**
 
-A "Who does what" board shows who asks whom for what, and in which order: the names stand in a row at the top, and the messages run from top to bottom, numbered by the app. Start one with **New board ▸ Who does what**; it opens with a small example (Anna, Bank, Builder).
+A "Who does what" board shows who asks whom for what, and in which order: the names stand in a row at the top, and the messages run from top to bottom, numbered by the app. Start one with **New board ▸ Who does what**; it opens with a small example (Alex, Bank, Builder).
 
 - **Add a name** — press **Who** at the bottom (or the key W). The new name appears at the right end of the row and you type it straight away. Press **Tab** while typing and the next name begins beside it; Return ends the typing.
 - **Add a message** — put the pointer or your finger on the dashed line under a name and pull sideways to another dashed line. A dashed line follows, the name you are heading for gets a dashed ring, and a thin line shows between which two messages the new one will stand: the height where you let go decides its place. Then type its words.
@@ -51,7 +51,7 @@ A "Who does what" board shows who asks whom for what, and in which order: the na
 
 **Send to PARAGON**
 
-- **As a note** — the diagram's picture, the names, then the messages as a numbered list: "1. Anna → Bank: Ask for loan", "2. Bank answers Anna: Yes", "3. Bank, by itself: Check the papers". A note stands as a quoted line and a section as a heading, each in its place. Ticked messages are listed again under Tasks.
+- **As a note** — the diagram's picture, the names, then the messages as a numbered list: "1. Alex → Bank: Ask for loan", "2. Bank answers Alex: Yes", "3. Bank, by itself: Check the papers". A note stands as a quoted line and a section as a heading, each in its place. Ticked messages are listed again under Tasks.
 - **As a project** — the messages in their order under Tasks. The ones you ticked To do become tasks and the others stay plain lines; with nothing ticked, all of them become tasks. Sections are headings; notes go under the project's Notes.
 - **Only the to-do boxes** — the ticked messages go to the Inbox as tasks, with their own words.
 
@@ -76,7 +76,7 @@ A "Who does what" board shows who asks whom for what, and in which order: the na
 - `removeFromSequence(ids)`: a name takes every message from or to it; returns how many messages went along that were not chosen themselves. `messageCount(of:)`.
 - `duplicateInSequence(ids)`: a step's copy right under it; a name's copy right beside it (no messages).
 - `sequenceCountLine`: "4 people · 9 messages · 1 note · 1 section" ("Empty" for none; singular "1 person", "1 message").
-- `stepLine(id)`: "2. Bank answers Anna: Yes"; `sequenceText` (Copy the board as text): "Who: Anna, Bank, Builder", then the numbered lines, "   Note: …", "<section>:".
+- `stepLine(id)`: "2. Bank answers Alex: Yes"; `sequenceText` (Copy the board as text): "Who: Alex, Bank, Builder", then the numbered lines, "   Note: …", "<section>:".
 - Search on the home page finds names and words (they are ordinary item texts).
 
 **Layout (`SequenceMetrics`, `SequenceLayout`; board points, the diagram's box starts at 0,0)**
@@ -105,8 +105,8 @@ A "Who does what" board shows who asks whom for what, and in which order: the na
 - `BoardSession` hooks (one line each): `paste` (does nothing on a sequence), `deleteSelection`, `duplicateSelection`, `toggleTodo` (messages only), `reveal`.
 
 **Send (Sequence.swift, `ParagonExport`)**
-- `messageLine`: "Anna → Bank: Ask for loan"; answer "Bank answers Anna: Yes"; to itself "Bank, by itself: Check the papers"; no words → ends after the names; a name without words is "(no name)".
-- Note (`sequenceNote`, Resources): front matter, `# title`, picture line, link back, `## Who` (names joined with " · "), `## Who does what` (numbered list; a note as `> …`, a section as `### …`, blank lines round both), `## Tasks` (ticked messages as `- [ ] Anna → Builder: Order the build`).
+- `messageLine`: "Alex → Bank: Ask for loan"; answer "Bank answers Alex: Yes"; to itself "Bank, by itself: Check the papers"; no words → ends after the names; a name without words is "(no name)".
+- Note (`sequenceNote`, Resources): front matter, `# title`, picture line, link back, `## Who` (names joined with " · "), `## Who does what` (numbered list; a note as `> …`, a section as `### …`, blank lines round both), `## Tasks` (ticked messages as `- [ ] Alex → Builder: Order the build`).
 - Project (`sequenceProject`, Projects): `## Outcome` (the title), `## Tasks` (every message in order: `- [ ] …` for a task, `- …` for a plain line; sections as `###`), `## Notes` ("Who: …", the notes as bullets), `## Log`.
 - Ticks: with at least one ticked message only ticked ones are tasks; with none all are (`sequenceTicksDecide`, `sequenceTaskLines`). Send page line (`sequenceProjectLine`): "2 ticked messages become tasks, 7 stay as plain lines." / "Nothing is ticked: all 9 messages become tasks."
 - Only the to-do boxes: the generic rule (ticked items with words, not yet sent) — only messages can be ticked.
