@@ -27,7 +27,7 @@ struct DrawTool: View {
                 .pressRoom(3, 3)
         }
         .buttonStyle(.plain)
-        .help("Draw")
+        .help("Draw (S)")
         .accessibilityLabel("Draw")
         .accessibilityValue(desk.on ? "On" : "Off")
         .accessibilityIdentifier("tool.draw")

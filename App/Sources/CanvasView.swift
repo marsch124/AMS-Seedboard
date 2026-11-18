@@ -717,6 +717,8 @@ struct CanvasView: View {
             case "t": session.add(.text)
             case "f": session.add(.frame)
             case "a", "l": session.linking.toggle(); session.linkFrom = nil
+            // S for Sketch: the Draw tool (only boards that have one).
+            case "s": if session.board.placesItself { return .ignored } else { session.toggleDraw() }
             default: return .ignored
             }
             return .handled

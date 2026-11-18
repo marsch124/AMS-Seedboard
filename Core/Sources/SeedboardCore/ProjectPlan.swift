@@ -20,6 +20,8 @@ extension ParagonExport {
         var loose: [String] = []
         /// One list per main branch that is a heading: the `###` line, then its ideas.
         var groups: [[String]] = []
+        /// How many of the last `groups` are lanes (their lines are shapes, not ideas).
+        var laneGroups = 0
         /// The flow shapes, in arrow order.
         var steps: [String] = []
         /// Notes and free text marked To do.
@@ -61,6 +63,7 @@ extension ParagonExport {
         // A frame with lanes gives one group per lane; its shapes are then left out of the steps.
         let laned = laneTasks(board, ticks: plan.ticks)
         plan.groups.append(contentsOf: laned.groups)
+        plan.laneGroups = laned.groups.count
         for shape in flowOrder(board) where !laned.used.contains(shape.id) {
             let words = oneLine(shape.text)
             if !words.isEmpty { plan.steps.append((plan.ticks && !shape.todo ? "- " : "- [ ] ") + words) }
@@ -104,11 +107,13 @@ extension ParagonExport {
     public static func projectTally(board: Board) -> ProjectTally {
         let plan = projectPlan(board)
         func isTask(_ line: String) -> Bool { line.drop { $0 == " " }.hasPrefix("- [ ] ") }
-        let ideas = plan.loose + plan.groups.flatMap { $0.dropFirst() }
+        // The ideas stand in the loose lines and the branch groups; the lanes hold shapes, as the steps do.
+        let ideas = plan.loose + plan.groups.dropLast(plan.laneGroups).flatMap { $0.dropFirst() }
+        let shapes = plan.steps + plan.groups.suffix(plan.laneGroups).flatMap { $0.dropFirst() }
         let ideaTasks = ideas.filter(isTask).count
-        let shapeTasks = plan.steps.filter(isTask).count
+        let shapeTasks = shapes.filter(isTask).count
         return ProjectTally(ticks: plan.ticks, ideaTasks: ideaTasks, ideaPlain: ideas.count - ideaTasks,
-                            shapeTasks: shapeTasks, shapePlain: plan.steps.count - shapeTasks,
+                            shapeTasks: shapeTasks, shapePlain: shapes.count - shapeTasks,
                             otherTasks: plan.todo.count, anyTick: board.items.contains { $0.todo })
     }
 

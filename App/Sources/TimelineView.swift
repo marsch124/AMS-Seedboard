@@ -103,6 +103,8 @@ struct TimelineView: View {
             }
             #if os(macOS)
             .background(ScrollCatcher(session: session))
+            #else
+            .background(TrackpadCatcher(session: session))
             #endif
             .onAppear { place(geo.size) }
             .onChange(of: geo.size) { _, new in place(new) }

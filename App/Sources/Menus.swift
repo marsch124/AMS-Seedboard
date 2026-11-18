@@ -112,7 +112,7 @@ struct SeedMenus: Commands {
             Button("Zoom Out") { if let session { session.zoom(to: session.scale / 1.25) } }
                 .keyboardShortcut("-", modifiers: .command)
                 .disabled(session == nil)
-            Button("Actual Size") { session?.zoom(to: 1) }
+            Button("Actual Size") { session?.actualSize() }
                 .keyboardShortcut("0", modifiers: .command)
                 .disabled(session == nil)
             Button("Show the Whole Board") { session?.fit() }
@@ -127,6 +127,24 @@ struct SeedMenus: Commands {
             Divider()
             // Two shapes that have a letter but no button of their own.
             ForEach(MenuRules.moreShapes, id: \.letter) { tool($0) }
+            Divider()
+            // The Draw tool (letter S, for Sketch): on and off, on boards that have it.
+            drawLine
+        }
+    }
+
+    @ViewBuilder
+    private var drawLine: some View {
+        let button = Button("Draw") {
+            guard let session else { return }
+            session.toggleDraw()
+            session.takeKeys()
+        }
+        .disabled(!canChange || session?.board.placesItself == true)
+        if lettersAreTools {
+            button.keyboardShortcut(KeyEquivalent("s"), modifiers: [])
+        } else {
+            button
         }
     }
 
