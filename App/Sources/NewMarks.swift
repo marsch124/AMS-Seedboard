@@ -62,9 +62,8 @@ enum NewMark: String, CaseIterable {
         case .cut: return .seedCut
         case .paste: return .seedPaste
         case .rename: return .seedRename
-        // Stand-ins until the two new drawings are in the icon library (the lead swaps them at the join).
-        case .picture: return .seedFrame
-        case .saveStarter: return .seedStarter
+        case .picture: return .seedPicture
+        case .saveStarter: return .seedSaveStarter
         }
     }
 }

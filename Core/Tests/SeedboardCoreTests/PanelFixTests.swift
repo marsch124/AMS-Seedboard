@@ -290,4 +290,19 @@ final class PanelFixTests: XCTestCase {
         dragged.makeRoom(since: before)
         XCTAssertEqual(dragged, asDropped)
     }
+
+    // 0.3 — Shift and Return while typing: the new line goes where the cursor stands, and the cursor follows it.
+    func testShiftReturnPutsTheNewLineAtTheCursor() {
+        XCTAssertEqual(Typing.lineBreak(in: "OneTwo", from: 3, to: 3).words, "One\nTwo")
+        XCTAssertEqual(Typing.lineBreak(in: "OneTwo", from: 3, to: 3).cursor, 4)
+        // What is chosen is replaced by the break.
+        XCTAssertEqual(Typing.lineBreak(in: "One and Two", from: 3, to: 8).words, "One\nTwo")
+        // Cursor unknown: the line goes at the end.
+        XCTAssertEqual(Typing.lineBreak(in: "One", from: -1, to: -1).words, "One\n")
+        XCTAssertEqual(Typing.lineBreak(in: "One", from: -1, to: -1).cursor, 4)
+        // Letters that take two units (an emoji) keep whole.
+        XCTAssertEqual(Typing.lineBreak(in: "A😀B", from: 3, to: 3).words, "A😀\nB")
+        // The idea rule still sees it as one new break, which the session lets through for Shift and Return.
+        XCTAssertEqual(Typing.withoutNewBreak(old: "OneTwo", new: "One\nTwo"), "OneTwo")
+    }
 }

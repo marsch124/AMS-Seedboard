@@ -2,6 +2,17 @@ import Foundation
 
 /// Rules for what is typed into an idea.
 public enum Typing {
+    /// Shift and Return while typing: a line break goes where the cursor stands (or over what is chosen).
+    /// `from` and `to` count UTF-16 units from the start; out-of-range values mean the end of the words.
+    /// Gives the new words and where the cursor stands afterwards: at the start of the new line.
+    public static func lineBreak(in words: String, from: Int, to: Int) -> (words: String, cursor: Int) {
+        let units = Array(words.utf16)
+        let low = from < 0 || from > units.count ? units.count : from
+        let high = to < low || to > units.count ? low : to
+        let new = units[..<low] + [0x0A] + units[high...]
+        return (String(decoding: Array(new), as: UTF16.self), low + 1)
+    }
+
     private static func breaks(_ text: String) -> Int { text.unicodeScalars.filter { $0 == "\n" }.count }
 
     /// The screen keyboard's Return arrives as one new line break in the words. In an idea that

@@ -202,8 +202,19 @@ struct CanvasView: View {
         }
     }
 
+    /// The field itself. Where the system tells the app where the cursor stands, Shift and Return put the
+    /// new line exactly there (LineField, below); on an older system the field is asked to do it.
+    @ViewBuilder
+    private var wordsField: some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            LineField(session: session)
+        } else {
+            TextField("", text: Binding(get: { session.draft }, set: { session.typed($0) }), axis: .vertical)
+        }
+    }
+
     private func field(isIdea: Bool) -> some View {
-        TextField("", text: Binding(get: { session.draft }, set: { session.typed($0) }), axis: .vertical)
+        wordsField
             .textFieldStyle(.plain)
             // A flow shape: Tab (or ⌘ with an arrow key) makes the next shape. Everything else passes on.
             .onKeyPress(keys: [.tab, .rightArrow, .leftArrow, .downArrow, .upArrow], phases: .down) { press in
@@ -762,3 +773,39 @@ struct ScrollCatcher: NSViewRepresentable {
     }
 }
 #endif
+
+/// The typing field with its cursor known: Shift (or Option) with Return puts a new line where the
+/// cursor stands and the typing goes on from there. Return alone is left to the board (it ends the typing).
+@available(iOS 18.0, macOS 15.0, *)
+private struct LineField: View {
+    @ObservedObject var session: BoardSession
+    @State private var caret: TextSelection?
+
+    var body: some View {
+        TextField("", text: Binding(get: { session.draft }, set: { session.typed($0) }), selection: $caret, axis: .vertical)
+            .onKeyPress(.return, phases: .down) { press in
+                guard press.modifiers.contains(.shift) || press.modifiers.contains(.option) else { return .ignored }
+                breakLine()
+                return .handled
+            }
+    }
+
+    private func breakLine() {
+        let words = session.draft
+        // Where the cursor stands, counted from the start; unknown means the end of the words.
+        var from = -1, to = -1
+        if let caret, case .selection(let chosen) = caret.indices,
+           chosen.lowerBound <= words.endIndex, chosen.upperBound <= words.endIndex {
+            from = words.utf16.distance(from: words.utf16.startIndex, to: chosen.lowerBound)
+            to = words.utf16.distance(from: words.utf16.startIndex, to: chosen.upperBound)
+        }
+        let made = Typing.lineBreak(in: words, from: from, to: to)
+        session.typeLineBreak(made.words)
+        // The cursor goes to the start of the new line, once the field holds the new words.
+        DispatchQueue.main.async {
+            let now = session.draft
+            guard now == made.words, let spot = now.utf16.index(now.utf16.startIndex, offsetBy: made.cursor, limitedBy: now.utf16.endIndex) else { return }
+            caret = TextSelection(insertionPoint: spot)
+        }
+    }
+}

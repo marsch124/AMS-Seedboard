@@ -259,6 +259,15 @@ final class BoardSession: ObservableObject {
         }
     }
 
+    /// Shift (or Option) with Return, the line break already put into the words at the cursor: the typing
+    /// goes on, in an idea too (where a new line break otherwise means "this idea is done").
+    func typeLineBreak(_ text: String) {
+        guard editing != nil else { return }
+        lineBreakWanted = true
+        typed(text)
+        lineBreakWanted = false
+    }
+
     private func apply(_ text: String, to id: UUID) {
         var new = board
         new.touch()
