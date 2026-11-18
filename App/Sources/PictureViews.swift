@@ -38,7 +38,7 @@ struct PictureTool: View {
                 .background(Part.pictures.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: Part.pictures.text))
         .help("Picture (P)")
         .accessibilityLabel("Picture (P)")
         .accessibilityIdentifier("tool.picture")
@@ -100,7 +100,7 @@ struct PictureHost: ViewModifier {
 
     private func ask(at place: CGPoint?) {
         guard !session.readOnly, !session.board.placesItself else {
-            AppModel.shared.say("A picture cannot be put on this board.")
+            AppModel.shared.say("A picture cannot be put on this board.", tone: .problem)
             return
         }
         #if os(macOS)
@@ -131,7 +131,7 @@ extension BoardSession {
     /// A picture that cannot be read is said, never silently dropped.
     func lay(pictures: [Data], at point: CGPoint? = nil) {
         guard !readOnly, !board.placesItself else {
-            AppModel.shared.say("A picture cannot be put on this board.")
+            AppModel.shared.say("A picture cannot be put on this board.", tone: .problem)
             return
         }
         guard !pictures.isEmpty else { return }
@@ -166,7 +166,7 @@ extension BoardSession {
                 selection = made
                 if let first = made.first { reveal(first) }
             }
-            if failed > 0 { AppModel.shared.say(failed == 1 ? "That could not be read as a picture." : "\(failed) could not be read as pictures.") }
+            if failed > 0 { AppModel.shared.say(failed == 1 ? "That could not be read as a picture." : "\(failed) could not be read as pictures.", tone: .problem) }
         }
     }
 }

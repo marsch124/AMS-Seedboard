@@ -398,7 +398,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         guard pinchByTrackpad else { twoFingers(recogniser); return }
         // A pinch on a trackpad: zoom round the pointer.
         if active(recogniser), recogniser.scale.isFinite, recogniser.scale > 0, let session {
-            session.zoom(to: session.scale * recogniser.scale, around: pointer(recogniser))
+            session.feltZoom(to: session.scale * recogniser.scale, around: pointer(recogniser))
             recogniser.scale = 1
         }
     }
@@ -440,7 +440,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         }
         // A finger changed places with another: start again from here instead of jumping.
         if let last = lastMid, hypot(mid.x - last.x, mid.y - last.y) < 150 {
-            session?.pinch(from: last, to: mid, by: factor)
+            session?.feltPinch(from: last, to: mid, by: factor)
         }
         lastMid = mid
     }

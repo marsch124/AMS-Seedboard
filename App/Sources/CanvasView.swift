@@ -415,13 +415,14 @@ struct CanvasView: View {
                     drag = .panning(session.offset)
                     return
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                Feel.lift()
                 #endif
                 drag = .idea(id)
             } else {
                 let chosen = session.selection.contains(id) ? session.selection : [id]
                 session.liveStart()
                 drag = .moving(board.carried(by: chosen))
+                Feel.lift()
                 // One map dragged by its middle idea can be dropped on an idea of another map.
                 // 0.5: so can one sticky note, box or text — it becomes an idea under that one (Thinking.swift).
                 if let item = board.item(id), (item.kind == .idea && item.parent == nil) || board.canBecomeIdea(id), chosen.count == 1 { hanging = id }
@@ -451,7 +452,7 @@ struct CanvasView: View {
         let here = session.toBoard(value.location)
         switch drag {
         case .moving(let ids):
-            snap.guides = session.liveMove(ids, by: delta, reach: SnapShow.reach(s))
+            snap.guides = Feel.catching(session.liveMove(ids, by: delta, reach: SnapShow.reach(s)), after: snap.guides)
             snap.over = session.board.spots(ofDragged: ids)
             if hanging != nil { dropTarget = session.board.idea(at: here, notIn: ids) }
         case .idea(let id):
@@ -460,11 +461,11 @@ struct CanvasView: View {
             (dropTarget, landing) = session.dropHints(for: id, at: here)
         case .sizing(let id, let base, let corner):
             // The corner that is dragged follows; the opposite corner stays where it is.
-            snap.guides = session.liveSize(id, corner: corner, from: base, by: delta, reach: SnapShow.reach(s))
+            snap.guides = Feel.catching(session.liveSize(id, corner: corner, from: base, by: delta, reach: SnapShow.reach(s)), after: snap.guides)
         case .plus(let id, _):
             // The new shape lands in line with its neighbours: the outline and the guides show where.
             let land = session.board.landing(from: id, at: here, reach: SnapShow.reach(s))
-            snap = SnapShow(guides: land?.guides ?? [], landing: land?.frame)
+            snap = SnapShow(guides: Feel.catching(land?.guides ?? [], after: snap.guides), landing: land?.frame)
             if let item = session.board.item(id) { rubber = Rubber(from: item.centre, to: land?.centre ?? here) }
         case .joining(let id):
             if let item = session.board.item(id) { rubber = Rubber(from: item.centre, to: here) }
@@ -501,12 +502,14 @@ struct CanvasView: View {
                 // Dropped on an idea of another map: the map goes back to where it was and hangs there.
                 session.liveEnd(keep: false)
                 if !session.becomeIdea(centre, under: over) { session.hang(centre, under: over) }
+                Feel.setDown()
             } else {
                 session.liveEnd(keep: true)
             }
         case .sizing:
             session.liveEnd(keep: true)
         case .idea(let id):
+            Feel.ideaDropped(session.dropHints(for: id, at: here))
             session.dropIdea(id, at: here)
         case .plus(let id, let d):
             guard let item = session.board.item(id) else { return }
@@ -534,6 +537,8 @@ struct CanvasView: View {
                 session.linkFrom = nil
             }
         case .end(let id, let start):
+            if FeelRules.arrowJoined(before: session.board.links.first { $0.id == id }.map { start ? $0.from : $0.to },
+                                     after: session.endPull(id, start: start, to: here)?.over) { Feel.joined() }
             session.moveLinkEnd(id, start: start, to: here)
         case .marquee, .panning, .idle:
             break
@@ -775,7 +780,7 @@ struct ScrollCatcher: NSViewRepresentable {
                 guard self.bounds.contains(p) else { return event }
                 MainActor.assumeIsolated {
                     if event.type == .magnify {
-                        session.zoom(to: session.scale * (1 + event.magnification), around: p)
+                        session.feltZoom(to: session.scale * (1 + event.magnification), around: p)
                     } else if event.modifierFlags.contains(.command) {
                         session.zoom(to: session.scale * exp(min(max(event.scrollingDeltaY, -60), 60) * 0.01), around: p)
                     } else {

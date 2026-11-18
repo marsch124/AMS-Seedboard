@@ -43,6 +43,11 @@ struct RootView: View {
         .onChange(of: model.openID) { _, new in
             compactColumn = new == nil ? .sidebar : .detail
         }
+        // 0.5: the one line at the bottom, at the window's level while no open board is in sight to show it
+        // itself (the home page, the iPhone's list) — so "Board removed. …" is seen (FeelLooks.swift).
+        .overlay(alignment: .bottom) {
+            WindowFlash(boardInSight: model.session != nil && !(sizeClass == .compact && compactColumn == .sidebar))
+        }
         .onAppear {
             guard LaunchOptions.settings else { return }
             #if os(macOS)
@@ -69,6 +74,7 @@ struct BoardList: View {
     @State private var showStarters = false
     @State private var showStarterSheet = false
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.colorScheme) private var scheme
     @State private var renaming: Board?
     @State private var newName = ""
     @State private var removing: Board?
@@ -124,7 +130,10 @@ struct BoardList: View {
                     section("Pinned", BoardSearch.find(search, in: model.pinned))
                     section("Recent", BoardSearch.find(search, in: model.recent))
                     section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
-                    if model.loaded && model.boards.isEmpty {
+                    if FeelRules.showsFirstSeeds(loaded: model.loaded, boards: model.boards.count, phone: phone) {
+                        // 0.5: the iPhone's first start shows the starters themselves (EmptyBoard.swift).
+                        FirstSeeds(open: open)
+                    } else if model.loaded && model.boards.isEmpty {
                         Text(thumbRow ? "No boards yet. Press + below." : "No boards yet. Press New board.")
                             .font(Txt.label)
                             .foregroundStyle(.secondary)
@@ -242,7 +251,8 @@ struct BoardList: View {
 
     private func row(_ board: Board) -> some View {
         let chosen = model.openID == board.id
-        let paint = Paint(night: false)
+        // 0.5: the dot follows day and night, like the card beside it.
+        let paint = Paint(scheme)
         return Button { open(board.id) } label: {
             HStack(spacing: 8) {
                 Circle()
@@ -274,7 +284,7 @@ struct BoardList: View {
         .overlay(alignment: .trailing) {
             if model.waitsForCloud(board) {
                 Circle()
-                    .fill(chosen ? Color.white : Part.notes.text)
+                    .fill(Part.notes.text)
                     .frame(width: 6, height: 6)
                     .padding(.trailing, 8)
                     .allowsHitTesting(false)

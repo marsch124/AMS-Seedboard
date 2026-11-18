@@ -12,6 +12,9 @@ struct SendSheet: View {
     @State private var title = ""
     @State private var busy = false
     @State private var problem: String?
+    /// 0.5: the hand-over went through — the Send button shows its white tick for a moment.
+    /// For pictures: `-sendDone` shows the tick at once.
+    @State private var done = LaunchOptions.arguments.contains("-sendDone")
     /// Only the chosen idea and everything under it is sent.
     @State private var branchOnly = false
 
@@ -144,10 +147,10 @@ struct SendSheet: View {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("send.cancel")
-                Button(busy ? "Sending…" : "Send") { send() }
+                Button { send() } label: { SendLabel(busy: busy, done: done) }
                     .buttonStyle(FilledButton(.paragon))
                     .keyboardShortcut(.defaultAction)
-                    .disabled(!canSend)
+                    .disabled(!canSend && !done)
                     .accessibilityIdentifier("send.send")
             }
             .padding(.top, 2)
@@ -193,11 +196,12 @@ struct SendSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(on ? Part.paragon.text : Color.primary.opacity(0.12), lineWidth: on ? 1.5 : 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(corner: 10))
         .accessibilityIdentifier("send.kind.\(value.rawValue)")
     }
 
     private func send() {
+        guard !done else { return }
         busy = true
         problem = nil
         Task {
@@ -205,7 +209,14 @@ struct SendSheet: View {
             busy = false
             if let failure {
                 problem = failure
+                Feel.notSent()
             } else {
+                // 0.5: felt and seen — a white tick on the button for 0.45 s, then the page closes.
+                Feel.sent()
+                if !Feel.still {
+                    done = true
+                    try? await Task.sleep(nanoseconds: UInt64(FeelRules.sendTick * 1_000_000_000))
+                }
                 dismiss()
             }
         }

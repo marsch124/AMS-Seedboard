@@ -49,19 +49,8 @@ struct BoardView: View {
             if session.board.isSequence { SequenceView(session: session) } else
             if session.board.isTimeline { TimelineView(session: session) } else { CanvasView(session: session) }
 
-            if session.board.isEmpty && !session.board.placesItself {
-                VStack(spacing: 4) {
-                    Text("An empty board")
-                        .font(Txt.sectionTitle)
-                    Text("Press a tool below to start, or paste a list to get a mind map.")
-                        .font(Txt.label)
-                }
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 30)
-                .allowsHitTesting(false)
-                .accessibilityIdentifier("board.empty")
-            }
+            // 0.5: an empty board invites — the sprout, "What is on your mind?", three ways to begin (EmptyBoard.swift).
+            EmptyInvite(session: session, desk: session.ink)
 
             VStack(spacing: 6) {
                 // 0.5: what PARAGON says about a board that is a note or a project there (SentLine.swift).
@@ -91,6 +80,7 @@ struct BoardView: View {
                     .padding(.vertical, 6)
                     .background(Theme.plate, in: Capsule())
                     .overlay(Capsule().stroke(Part.arrows.text.opacity(0.35)))
+                    .transition(.message)
                 } else {
                     // The iPhone's one-row bar; on the Mac and the iPad the bar floats beside the chosen thing (ChosenBar.swift).
                     ChosenBarTop(session: session)
@@ -114,7 +104,7 @@ struct BoardView: View {
                                 .background(Color.white.opacity(0.22), in: Capsule())
                                 .pressRoom(0, 11)
                         }
-                        .buttonStyle(PressStyle())
+                        .buttonStyle(PressStyle(tint: .white))
                         .accessibilityIdentifier("board.noticeUndo")
                     }
                     .padding(.leading, 12)
@@ -124,20 +114,14 @@ struct BoardView: View {
                     // Its own element with its button inside, so the button keeps its own name for the screen tests.
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("board.notice")
+                    .transition(.message)
                 }
                 // On a timeline and a "Who does what" board the top holds the dates and the names: the line sits down here.
                 SentLine(session: session, low: true)
                 if session.board.isTimeline && !session.linking { TimelineSelectionBar(session: session) }
                 if session.board.isSequence && !session.linking { SequenceSelectionBar(session: session) }
-                if let flash = model.flash {
-                    Text(flash)
-                        .font(Txt.label)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(model.flashTone.fill, in: Capsule())
-                        .accessibilityIdentifier("board.flash")
-                }
+                // The one line at the bottom (FeelLooks.swift); with no board in sight the window shows it (RootView).
+                FlashLine()
                 // The Draw tool's plate: pen and rubber, thickness, colours (InkViews.swift).
                 DrawPlate(session: session, desk: session.ink)
                 // Wide enough: the tools in the middle, the zoom buttons at the right.
@@ -174,6 +158,10 @@ struct BoardView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            // 0.5: the messages in here slide up and fade in, and fade out (`.transition(.message)`).
+            .animation(.message, value: model.flash)
+            .animation(.message, value: session.notice)
+            .animation(.message, value: session.linking)
         }
         .navigationTitle(session.starterDraft ? (model.changing?.name ?? session.board.title) : session.board.title)
         #if os(iOS)
@@ -261,7 +249,7 @@ struct BoardView: View {
                 Divider()
                 // On a timeline the list becomes bars (0.5, TimelineOfIt.swift).
                 Button(session.board.isTimeline ? "Paste a list as bars" : "Paste a list as a mind map") {
-                    if let text = model.clipboardText() { session.paste(text) } else { model.say("Nothing to paste.") }
+                    if let text = model.clipboardText() { session.paste(text) } else { model.say("Nothing to paste.", tone: .problem) }
                     session.takeKeys()
                 }
                 .disabled(session.board.isSequence)
@@ -290,7 +278,9 @@ struct BoardView: View {
             .help("More")
             .accessibilityLabel("More")
             .accessibilityIdentifier("board.more")
-
+        }
+        // 0.5: Send stands by itself, off the top bar's glass — the glass made its purple paler (FeelLooks.swift).
+        OffGlassItem {
             if !session.starterDraft {
             Button { model.showSend = true } label: {
                 #if os(macOS)
@@ -380,7 +370,7 @@ struct ToolPill: View {
                 .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: part.text))
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(id)
@@ -411,6 +401,7 @@ struct ZoomCluster: View {
         .padding(4)
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.primary.opacity(0.10)))
+        .plateShadow()
         .modifier(BoardShield("zoom"))
     }
 
@@ -520,6 +511,7 @@ struct UndoCluster: View {
         .padding(4)
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.primary.opacity(0.10)))
+        .plateShadow()
     }
 
     private func button(_ mark: AppMark, _ id: String, _ help: String, on: Bool, action: @escaping () -> Void) -> some View {

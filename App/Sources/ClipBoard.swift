@@ -167,7 +167,7 @@ enum ClipBoard {
 
         if let clip = readClip() {
             guard clip.canBePasted else {
-                AppModel.shared.say("These things were copied in a newer Seedboard. Update the app to paste them.")
+                AppModel.shared.say("These things were copied in a newer Seedboard. Update the app to paste them.", tone: .problem)
                 return
             }
             var made: Set<UUID> = []
@@ -196,7 +196,7 @@ enum ClipBoard {
             if let image = readImage() {
                 session.lay(pictures: [image], at: place(ItemKind.picture.defaultSize))
             } else {
-                AppModel.shared.say("Nothing to paste.")
+                AppModel.shared.say("Nothing to paste.", tone: .problem)
             }
             return
         }
@@ -231,7 +231,7 @@ enum ClipBoard {
                     if let data = await imageBytes(of: provider) { all.append(data) }
                 }
                 session.commitEdit()
-                if all.isEmpty { AppModel.shared.say("That could not be read as a picture.") }
+                if all.isEmpty { AppModel.shared.say("That could not be read as a picture.", tone: .problem) }
                 session.lay(pictures: all, at: session.toBoard(location))
                 session.takeKeys()
             }

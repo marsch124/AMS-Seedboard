@@ -226,7 +226,7 @@ private struct KeyBarButton: View {
             .background(Part.mindMap.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(tint: Part.mindMap.text))
         .disabled(!on)
         .opacity(on ? 1 : 0.4)
         .accessibilityLabel(name)
