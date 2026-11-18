@@ -176,6 +176,8 @@ struct BoardView: View {
         .focusedSceneObject(session)
         // File ▸ Rename… and Remove Board… open the same two questions as the More button (Menus.swift).
         .modifier(MenuAsks(rename: { newName = session.board.title; renaming = true }, remove: { removing = true }))
+        // The Share plate (SharePlate.swift).
+        .modifier(ShareHost(session: session))
         // When the Send page closes, the board has the keys again.
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
@@ -257,9 +259,8 @@ struct BoardView: View {
                     session.takeKeys()
                 }
                 if !session.board.isEmpty {
-                    ShareLink(item: BoardPNG(board: session.board), preview: SharePreview(session.board.title)) {
-                        Text("Share a picture…")
-                    }
+                    // "Share…" (and "Print…" on iPhone and iPad): SharePlate.swift.
+                    ShareLines(session: session)
                 }
                 if !session.starterDraft {
                     Divider()

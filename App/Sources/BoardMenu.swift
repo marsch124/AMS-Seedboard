@@ -44,7 +44,7 @@ enum BoardMenu {
         let make = BarActions(session: session, prefix: "menu.", dots: nil, night: night)
         if let id = session.board.hit(board, scale: Double(session.scale), least: finger ? Fingers.button : 0) {
             if !session.selection.contains(id) { session.select(id, adding: session.choosingMore) }
-            let actions = make.thingMenu()
+            let actions = ShareLine.added(to: make.thingMenu(), session: session)
             if let item = session.single {
                 return Open(spot: p, title: item.kind.word, glyph: item.kind == .idea ? .app(.seedMindMap) : (item.kind.isShape ? item.kind.mark : .app(.seedBoard)),
                             part: BarActions.part(of: item.kind), actions: actions)

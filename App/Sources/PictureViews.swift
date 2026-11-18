@@ -213,7 +213,7 @@ extension BoardPainter {
         let f = item.frame
         let box = Path(roundedRect: f, cornerRadius: 4)
         let store = PictureStore.shared
-        if let name = item.picture, let image = handles ? store.image(name) : store.imageNow(name) {
+        if let name = item.picture, let image = handles ? store.image(name) : (PaperPictures.image(name) ?? store.imageNow(name)) {
             var inside = ctx
             inside.clip(to: box)
             if let part = Item.cleanCrop(item.crop) {
