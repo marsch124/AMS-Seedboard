@@ -170,7 +170,7 @@ final class EchoKeeper: ObservableObject {
         }
     }
 
-    private func took(_ looks: [(UUID, SentInfo, Bool, ParagonGate.NoteLook?)], at now: Date) {
+    private func took(_ looks: [(UUID, SentInfo, Bool, ParagonGate.EchoLook?)], at now: Date) {
         var new = kept
         for (id, sent, walked, look) in looks {
             let old = kept[id].flatMap { $0.sentPath == sent.path ? $0 : nil }

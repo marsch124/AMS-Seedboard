@@ -7,7 +7,7 @@ import SeedboardCore
 
 extension ParagonGate {
     /// What looking for a board's note gave.
-    enum NoteLook {
+    enum EchoLook {
         /// The note, where it is now inside PARAGON's folder, under the title it has now, and what it says.
         case found(path: String, title: String, reading: ParagonRead.Reading)
         /// iCloud has not brought the note (or a part of the folder it may be in) to this device yet.
@@ -27,7 +27,7 @@ extension ParagonGate {
     /// If it is at neither place — renamed, or moved to the Archive — and `walk` is true, every note in
     /// PARAGON's folder is looked through for that link. nil: it is at neither place and no walk was asked for.
     /// Runs off the main thread.
-    static func look(for board: Board, sent: SentInfo, lastFound: String?, walk: Bool, place: ParagonPlace) -> NoteLook? {
+    static func look(for board: Board, sent: SentInfo, lastFound: String?, walk: Bool, place: ParagonPlace) -> EchoLook? {
         var waiting = false
         // A note that stands where Seedboard wrote it but no longer holds the link (the line was taken out).
         var plain: (path: String, text: String)?
@@ -86,7 +86,7 @@ extension ParagonGate {
         return skipped ? .notHereYet : .gone
     }
 
-    private static func found(_ path: String, _ text: String, _ board: Board, _ sent: SentInfo) -> NoteLook {
+    private static func found(_ path: String, _ text: String, _ board: Board, _ sent: SentInfo) -> EchoLook {
         .found(path: path, title: ParagonRead.title(of: text, fileName: (path as NSString).lastPathComponent),
                reading: ParagonRead.reading(board: board, note: text, kind: sent.kind))
     }
