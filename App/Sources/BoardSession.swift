@@ -554,6 +554,7 @@ final class BoardSession: ObservableObject {
             }
             // Taking the tick off forgets that it was sent, so ticking it again sends it again.
             if allOn { board.sentTodos.removeAll { ids.contains($0) } }
+            if allOn { board.sentTasks.removeAll { ids.contains($0.id) && $0.place == SentTask.inbox } }
         }
     }
 
@@ -762,11 +763,14 @@ final class BoardSession: ObservableObject {
         change { $0.title = clean }
     }
 
-    func markSent(_ info: SentInfo?, todos: [UUID]) {
+    /// `tasks`: every thing that became a task in PARAGON, with the words that were sent; `place`: where
+    /// they went (`SentTask.note` or `SentTask.inbox`).
+    func markSent(_ info: SentInfo?, todos: [UUID], tasks: [MadeTask] = [], place: String = SentTask.note) {
         guard !readOnly else { return }
         var new = board
         if let info { new.sent = info }
         new.sentTodos = Array(Set(new.sentTodos).union(todos))
+        new.noteSent(tasks, place: place)
         new.touch()
         set(new)
         onChange?(board)

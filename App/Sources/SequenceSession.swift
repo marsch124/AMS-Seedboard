@@ -176,6 +176,7 @@ extension BoardSession {
             }
             // Taking the tick off forgets that it was sent, so ticking it again sends it again.
             if allOn { board.sentTodos.removeAll { ids.contains($0) } }
+            if allOn { board.sentTasks.removeAll { ids.contains($0.id) && $0.place == SentTask.inbox } }
         }
     }
 

@@ -297,8 +297,8 @@ final class ShapesLanesTests: XCTestCase {
         let mixed = ParagonExport.project(board: ticked, title: "Order", picture: nil, now: now)
         XCTAssertTrue(mixed.contains("### Web shop order: Shop\n- Check the order\n- [ ] Pack\n"), mixed)
 
-        // A frame without lanes changes nothing in the note.
+        // A frame without lanes, with a name, is a heading for the notes in it (0.5; see Send05Tests).
         board.setLanes(frame, way: nil)
-        XCTAssertFalse(ParagonExport.note(board: board, title: "Order", picture: nil, now: now).contains("###"))
+        XCTAssertTrue(ParagonExport.note(board: board, title: "Order", picture: nil, now: now).contains("## Notes\n\n### Web shop order\n\n- Pays by card\n"))
     }
 }

@@ -125,12 +125,21 @@ final class AppModel: ObservableObject {
         if let id = waitingLink { follow(id) }
         checkParagon()
         #if DEBUG
-        // For trying the hand-over without a press: `-sendNow note|project|todos` (with `-paragonFolder`).
-        if let word = LaunchOptions.value(for: "-sendNow"), let kind = SendKind(rawValue: word) {
+        // For trying the hand-over without a press: `-sendNow note|project|todos|add` (with `-paragonFolder`).
+        // Several in a row with "+": `-sendNow project+add` sends the board as a project, lays something new
+        // on it and adds that to the project.
+        if let words = LaunchOptions.value(for: "-sendNow") {
             Task {
                 for _ in 0..<50 where place == nil { try? await Task.sleep(nanoseconds: 100_000_000) }
-                let problem = await send(kind: kind, title: "")
-                print("SENDNOW \(word): \(problem ?? "ok") — \(flash ?? "")")
+                // `-starts` switches "Also remind me when a bar starts" on, `-noOrigin` switches "Say where they come from" off.
+                let choices = SendChoices(sayOrigin: !LaunchOptions.arguments.contains("-noOrigin"),
+                                          remindStarts: LaunchOptions.arguments.contains("-starts"))
+                for word in words.split(separator: "+").map(String.init) {
+                    guard let kind = SendKind(rawValue: word) else { continue }
+                    if kind == .add { session?.layDownSomethingNewForTrying() }
+                    let problem = await send(kind: kind, title: "", choices: choices)
+                    print("SENDNOW \(word): \(problem ?? "ok") — \(flash ?? "")")
+                }
             }
         }
         #endif
@@ -376,6 +385,7 @@ final class AppModel: ObservableObject {
         copy.changed = Date()
         copy.sent = nil
         copy.sentTodos = []
+        copy.sentTasks = []
         copy.pinned = false
         write(copy)
         open(copy.id)
@@ -487,7 +497,8 @@ final class AppModel: ObservableObject {
 
     /// Sends the open board. The board's picture is made here, the files are written off the main thread.
     /// `branch`: only this idea and everything under it is sent, as a small map of its own.
-    func send(kind: SendKind, title: String, branch: UUID? = nil) async -> String? {
+    /// `choices`: the switches of the Send page ("Say where they come from", "Also remind me when a bar starts").
+    func send(kind: SendKind, title: String, branch: UUID? = nil, choices: SendChoices = SendChoices()) async -> String? {
         guard let session else { return SendProblem.notFound.errorDescription }
         // One hand-over at a time: a second press while the first is on its way does nothing.
         guard !sending else { return "The board is on its way already." }
@@ -500,16 +511,24 @@ final class AppModel: ObservableObject {
         self.found(found)
         guard let place = found else { return SendProblem.notFound.errorDescription }
         let board = branch.flatMap { session.board.branchOnly($0) } ?? session.board
-        let png = kind == .todos ? nil : BoardPicture.png(of: board)
+        // A look at the note the board became (reading only): is it at its place, and what stands in it?
+        let look = await Task.detached(priority: .userInitiated) { ParagonGate.look(at: board.sent, in: place) }.value
+        let png = kind == .todos || kind == .add ? nil : BoardPicture.png(of: board)
         // Inbox tasks: the "already sent" ticks are on the device BEFORE the tasks are handed over, so a
         // stop in between can never send the same tasks twice. If the hand-over fails, the ticks come off again.
+        // The same for "Add what is new", whose lines go to the same waiting list.
         var ticked: Board?
-        if kind == .todos, board.canBeChanged {
-            let ids = ParagonExport.inboxTasks(board: board).map(\.id)
+        if kind == .todos || kind == .add, board.canBeChanged {
+            let ahead = kind == .add ? ParagonExport.addSend(board: board, look: look, choices: choices)
+                                     : ParagonExport.inboxSend(board: board, look: look, choices: choices)
+            let known = (ahead?.tasks ?? []) + (ahead?.there ?? [])
+            let ids = known.map(\.id)
             if !ids.isEmpty, place.outbox != nil {
                 saveNow()
-                var marked = board
+                // The WHOLE board is marked and stored, also when only a branch of it is sent.
+                var marked = session.board
                 marked.sentTodos = Array(Set(marked.sentTodos).union(ids))
+                marked.noteSent(known, place: ahead?.place ?? SentTask.inbox)
                 marked.touch()
                 store.save(marked)
                 store.flush()
@@ -518,16 +537,17 @@ final class AppModel: ObservableObject {
         }
         do {
             let result = try await Task.detached(priority: .userInitiated) {
-                try ParagonGate.send(board: board, kind: kind, title: title, png: png, place: place)
+                try ParagonGate.send(board: board, kind: kind, title: title, png: png, place: place, choices: choices, look: look)
             }.value
             if self.session === session {
                 // One branch is not the whole board: the board gets no "sent" mark for it.
-                session.markSent(branch == nil ? result.info : nil, todos: result.todos)
+                session.markSent(branch == nil ? result.info : nil, todos: result.todos, tasks: result.tasks, place: result.place)
                 saveNow()
             } else if var other = boards.first(where: { $0.id == board.id }) {
                 // Another board was opened meanwhile: the sent mark goes onto the board itself.
                 if let info = result.info, branch == nil { other.sent = info }
                 other.sentTodos = Array(Set(other.sentTodos).union(result.todos))
+                other.noteSent(result.tasks, place: result.place)
                 other.touch()
                 write(other)
             }

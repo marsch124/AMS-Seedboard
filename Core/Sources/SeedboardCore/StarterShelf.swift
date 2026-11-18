@@ -278,6 +278,7 @@ public struct StarterShelf: Equatable, Sendable {
         b.pinned = false
         b.sent = nil
         b.sentTodos = []
+        b.sentTasks = []
         var map: [UUID: UUID] = [:]
         for item in b.items { map[item.id] = UUID() }
         StarterShelf.move(&b, byDays: board.isTimeline ? Day(now) - Day(board.changed) : 0)

@@ -180,8 +180,12 @@ public extension Board {
         }
         if !arrows.isEmpty { sections.append((["Flow:"] + arrows).joined(separator: "\n")) }
 
-        let notes = items.filter { $0.kind == .note || $0.kind == .text || $0.kind == .picture }.map { "- " + ($0.kind == .picture ? ParagonExport.pictureName(of: $0) : one($0.text)) }
-        if !notes.isEmpty { sections.append((["Notes:"] + notes).joined(separator: "\n")) }
+        // A named frame is a heading: "Pros:" with the things in it; what lies in no such frame stands under "Notes:".
+        // Both in reading order (SendFrames.swift).
+        let notes = ParagonExport.framed(self) { $0.kind == .note || $0.kind == .text || $0.kind == .picture }
+        func noteLine(_ i: Item) -> String { "- " + (i.kind == .picture ? ParagonExport.pictureName(of: i) : one(i.text)) }
+        if !notes.loose.isEmpty { sections.append((["Notes:"] + notes.loose.map(noteLine)).joined(separator: "\n")) }
+        for group in notes.groups { sections.append(([group.name + ":"] + group.things.map(noteLine)).joined(separator: "\n")) }
 
         let joined = Set(links.flatMap { [$0.from, $0.to] })
         let loose = items.filter { $0.kind.isShape && !joined.contains($0.id) }.map { "- " + one($0.text) }

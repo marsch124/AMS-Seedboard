@@ -7,9 +7,13 @@ import SeedboardCore
 //     away again is a picture it made itself a moment ago, when the note that needs it could not be written.
 //  2. Lines for the Inbox are not written into Inbox.md. They go into the waiting list that
 //     PARAGON's own Share button uses, and PARAGON files them itself the next time it opens.
+//     0.5, "Add what is new": such a line may be AIMED at the note the board became. PARAGON then files it
+//     at the end of that note's Tasks itself; Seedboard still writes nothing but the waiting list.
 
 enum SendKind: String, CaseIterable, Identifiable {
     case note, project, todos
+    /// 0.5: only what has become a task since the board went to PARAGON, added to that note or project.
+    case add
     var id: String { rawValue }
 }
 
@@ -24,12 +28,18 @@ struct SendResult {
     var info: SentInfo?
     var todos: [UUID]
     var message: String
+    /// The things that became a task, with the words that were sent, and where they went
+    /// (`SentTask.note` or `SentTask.inbox`): the board remembers them (`Board.sentTasks`).
+    var tasks: [MadeTask] = []
+    var place: String = SentTask.note
 }
 
 enum SendProblem: LocalizedError {
     case notFound
     case nothingToSend
     case noInbox
+    /// "Add what is new" was asked for, and nothing on the board is new.
+    case nothingNew
     case cannotWrite(String)
     /// The note could not be written, and the picture made for it could not be taken away again.
     case pictureLeft(String)
@@ -39,6 +49,7 @@ enum SendProblem: LocalizedError {
         case .notFound: return "PARAGON's notes were not found on this device."
         case .nothingToSend: return "No to-do boxes are waiting to be sent."
         case .noInbox: return "This device cannot reach PARAGON's Inbox. Send the board as a note or a project instead."
+        case .nothingNew: return "Nothing on the board is new for PARAGON."
         case .cannotWrite(let what): return "The \(what) could not be saved in PARAGON's folder. Nothing was changed."
         case .pictureLeft(let name): return "The note could not be saved in PARAGON's folder. Its picture “\(name)” is left in PARAGON's Pictures folder; no note uses it."
         }
@@ -135,17 +146,36 @@ enum ParagonGate {
         return gone || !FileManager.default.fileExists(atPath: url.path)
     }
 
+    /// When lines of the waiting list show in PARAGON: build 340 files them when its notes open AND when it comes to the front.
+    static let whenTheyShow = "They appear there when you switch to PARAGON (PARAGON 340 or newer)."
+
     /// Hands a board over. Runs off the main thread.
-    static func send(board: Board, kind: SendKind, title wanted: String, png: Data?, place: ParagonPlace, now: Date = Date()) throws -> SendResult {
+    /// `choices`: the switches of the Send page. `look`: what a look at the note the board became found (SendLook.swift).
+    static func send(board: Board, kind: SendKind, title wanted: String, png: Data?, place: ParagonPlace,
+                     choices: SendChoices = SendChoices(), look: NoteLook? = nil, now: Date = Date()) throws -> SendResult {
         switch kind {
         case .todos:
-            let tasks = ParagonExport.inboxTasks(board: board)
-            guard !tasks.isEmpty else { throw SendProblem.nothingToSend }
+            // Each with its days (a timeline) and its way back to the board.
+            let send = ParagonExport.inboxSend(board: board, look: look, choices: choices)
+            guard !send.tasks.isEmpty else { throw SendProblem.nothingToSend }
             guard let outbox = place.outbox else { throw SendProblem.noInbox }
             // All of them in one write: either every task is on its way, or none is.
-            do { try append(ParagonExport.taskLines(tasks, now: now), to: outbox) } catch { throw SendProblem.noInbox }
-            let count = tasks.count == 1 ? "1 task is" : "\(tasks.count) tasks are"
-            return SendResult(info: nil, todos: tasks.map(\.id), message: "\(count) on the way to the PARAGON Inbox. They show the next time PARAGON opens.")
+            do { try append(ParagonExport.waitingLines(send.lines, notePath: nil, now: now), to: outbox) } catch { throw SendProblem.noInbox }
+            let count = send.tasks.count == 1 ? "1 task is" : "\(send.tasks.count) tasks are"
+            return SendResult(info: nil, todos: send.tasks.map(\.id), message: "\(count) on the way to the PARAGON Inbox. \(whenTheyShow)",
+                              tasks: send.tasks, place: send.place)
+
+        case .add:
+            // Only lines for the waiting list, aimed at the note the board became (or, when that note is not
+            // at its place, at the Inbox). The note itself is never opened for writing.
+            guard let send = ParagonExport.addSend(board: board, look: look, choices: choices) else { throw SendProblem.nothingNew }
+            guard let outbox = place.outbox else { throw SendProblem.noInbox }
+            do { try append(ParagonExport.waitingLines(send.lines, notePath: send.notePath, now: now), to: outbox) } catch { throw SendProblem.noInbox }
+            let count = send.tasks.count == 1 ? "1 new task is" : "\(send.tasks.count) new tasks are"
+            let whereTo = send.notePath == nil ? "to the PARAGON Inbox" : "into “\(board.sent?.title ?? "")”"
+            let all = send.tasks + send.there
+            return SendResult(info: nil, todos: all.map(\.id), message: "\(count) on the way \(whereTo). \(whenTheyShow)",
+                              tasks: all, place: send.place)
 
         case .note, .project:
             let clean = ParagonExport.noteTitle(for: wanted.isEmpty ? board.title : wanted)
@@ -175,11 +205,12 @@ enum ParagonGate {
                 }
             }
 
-            let text = kind == .project
-                ? ParagonExport.project(board: board, title: title, picture: picture, now: now)
-                : ParagonExport.note(board: board, title: title, picture: picture, now: now)
+            // The text, and with it every thing that is a task in it.
+            let handover = kind == .project
+                ? ParagonExport.projectHandover(board: board, title: title, picture: picture, now: now, choices: choices)
+                : ParagonExport.noteHandover(board: board, title: title, picture: picture, now: now, choices: choices)
             do {
-                try writeNew(Data(text.utf8), to: noteURL)
+                try writeNew(Data(handover.text.utf8), to: noteURL)
             } catch {
                 // The note is not there, so its picture must not stay behind: the file made a moment ago
                 // (only that one) is taken away again, and the message says what is true.
@@ -195,7 +226,8 @@ enum ParagonGate {
             let info = SentInfo(when: now, kind: kind.rawValue, title: title, path: "\(folder)/\(title).md")
             let todos = board.items.filter(\.todo).map(\.id)
             let where_ = kind == .project ? "Projects" : (inInbox ? "Resources, with a line in the Inbox" : "Resources")
-            return SendResult(info: info, todos: todos, message: "“\(title)” is in PARAGON under \(where_).")
+            return SendResult(info: info, todos: todos, message: "“\(title)” is in PARAGON under \(where_).",
+                              tasks: handover.tasks, place: SentTask.note)
         }
     }
 
