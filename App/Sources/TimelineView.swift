@@ -35,7 +35,10 @@ struct TimelineView: View {
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
-    private enum Target { case bar(UUID), grip(UUID, BarEdge), dot(UUID), name(UUID), link(UUID), header, empty }
+    private enum Target { case bar(UUID), grip(UUID, BarEdge), dot(UUID), name(UUID), link(UUID), header, empty
+        /// 0.9: the chevron before a phase's name: folds or unfolds it.
+        case chevron(UUID)
+    }
 
     private enum Drag {
         case idle
@@ -114,6 +117,8 @@ struct TimelineView: View {
             }
             #if os(macOS)
             .background(ScrollCatcher(session: session))
+            // 0.9: the right-click menu of a timeline (BoardMenu.openTimeline).
+            .background(PointerCatcher(session: session))
             #else
             .background(TrackpadCatcher(session: session))
             #endif
@@ -157,6 +162,9 @@ struct TimelineView: View {
             let first = Set(session.board.timelineRows.filter { $0.kind == .bar }.prefix(count).map(\.id))
             session.change { $0.setDone(first, true, on: .today()) }
         }
+        // For pictures (0.9): `-foldPhases` folds every phase; `-calendarPage` opens the page "Add to Calendar".
+        if LaunchOptions.arguments.contains("-foldPhases") { session.foldAllTimelinePhases(true) }
+        if LaunchOptions.arguments.contains("-calendarPage") { model.showCalendar = true }
         if LaunchOptions.arguments.contains("-catchUp"), let words = session.timelineCatchUp() { model.say(words, seconds: 6) }
         if let word = LaunchOptions.value(for: "-scale"), let scale = TimeScale(rawValue: word) {
             session.setTimeScale(scale)
@@ -179,9 +187,9 @@ struct TimelineView: View {
 
     @ViewBuilder
     private var editor: some View {
-        if let id = session.editing, let item = session.board.item(id), let row = session.board.timelineRow(of: id) {
+        if let id = session.editing, let item = session.board.item(id), let row = session.board.shownRow(of: id) {
             let g = session.timelineGeometry
-            let grouped = session.board.phaseGroups.contains { row > $0.firstRow && row <= $0.lastRow }
+            let grouped = session.board.shownPhaseGroups.contains { row > $0.firstRow && row <= $0.lastRow }
             let left = TimelinePainter.nameLeft(item, grouped: grouped) - 4
             let width = max(CGFloat(g.namesWidth) - left - 5, 40)
             TextField(item.kind.word, text: Binding(get: { session.draft }, set: { session.typed($0) }))
@@ -236,11 +244,14 @@ struct TimelineView: View {
 
     private func target(at p: CGPoint) -> Target {
         let g = session.timelineGeometry
-        let rows = session.board.timelineRows
+        let rows = session.board.shownTimelineRows
         if p.y < g.headerHeight { return .header }
         let row = g.row(atY: p.y)
         if p.x < g.namesWidth {
-            return rows.indices.contains(row) ? .name(rows[row].id) : .empty
+            guard rows.indices.contains(row) else { return .empty }
+            // 0.9: the chevron before a phase's name.
+            if rows[row].kind == .phase, p.x < 10 + TimelinePainter.chevronRoom + 6, session.board.canFold(rows[row].id) { return .chevron(rows[row].id) }
+            return .name(rows[row].id)
         }
         // The grips and the dot of the one chosen bar come first.
         if !session.readOnly, session.editing == nil, !session.linking, let chosen = session.single,
@@ -258,13 +269,13 @@ struct TimelineView: View {
         }
         // A phase's own thin bar chooses the phase.
         if rows.indices.contains(row), rows[row].kind == .phase,
-           let group = session.board.phaseGroups.first(where: { $0.id == rows[row].id }), let start = group.start, let end = group.end,
+           let group = session.board.shownPhaseGroups.first(where: { $0.id == rows[row].id }), let start = group.start, let end = group.end,
            g.bar(from: start, to: end, row: row).insetBy(dx: -4, dy: 0).contains(p) {
             return .name(rows[row].id)
         }
-        let places = rows.enumerated().reduce(into: [UUID: CGRect]()) { $0[$1.element.id] = box($1.element, $1.offset, g) }
+        let places = TimelinePainter.linkPlaces(session.board, geometry: g)
         for link in session.board.links.reversed() {
-            guard let a = places[link.from], let b = places[link.to] else { continue }
+            guard let a = places[link.from], let b = places[link.to], a != b else { continue }
             if Route.distance(from: p, to: g.arrow(from: a, to: b)) <= 7 { return .link(link.id) }
         }
         return .empty
@@ -273,7 +284,7 @@ struct TimelineView: View {
     /// The bar or milestone under the point (not `except`), for a pulled "comes after" line.
     private func bar(at p: CGPoint, except: UUID) -> UUID? {
         let g = session.timelineGeometry
-        for (n, item) in session.board.timelineRows.enumerated() where item.id != except {
+        for (n, item) in session.board.shownTimelineRows.enumerated() where item.id != except {
             if let bar = box(item, n, g), bar.insetBy(dx: -8, dy: -7).contains(p) { return item.id }
         }
         return nil
@@ -329,7 +340,7 @@ struct TimelineView: View {
             guard !session.readOnly else { drag = .panning(session.offset); return }
             if session.linking {
                 drag = .joining(id)
-            } else if let row = board.timelineRow(of: id) {
+            } else if let row = board.shownRow(of: id) {
                 let chosen = session.selection.contains(id) ? session.selection : [id]
                 session.liveStart()
                 showDates = chosen.count == 1
@@ -343,10 +354,10 @@ struct TimelineView: View {
         case .dot(let id):
             drag = .joining(id)
         case .name(let id):
-            guard !session.readOnly, !session.linking, let row = board.timelineRow(of: id) else { drag = .panning(session.offset); return }
+            guard !session.readOnly, !session.linking, let row = board.shownRow(of: id) else { drag = .panning(session.offset); return }
             session.liveStart()
             drag = .rowMove(id, row)
-        case .link, .header, .empty:
+        case .link, .header, .empty, .chevron:
             drag = .panning(session.offset)
         }
     }
@@ -364,7 +375,7 @@ struct TimelineView: View {
             session.live { board in
                 count = board.shift(ids, byDays: across)
                 // One bar alone also changes its row when it is dragged up or down.
-                if ids.count == 1, rowsDown != 0 { board.moveRow(lead, to: row + rowsDown) }
+                if ids.count == 1, rowsDown != 0 { board.moveRow(lead, to: board.storedRow(forShown: row + rowsDown)) }
             }
             pushed = count
         case .stretching(let id, let edge, let from):
@@ -373,7 +384,7 @@ struct TimelineView: View {
             pushed = count
         case .rowMove(let id, let row):
             // A phase carries its rows (0.5); a bar or a milestone moves alone.
-            session.live { $0.carryRow(id, to: row + down) }
+            session.live { $0.carryRow(id, to: $0.storedRow(forShown: row + down)) }
         case .joining(let id):
             if let from = session.timelineRect(of: id) {
                 rubber = Rubber(from: CGPoint(x: from.maxX, y: from.midY), to: value.location)
@@ -443,6 +454,10 @@ struct TimelineView: View {
                 session.select(id)
             }
             lastTapID = id
+            lastTapAt = now
+        case .chevron(let id):
+            session.toggleTimelineFold(id)
+            lastTapID = nil
             lastTapAt = now
         case .link(let id):
             session.selection = []

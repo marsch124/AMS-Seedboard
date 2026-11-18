@@ -24,6 +24,8 @@ final class AppModel: ObservableObject {
     var flashAction: FlashAction?
     /// The Send to PARAGON page is asked for.
     @Published var showSend = false
+    /// 0.9: the page "Add to Calendar" of a timeline is asked for.
+    @Published var showCalendar = false
     /// Boards whose newest change is on this device but not in iCloud yet (a small dot in the list).
     @Published private(set) var notInCloud: Set<UUID> = []
     /// Picture files that are on this device but not in iCloud yet: a board that shows one keeps the dot.

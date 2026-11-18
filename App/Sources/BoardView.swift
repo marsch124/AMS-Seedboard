@@ -185,6 +185,10 @@ struct BoardView: View {
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
         }
+        // 0.9: "Add to Calendar" (CalendarAdd.swift).
+        .sheet(isPresented: $model.showCalendar, onDismiss: { session.takeKeys() }) {
+            CalendarAddSheet(session: session).environmentObject(model)
+        }
         // "Crop the picture" (CropPage.swift).
         .sheet(isPresented: Binding(get: { session.cropping != nil }, set: { if !$0 { session.cropping = nil } }), onDismiss: { session.takeKeys() }) {
             if let id = session.cropping { CropPage(session: session, id: id) }
@@ -261,6 +265,21 @@ struct BoardView: View {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
                     session.takeKeys()
+                }
+                // 0.9, a timeline: phases fold away, and milestones go into the calendar.
+                if session.board.isTimeline {
+                    if !session.readOnly {
+                        Button("Fold all phases") { session.foldAllTimelinePhases(true); session.takeKeys() }
+                            .disabled(!session.board.canFoldAny)
+                            .accessibilityIdentifier("more.foldAll")
+                        Button("Unfold all") { session.foldAllTimelinePhases(false); session.takeKeys() }
+                            .disabled(!session.board.canUnfoldAny)
+                            .accessibilityIdentifier("more.unfoldAll")
+                    }
+                    if session.canAddToCalendar {
+                        Button("Add to Calendar…") { session.commitEdit(); model.showCalendar = true }
+                            .accessibilityIdentifier("more.calendar")
+                    }
                 }
                 // 0.5: a new timeline board from this board's ideas and shapes (not on a board that places its things itself).
                 if !session.board.placesItself && !session.starterDraft {

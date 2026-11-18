@@ -35,6 +35,8 @@ struct TimelinePainter {
     static let gripRadius: CGFloat = 6
     static let dotRadius: CGFloat = 5
     static let dotGap: CGFloat = 20
+    /// 0.9: the room a phase's chevron (fold / unfold) takes before its name, and the width of the press on it.
+    static let chevronRoom: CGFloat = 14
 
     // MARK: Places (shared with the view's press handling)
 
@@ -48,7 +50,7 @@ struct TimelinePainter {
 
     /// Where a row's name begins: rows under a phase stand a little in; a milestone has its small diamond first.
     static func nameLeft(_ item: Item, grouped: Bool) -> CGFloat {
-        (grouped ? 20 : 10) + (item.kind == .milestone ? 14 : 0)
+        (grouped ? 20 : 10) + (item.kind == .milestone ? 14 : 0) + (item.kind == .phase ? chevronRoom : 0)
     }
 
     /// Where an item is drawn: a bar, a milestone's diamond; nil for a phase or an item without days.
@@ -69,13 +71,14 @@ struct TimelinePainter {
 
     func draw(_ ctx: inout GraphicsContext) {
         let g = geometry
-        let rows = board.timelineRows
+        // 0.9: a folded phase hides its rows; the rows below move up (Core: shownTimelineRows).
+        let rows = board.shownTimelineRows
         let names = CGFloat(g.namesWidth), header = CGFloat(g.headerHeight)
         let back = ground ?? paint.canvas
         let chart = CGRect(x: names, y: header, width: max(size.width - names, 0), height: max(size.height - header, 0))
         let first = g.day(atX: Double(names)) - 1
         let last = g.day(atX: Double(size.width)) + 1
-        let groups = board.phaseGroups
+        let groups = board.shownPhaseGroups
         let byID = rows.enumerated().reduce(into: [UUID: (item: Item, row: Int)]()) { $0[$1.element.id] = ($1.element, $1.offset) }
 
         ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(back))
@@ -114,9 +117,11 @@ struct TimelinePainter {
             days.stroke(line, with: .color(paint.edge.opacity(0.30)), lineWidth: 1)
         }
 
+        // An arrow to a bar a folded phase hides ends at that phase's band; one between two bars hidden in the
+        // same phase is not drawn.
+        let places = TimelinePainter.linkPlaces(board, geometry: g)
         for link in board.links {
-            guard let a = byID[link.from], let b = byID[link.to],
-                  let from = rect(of: a.item, row: a.row), let to = rect(of: b.item, row: b.row) else { continue }
+            guard let from = places[link.from], let to = places[link.to], from != to else { continue }
             drawArrow(g.arrow(from: from, to: to), chosen: selectedLink == link.id, &days)
         }
 
@@ -124,6 +129,22 @@ struct TimelinePainter {
             guard let phase = byID[group.id]?.item, let start = group.start, let end = group.end else { continue }
             // The phase's own thin bar: from its first bar's first day to its last bar's last day.
             let whole = g.bar(from: start, to: end, row: group.firstRow)
+            if group.folded {
+                // 0.9: a folded phase: one soft band from its first to its last day, with how many bars are in it.
+                let band = TimelinePainter.foldBand(of: group, geometry: g)!
+                days.fill(Path(roundedRect: band, cornerRadius: 7), with: .color(colour(of: phase).opacity(paint.night ? 0.55 : 0.50)))
+                days.stroke(Path(roundedRect: band, cornerRadius: 7), with: .color(colour(of: phase).opacity(0.85)), lineWidth: 1)
+                if let words = group.foldWords {
+                    let text = days.resolve(Text(words).font(.system(size: 10.5, weight: .medium)).foregroundColor(paint.ink))
+                    let wide = text.measure(in: CGSize(width: 300, height: 30)).width
+                    if wide + 12 <= band.width {
+                        days.draw(text, at: CGPoint(x: band.minX + 7, y: band.midY), anchor: .leading)
+                    } else {
+                        days.draw(text, at: CGPoint(x: band.maxX + 6, y: band.midY), anchor: .leading)
+                    }
+                }
+                continue
+            }
             let thin = CGRect(x: whole.minX, y: whole.midY - 3, width: whole.width, height: 6)
             days.fill(Path(roundedRect: thin, cornerRadius: 3), with: .color(colour(of: phase).opacity(0.80)))
         }
@@ -180,6 +201,9 @@ struct TimelinePainter {
                 mark.move(to: CGPoint(x: c.x, y: c.y - 5)); mark.addLine(to: CGPoint(x: c.x + 5, y: c.y))
                 mark.addLine(to: CGPoint(x: c.x, y: c.y + 5)); mark.addLine(to: CGPoint(x: c.x - 5, y: c.y)); mark.closeSubpath()
                 column.fill(mark, with: .color(colour(of: item)))
+            }
+            if item.kind == .phase, let group = groups.first(where: { $0.id == item.id }), group.folded || group.bars + group.milestones > 0 {
+                drawChevron(open: !group.folded, at: CGPoint(x: indent + 5, y: top + height / 2), colour: colour(of: item), &column)
             }
             guard editing != item.id else { continue }
             let left = TimelinePainter.nameLeft(item, grouped: grouped.contains(item.id))
@@ -249,6 +273,45 @@ struct TimelinePainter {
         edges.move(to: CGPoint(x: 0, y: header + 0.5)); edges.addLine(to: CGPoint(x: size.width, y: header + 0.5))
         edges.move(to: CGPoint(x: names + 0.5, y: 0)); edges.addLine(to: CGPoint(x: names + 0.5, y: size.height))
         ctx.stroke(edges, with: .color(paint.edge), lineWidth: 1)
+    }
+
+    /// The small chevron before a phase's name: pointing down while it is open, right while it is folded.
+    private func drawChevron(open: Bool, at c: CGPoint, colour: Color, _ ctx: inout GraphicsContext) {
+        var path = Path()
+        if open {
+            path.move(to: CGPoint(x: c.x - 4, y: c.y - 2)); path.addLine(to: CGPoint(x: c.x, y: c.y + 2)); path.addLine(to: CGPoint(x: c.x + 4, y: c.y - 2))
+        } else {
+            path.move(to: CGPoint(x: c.x - 2, y: c.y - 4)); path.addLine(to: CGPoint(x: c.x + 2, y: c.y)); path.addLine(to: CGPoint(x: c.x - 2, y: c.y + 4))
+        }
+        ctx.stroke(path, with: .color(colour), style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+    }
+
+    /// The band of a folded phase: from its first to its last day (a little over a day when it is empty of days).
+    static func foldBand(of group: PhaseGroup, geometry g: TimelineGeometry) -> CGRect? {
+        guard let start = group.start, let end = group.end else { return nil }
+        let whole = g.bar(from: start, to: end, row: group.firstRow)
+        return CGRect(x: whole.minX, y: whole.midY - 9, width: max(whole.width, 8), height: 18)
+    }
+
+    /// Where every row that has a place is, for the "comes after" arrows: a bar or a diamond where it is; a bar
+    /// that a folded phase hides is at that phase's band (nil for a phase's own row).
+    static func linkPlaces(_ board: Board, geometry g: TimelineGeometry) -> [UUID: CGRect] {
+        let rows = board.timelineRows
+        let hidden = board.hiddenTimelineIDs
+        let shownIndex = board.shownTimelineRows.enumerated().reduce(into: [UUID: Int]()) { $0[$1.element.id] = $1.offset }
+        let groups = board.shownPhaseGroups
+        var places: [UUID: CGRect] = [:]
+        var current: PhaseGroup?
+        for item in rows {
+            if item.kind == .phase { current = groups.first { $0.id == item.id }; continue }
+            guard let span = item.span else { continue }
+            if hidden.contains(item.id) {
+                if let group = current, let band = foldBand(of: group, geometry: g) { places[item.id] = band }
+            } else if let row = shownIndex[item.id] {
+                places[item.id] = item.kind == .milestone ? g.diamond(on: span.start, row: row) : g.bar(from: span.start, to: span.end, row: row)
+            }
+        }
+        return places
     }
 
     private func drawBar(_ item: Item, _ box: CGRect, _ ctx: inout GraphicsContext) {
@@ -364,6 +427,9 @@ struct TimelinePainter {
 extension TimelinePainter {
     /// A timeline drawn whole, for its picture: the board's own box (see `Board.timelinePicture`) starts at (0, 0).
     static func whole(_ board: Board, paint: Paint, ground: Color?) -> TimelinePainter {
+        // 0.9: the picture shows every row, folded or not.
+        var board = board
+        for i in board.items.indices where board.items[i].kind == .phase { board.items[i].folded = false }
         let picture = board.timelinePicture()
         var painter = TimelinePainter(board: board, paint: paint, geometry: picture.geometry, size: picture.box.size)
         painter.handles = false

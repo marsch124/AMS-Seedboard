@@ -61,6 +61,24 @@ enum BoardMenu {
         return Open(spot: p, title: "Board", glyph: .app(.seedBoard), part: .boards, actions: make.emptyMenu(at: board))
     }
 
+    #if os(macOS)
+    /// 0.9, a timeline: a right-click on a phase's row says Fold / Unfold; anywhere on the board, Fold all phases /
+    /// Unfold all and Add to Calendar…
+    static func openTimeline(_ session: BoardSession, at p: CGPoint) {
+        guard session.board.isTimeline, let view = PointerCatcher.PointerView.current else { return }
+        if session.editing != nil { session.commitEdit() }
+        let g = session.timelineGeometry
+        let rows = session.board.shownTimelineRows
+        let row = g.row(atY: p.y)
+        let make = BarActions(session: session, prefix: "menu.", dots: nil, night: night)
+        let lines = make.timelineMenu(phase: p.y >= g.headerHeight && rows.indices.contains(row) && rows[row].kind == .phase ? rows[row] : nil)
+        guard !lines.isEmpty else { return }
+        if let id = rows.indices.contains(row) && p.y >= g.headerHeight ? rows[row].id : nil, !session.selection.contains(id) { session.select(id) }
+        MacCamera.popUp(MacMenu.make(lines), at: p, in: view, session: session)
+        session.takeKeys()
+    }
+    #endif
+
     /// Opens the menu for what lies at this point of the board view. `finger`: a finger asked (its
     /// press area is bigger than a pointer's). True when a menu opened.
     @discardableResult
@@ -331,7 +349,13 @@ struct PointerCatcher: NSViewRepresentable {
             guard let window, event.window === window, window.attachedSheet == nil, let session else { return event }
             guard event.type == .rightMouseDown || event.modifierFlags.contains(.control) else { return event }
             let p = convert(event.locationInWindow, from: nil)
-            guard bounds.contains(p), !BarDesk.shared.covered(p), !session.board.placesItself else { return event }
+            guard bounds.contains(p), !BarDesk.shared.covered(p) else { return event }
+            if session.board.isTimeline {
+                if session.editing != nil { return event }
+                DispatchQueue.main.async { BoardMenu.openTimeline(session, at: p) }
+                return nil
+            }
+            guard !session.board.placesItself else { return event }
             // While words are typed, a right-click on them belongs to the words.
             if let id = session.editing, let item = session.board.item(id), session.toScreen(item.frame).insetBy(dx: -8, dy: -8).contains(p) { return event }
             DispatchQueue.main.async { BoardMenu.open(session, at: p, finger: false) }
@@ -361,7 +385,7 @@ struct PointerCatcher: NSViewRepresentable {
 
         private func moved(to p: CGPoint) {
             let desk = BarDesk.shared
-            guard let session, bounds.contains(p), !desk.covered(p), window?.attachedSheet == nil else { left(); return }
+            guard let session, bounds.contains(p), !desk.covered(p), window?.attachedSheet == nil, !session.board.isTimeline else { left(); return }
             desk.pointer = p
             guard !desk.dragging else { return }
             let hot = session.control(at: p, finger: false, onThing: false)
