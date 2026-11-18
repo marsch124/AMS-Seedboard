@@ -498,7 +498,7 @@ const BOARDS = [
   { id: 'cabin', n: 'Summer cabin', col: '--b3', group: 'Pinned', info: 'Changed 2 days ago · 9 ideas · 5 done', words: 'timber roof permit walls paint form fee', bt: 'mind', cnt: '9 ideas · 5 done' },
   { id: 'garden', n: 'Garden plan', col: '--b6', group: 'Recent', info: 'Changed today · 6 ideas · 2 done', words: 'tomatoes compost fence beds', bt: 'mind', cnt: '6 ideas · 2 done' },
   { id: 'weekend', n: 'Weekend ideas', col: '--b2', group: 'Recent', info: 'Changed 3 days ago · 4 ideas', words: 'hike picnic market', bt: 'mind', cnt: '4 ideas' },
-  { id: 'tline', n: 'Summer cabin timeline', col: '--b4', group: 'Sent to PARAGON', info: 'Changed 1 week ago · 8 bars · 3 done · 1 late', words: 'plans survey clearing walls roof paint', bt: 'tl', cnt: '8 bars · 3 done · 1 late' },
+  { id: 'tline', n: 'Summer cabin timeline', col: '--b4', group: 'Sent to PARAGON', info: 'Changed 1 week ago · 9 things · 3 done · 1 late', words: 'plans survey clearing walls roof paint', bt: 'tl', cnt: '9 things · 3 done · 1 late' },
 ];
 const STARTERS = [['st-blank', 'Blank board', 'plus'], ['st-mind', 'Mind map', 'mind'], ['st-flow', 'Flow', 'flow'], ['st-pros', 'Pros and cons', 'pros'],
   ['st-plan', 'Plan in steps', 'plan'], ['st-timeline', 'Timeline', 'timeline'], ['st-who', 'Who does what', 'who'],
@@ -1027,7 +1027,7 @@ const tlb = o => set(Object.assign({ screen: 'board', bt: 'tl', bname: 'Summer c
 const withSent = (m, o) => { tlb(Object.assign({ dock: true }, o || {})); S.sent = mkSent(m); };
 const LESSONS = [
   { title: 'Home and starters', icon: 'home', steps: [
-    { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the title they stand in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and when you last changed it. New in 0.9: under the name a line says what is on the board, for example 9 ideas · 5 done. Only ideas with words count, and done means done in PARAGON. A new empty board says Empty, and a timeline says for example 8 bars · 3 done · 1 late.', target: 'row-cabin', setup: () => set({}),
+    { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the title they stand in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and when you last changed it. New in 0.9: under the name a line says what is on the board, for example 9 ideas · 5 done. Only ideas with words count, and done means done in PARAGON. A new empty board says Empty, and a timeline says for example 9 things · 3 done · 1 late.', target: 'row-cabin', setup: () => set({}),
       wide: { text: 'No board is open, so the home page shows. At the side stands the list of your boards in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and what is on the board, for example 6 ideas · 2 done (new in 0.9). The list stays there when a board is open. Press Home at the top of the list to come back to this page.' } },
     { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.9, is in the last line.', target: 'plus', setup: () => set({}),
       wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.9, are at the bottom of the list.' } },
