@@ -72,12 +72,13 @@ struct BoardList: View {
     @State private var renaming: Board?
     @State private var newName = ""
     @State private var removing: Board?
-    /// The iPhone's list with search and "+" at the bottom (for now only with the launch word `-thumbRow`).
-    private var thumbRow: Bool { phone && LaunchOptions.thumbRow }
+    /// The iPhone's list has search and "+" at the bottom, under the thumb (`ThumbRow`).
+    private var thumbRow: Bool { phone && ThumbRow.onThisDevice }
+    @State private var searching = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // `-thumbRow` (0.5, for the owner's pick): on the iPhone search and "+" sit at the bottom instead.
+            // On the iPhone search and "+" sit at the bottom instead (`ThumbRow`).
             if !thumbRow {
             Button {
                 // On the iPhone the choices come up from the bottom; a small pop-up there comes out empty.
@@ -122,7 +123,7 @@ struct BoardList: View {
                     section("Recent", BoardSearch.find(search, in: model.recent))
                     section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
                     if model.loaded && model.boards.isEmpty {
-                        Text("No boards yet. Press New board.")
+                        Text(thumbRow ? "No boards yet. Press + below." : "No boards yet. Press New board.")
                             .font(Txt.label)
                             .foregroundStyle(.secondary)
                             .padding(10)
@@ -139,7 +140,7 @@ struct BoardList: View {
             }
             .accessibilityIdentifier("boards.list")
 
-            if thumbRow { ThumbRow(search: $search, open: open) } else { Divider() }
+            if thumbRow { ThumbRow(search: $search, typing: $searching, open: open) } else { Divider() }
             HStack {
                 #if os(macOS)
                 SettingsLink { settingsLabel }
@@ -158,6 +159,7 @@ struct BoardList: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
+            .goneWhile(thumbRow && searching)
         }
         .navigationTitle("Seedboard")
         #if os(iOS)

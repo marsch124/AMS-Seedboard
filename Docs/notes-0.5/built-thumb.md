@@ -1,89 +1,92 @@
-# Built: thumb — pick 31, the thumb row (phase 1: pictures first)
+# Built: thumb — pick 31, the thumb row
 
-18 Nov 2026. Branch `wt-thumb`. Phase 1 only: the new layout exists behind a launch word so Martin can compare
-two pictures. Without the launch word the app is exactly as in 0.4. Nothing here is for the texts builder yet:
-What's new, How it works and the specification get their words only after his pick (phase 2).
+18 Nov 2026. Branch `wt-thumb`. Phase 1 put the new layout behind a launch word for two pictures; Martin picked
+the NEW layout (search and the round green "+" at the bottom; the app's own row on every iOS version; "Settings"
+and the version stay the last line). Phase 2 (this file) makes it THE iPhone layout. There is no launch word.
 
-## What is built
+## What is built — what Martin sees
 
-**Only on the iPhone layout** (the narrow layout, `phone == true`) and **only with the launch word `-thumbRow`**:
+**On the iPhone only** (the iPhone itself, in its narrow layout). **Mac and iPad are exactly as in 0.4**: there the
+green "New board" button and the "Search boards" field stay at the top of the list, also in a narrow iPad window.
 
-- The green **"New board"** button and the **"Search boards"** field are gone from the top of the boards list.
+- The green **"New board"** button and the **"Search boards"** field are no longer at the top of the boards list.
   The list (Pinned, Recent, Sent to PARAGON) starts right under the title "Seedboard".
-- At the **bottom** of the list, above the line with "Settings" and the version number, sits ONE row, the thumb row:
+- At the **bottom**, between the last board row and the line with "Settings" and the version number, sits ONE
+  row, the thumb row:
   - a thin dividing line over the row (it takes the place of the line that was over "Settings");
-  - left: the search field, **44 points tall**, round at both ends (a capsule), the same faint grey ground
-    as today's field (6 % of the text colour), the hand-drawn green magnifier (18 points) and the same words
-    **"Search boards"**. When something is typed, the hand-drawn round "x" (19 points) at its right end empties it,
-    as today;
+  - left: the search field, **44 points tall**, round at both ends (a capsule), the faint grey ground of the old
+    field (6 % of the text colour), the hand-drawn green magnifier (18 points) and the same words
+    **"Search boards"**. A press anywhere on the field starts typing (not only on its words). When something is
+    typed, the hand-drawn round "x" (19 points) at its right end empties it, as before;
   - right, 10 points beside it: a **round "+" button, 44 points across, in the boards' full green**
-    (`Part.boards.fill`, day `#2E8B57`), with the white hand-drawn plus (22 points). It has no words; VoiceOver
-    reads "New board". Pressed, it gets 12 % darker and 97 % of its size (never see-through);
-  - room around the row: 12 points left and right, 8 above, 4 below.
-- "+" opens the same page as "New board" does today: the Starters page coming up from the bottom
-  (same heights, same choices, same result — the new board opens).
-- The search works as before (it is the same search words, the same line "No board has these words").
-- "Settings" and the version number stay where they are, as the last line of the page.
-
-**Mac and iPad: nothing changed**, with or without the launch word (the row is only made when the list is in
-its iPhone layout).
+    (`Part.boards.fill`), with the white hand-drawn plus (22 points). It has no words; VoiceOver reads
+    "New board". Pressed, it gets 12 % darker and 97 % of its size (never see-through);
+  - room around the row: 12 points left and right, 8 above, 4 below (8 below while typing, over the keyboard).
+- **"+"** opens the same page "New board" opened before: the Starters page coming up from the bottom
+  (same heights, same choices, same result — the new board opens). It also works with the keyboard up
+  (the keyboard goes away and the Starters page comes up).
+- **Search** works as before (the same words find the same boards, the same line "No board has these words").
+- **While typing in the search**, the keyboard comes up and the thumb row rides on top of it, so the field and
+  "+" stay in reach; the "Settings" line steps aside for that time and comes back when typing ends
+  (Search key on the keyboard, or the keyboard goes away).
+- **"Settings" and the version number** stay the very last line of the page.
+- **An empty list** (no boards at all) now says **"No boards yet. Press + below."** on the iPhone
+  (Mac and iPad keep "No boards yet. Press New board."). Only the words changed here; the `feel` lane replaces
+  the iPhone's empty list with starter cards — at the join its version wins, only the words matter.
+- **Night:** the field's ground is a faint grey on black, the "+" keeps the boards' green, the line over the row
+  is the night line (seen).
+- With the 12 sample boards all 12 rows fit on the iPhone 18 Pro above the row (before: 11 and a cut 12th).
 
 ## Launch words
 
-- `-thumbRow` — the iPhone's list with the thumb row. Example for pictures:
-  `xcrun simctl launch <simulator> com.schabbauer.AMSSeedboard -thumbRow -sampleData` (`-sampleData` last).
-- `-thumbRow -search cabin -sampleData` also works (the existing `-search <word>` fills the field at the bottom).
+- None new; `-thumbRow` is gone. For pictures: `-sampleData` (the row is always there on the iPhone),
+  `-search cabin -sampleData` fills the field at the bottom, `-night -sampleData` for the night look.
 
 ## Identifiers
 
-- `boards.thumbRow` — the row (a container; children stay findable).
-- `boards.new` — the round "+" (the same identifier as today's "New board" button, which is not on screen then).
-- `boards.search`, `boards.searchClear` — the field and its "x" (the same identifiers as today's field).
+- `boards.thumbRow` — the row (a container; its children stay findable).
+- `boards.new` — the round "+" on the iPhone (on Mac and iPad: the green "New board" at the top, as before).
+- `boards.search`, `boards.searchClear` — the field and its "x" (the same identifiers on every device).
+- Existing screen tests that press `boards.new` (Draw, Typing, Bar, Timeline, Touch, Shapes, Seedboard) or type
+  into `boards.search` / press `boards.searchClear` (Home) find them unchanged: same identifiers, and "+" opens the
+  same Starters page with the same `starter.*` identifiers. Checked by reading, not run.
+
+## Screen test
+
+- NEW `UITests/ThumbUITests.swift`, `testSearchAndPlusSitUnderTheThumbOnTheIPhone` (iPhone only; skipped on
+  iPad and Mac). It locks his pick: `boards.search` and `boards.new` lie in the lower quarter of the screen, wholly
+  above the "Settings" line (`boards.settings`), the "+" right of the field and at least 44 points; no board row in
+  sight starts below them; after a press on the search the "Settings" line is gone and, when an on-screen keyboard
+  shows, the field and "+" sit above it and "+" can be pressed. **Run once on "Seedboard iPhone 18 Pro": passed
+  (19 s).**
 
 ## Code
 
-- NEW `App/Sources/ThumbRow.swift`: `LaunchOptions.thumbRow`, `ThumbRow`, `ThumbSearchField`, `RoundFilledButton`.
-- `App/Sources/RootView.swift`, four small hunks in `BoardList`: the property `thumbRow` (= `phone` and the
-  launch word); `if !thumbRow {` … `}` around today's "New board" button and search field (the lines inside are
-  NOT re-indented, to keep the hunk small); `if thumbRow { ThumbRow(…) } else { Divider() }` in place of the
-  `Divider()` over the Settings line.
+- `App/Sources/ThumbRow.swift`: `ThumbRow` (with `onThisDevice` = the iPhone itself), `ThumbSearchField`
+  (tells the list when it is typed in), `RoundFilledButton`, `View.goneWhile(_:)`. `LaunchOptions.thumbRow` removed.
+- `App/Sources/RootView.swift`, small hunks in `BoardList`: `thumbRow` (= `phone` and the iPhone itself) and
+  `searching`; `if !thumbRow {` … `}` around the old "New board" button and search field (lines inside NOT
+  re-indented); the empty-list words; `ThumbRow(…)` in place of the `Divider()` over the Settings line;
+  `.goneWhile(thumbRow && searching)` on the Settings line.
 - No stored field, no new rule (so no new data test), no new mark, nothing in `project.yml`.
 
-## Decisions I took (the lead or Martin may want otherwise)
+## Decisions taken
 
-- **The app's own row, not Apple's bottom search bar.** The panel note names Apple's own bottom search for
-  iOS 26 (`DefaultToolbarItem(kind: .search, placement: .bottomBar)`) and a hand-made row for iOS 17–18. I built
-  the hand-made row for EVERY iOS version: Apple's bar brings Apple's stock magnifier and its glass look, which
-  breaks the rule "hand-drawn marks only", and one row that looks the same on every iPhone is simpler to lock
-  with a screen test.
-- **"Settings" and the version stay the very last line**, the thumb row sits right above it. So nothing else he
-  placed moves; the row is still well inside the thumb's reach.
+- The app's own row on every iOS version, not Apple's bottom search bar (his pick).
+- A narrow iPad window keeps the top layout ("Mac and iPad exactly as they are").
+- A big iPhone turned on its side, where the list becomes a side column, keeps the top layout in that column.
 
-## Pictures
+## Looked at (simulator "Seedboard iPhone 18 Pro", `-sampleData`)
 
-In `/private/tmp/claude-501/-Users-martinschabbauer-Obsidian-Claude-Code/17034763-8459-4a3b-a9bb-13fd5828f01e/scratchpad/pics/`,
-simulator "Seedboard iPhone 18 Pro", by day, the same sample boards in both:
+Pictures in `/private/tmp/claude-501/-Users-martinschabbauer-Obsidian-Claude-Code/17034763-8459-4a3b-a9bb-13fd5828f01e/scratchpad/pics/`:
+`p2-day.png`, `p2-night.png`, `p2-keyboard-night.png` (typing "cab": Summer cabin + Sketch ideas, row on the
+keyboard, Settings gone), `p2-starters-night.png` ("+" pressed with the keyboard up → Starters page).
+Also seen: the Search key ends typing and "Settings" comes back.
 
-- `thumb-today.png` — `-sampleData`
-- `thumb-new.png` — `-thumbRow -sampleData`
+## NOT seen
 
-Seen in the pictures (both looked at): the same 12 sample boards; today 11 whole rows fit and the 12th is cut
-by the Settings line, with the row all 12 fit; the row sits between the list and the "Settings" line, well clear
-of the home indicator (its middle is about 92 points above the screen's lower edge on the iPhone 18 Pro).
-
-## NOT built (phase 2, after his pick)
-
-- Making it the real layout (no launch word) or taking it out.
-- The ONE screen test that locks where search and "+" sit.
-- The line of an empty list still says "No boards yet. Press New board." — with the row it should name the "+".
-- While the keyboard is up, the "Settings" line rises with the row; hiding it while typing would give the list
-  more room.
-
-## NOT seen running
-
-- The keyboard up over the row (typing into the search at the bottom), the Starters page coming up from "+",
-  the night look, a small iPhone, VoiceOver.
-- The Mac and the iPad were built, not looked at (the code cannot reach them: `phone` is false there).
+- VoiceOver, a small iPhone (SE size), an iPhone on its side.
+- Mac and iPad were built, not looked at (the row cannot appear there).
 
 ## Drive-by problems seen and left
 
