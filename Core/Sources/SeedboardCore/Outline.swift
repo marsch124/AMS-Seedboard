@@ -211,7 +211,10 @@ public extension Board {
         // A named frame is a heading: "Pros:" with the things in it; what lies in no such frame stands under "Notes:".
         // Both in reading order (SendFrames.swift).
         let notes = ParagonExport.framed(self) { $0.kind == .note || $0.kind == .text || $0.kind == .picture }
-        func noteLine(_ i: Item) -> String { "- " + (i.kind == .picture ? ParagonExport.pictureName(of: i) : one(i.text)) }
+        func noteLine(_ i: Item) -> String {
+            if i.kind == .note, TickList.hasTicks(i.text) { return TickList.bullets(i.text).joined(separator: "\n") }
+            return "- " + (i.kind == .picture ? ParagonExport.pictureName(of: i) : one(i.text))
+        }
         if !notes.loose.isEmpty { sections.append((["Notes:"] + notes.loose.map(noteLine)).joined(separator: "\n")) }
         for group in notes.groups { sections.append(([group.name + ":"] + group.things.map(noteLine)).joined(separator: "\n")) }
 

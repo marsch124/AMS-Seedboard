@@ -87,7 +87,7 @@ public extension Board {
     /// opposite corner never moves. Returns the guide lines.
     @discardableResult
     mutating func size(_ id: UUID, corner: Corner, from base: CGRect, by delta: CGSize, reach: CGFloat) -> [Snap.Guide] {
-        guard item(id) != nil else { return [] }
+        guard let thing = item(id), thing.locked != true else { return [] }
         let asked = corner.rect(from: base, by: delta, least: leastSize(of: id))
         let guides = resizeSnapped(id, to: asked, reach: reach)
         guard let i = index(of: id) else { return guides }

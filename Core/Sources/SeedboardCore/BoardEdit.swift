@@ -151,8 +151,9 @@ public extension Board {
     }
 
     /// Moves exactly these items by the amount (use `carried(by:)` first).
+    /// A pinned thing (`locked`) stays where it is; the others of the group move on (0.9, Marks09.swift).
     mutating func move(_ ids: Set<UUID>, by delta: CGSize) {
-        for i in items.indices where ids.contains(items[i].id) {
+        for i in items.indices where ids.contains(items[i].id) && items[i].locked != true {
             items[i].x += Double(delta.width)
             items[i].y += Double(delta.height)
         }
@@ -160,7 +161,7 @@ public extension Board {
 
     /// Gives an item a new size, never smaller than it can sensibly be.
     mutating func resize(_ id: UUID, to rect: CGRect) {
-        guard let i = index(of: id) else { return }
+        guard let i = index(of: id), items[i].locked != true else { return }
         // A drawing's lines stretch with its box (Ink.swift).
         if items[i].kind == .drawing { scaleDrawing(id, to: rect); return }
         // A picture keeps its shape (Pictures.swift).

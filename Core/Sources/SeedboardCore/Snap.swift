@@ -306,7 +306,8 @@ public extension Board {
     @discardableResult
     mutating func moveSnapped(_ ids: Set<UUID>, by delta: CGSize, reach: CGFloat) -> [Snap.Guide] {
         // Ideas that hang under another are placed by their map: only the centre counts.
-        let own = items.filter { ids.contains($0.id) && !($0.kind == .idea && $0.parent != nil) }
+        let own = items.filter { ids.contains($0.id) && !($0.kind == .idea && $0.parent != nil) && $0.locked != true }
+        guard !own.isEmpty else { return [] }
         let result = Snap.move(own.map(\.frame), by: delta, targets: snapTargets(without: ids), reach: reach,
                                middles: !own.contains { $0.kind == .frame })
         move(ids, by: result.delta)

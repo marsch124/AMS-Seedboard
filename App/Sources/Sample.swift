@@ -169,6 +169,8 @@ enum Sample {
             sketch(now: now),
             // Pictures on a board (0.3), for pictures: `-board balcony` (SamplePictures.swift).
             balcony(now: now),
+            // 0.9: vote dots, legend, tick list, link title, pinned note — for pictures: `-board Marks` (SampleMarks.swift).
+            marks(now: now),
         ]
     }
 

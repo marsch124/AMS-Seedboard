@@ -7,7 +7,7 @@ import CoreGraphics
 public extension Board {
     /// The chosen things that can be tidied, in the board's own order.
     func tidyable(_ ids: Set<UUID>) -> [Item] {
-        items.filter { ids.contains($0.id) && !($0.kind == .idea && $0.parent != nil) && !isHidden($0.id) }
+        items.filter { ids.contains($0.id) && !($0.kind == .idea && $0.parent != nil) && !isHidden($0.id) && $0.locked != true }
     }
 
     /// True when the things are spread more sideways than up and down: they make a row.

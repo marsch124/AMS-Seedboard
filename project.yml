@@ -44,6 +44,8 @@ targets:
         com.apple.security.print: true
         # 0.9: milestones into the calendar (the Mac's sandbox asks for it).
         com.apple.security.personal-information.calendars: true
+        # 0.9: the title of a web page in a thing's words is fetched (the Mac's sandbox asks for it).
+        com.apple.security.network.client: true
         com.apple.developer.icloud-services: [CloudDocuments]
         # Seedboard's own container first; PARAGON's second, so a board can be handed over.
         com.apple.developer.icloud-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
