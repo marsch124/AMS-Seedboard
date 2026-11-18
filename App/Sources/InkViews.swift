@@ -77,6 +77,7 @@ struct DrawPlate: View {
                 tile(.thick, "draw.thick", "Thick", on: !desk.rubber && desk.width == .thick) { desk.pick(width: .thick) }
             }
             dots
+            InkTidySwitch(session: session, desk: desk)
             Button("Done") {
                 desk.leave()
                 session.takeKeys()

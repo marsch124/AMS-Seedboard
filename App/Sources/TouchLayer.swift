@@ -106,6 +106,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     private let secondary = UITapGestureRecognizer()
     /// Press and hold: a still press of half a second opens the same menu (BoardMenu.swift).
     let hold = HoldWatch()
+    /// Writing straight onto a shape with the Pencil (ShapeScribble.swift); off unless `Finger.scribbleOntoShapes`.
+    private let scribble = ShapeScribble()
 
     /// One press as it goes on.
     private final class Track {
@@ -186,6 +188,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
             recogniser.delaysTouchesEnded = false
             addGestureRecognizer(recogniser)
         }
+        scribble.attach(to: self)
     }
 
     @available(*, unavailable)
@@ -260,6 +263,20 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
             send(.lost(takeBack: true), fingerPress, fingerTrack)
         }
         if inkStroke.kind != .pencil { inkStroke.giveUp() }
+    }
+
+    /// How far the Pencil's press has gone from where it landed; nil when the Pencil presses nothing (ShapeScribble.swift).
+    var pencilStrayed: CGFloat? {
+        guard pencilTrack.live, !pencilTrack.ignored else { return nil }
+        return hypot(pencilTrack.last.x - pencilTrack.start.x, pencilTrack.last.y - pencilTrack.start.y)
+    }
+
+    /// The Pencil is writing onto the thing it pressed: the press is over for the board, a small shove is taken back.
+    func giveUpPencil() {
+        hold.cancel()
+        guard pencilTrack.live, !pencilTrack.ignored else { return }
+        pencilTrack.ignored = true
+        send(.lost(takeBack: true), pencilPress, pencilTrack)
     }
 
     func gestureRecognizer(_ recogniser: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
