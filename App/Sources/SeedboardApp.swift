@@ -24,6 +24,9 @@ struct SeedboardApp: App {
     #if os(iOS)
     // 0.5: a long press on the app's icon (QuickActions.swift).
     @UIApplicationDelegateAdaptor(SeedAppDelegate.self) private var iconMenu
+    #elseif os(macOS)
+    // 0.5: the Dock menu, Services, and the taker of a photo from the iPhone (MacHabits.swift).
+    @NSApplicationDelegateAdaptor(MacDelegate.self) private var macDelegate
     #endif
 
     var body: some Scene {
@@ -37,7 +40,12 @@ struct SeedboardApp: App {
             SeedMenus(model: model)
             BoardCommands()
             ClipCommands()
+            // 0.5: Help ▸ How Seedboard Works and What's New; File ▸ Import from iPhone or iPad.
+            MacCommands()
         }
+
+        // 0.5: the guide in a small window of its own (Help menu, ⌘?).
+        GuideScene()
 
         Settings {
             SettingsView().environmentObject(model)
@@ -69,6 +77,8 @@ struct SeedboardApp: App {
             .modifier(OutsideDoors(model: model))
             // 0.5: three fingers swiped and a shake undo on the open board (SystemUndoHost.swift; iPhone and iPad).
             .modifier(SystemUndoHost(model: model))
+            // 0.5, the Mac only: knows the boards window, Quick Look of a picture (MacHabits.swift).
+            .modifier(MacRoot())
             // Leaving the app keeps what is being typed and writes everything at once.
             .onChange(of: phase) { _, new in
                 if new != .active { model.leaving() }

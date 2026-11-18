@@ -82,6 +82,15 @@ targets:
         NSUserActivityTypes: [com.schabbauer.AMSSeedboard.board]
         # 0.5: a photo straight onto a board (iPhone and iPad), and a photo or scan from the iPhone on the Mac.
         NSCameraUsageDescription: To put a photo straight onto a board.
+        # 0.5, the Mac: words marked in another app become a board (right-click ▸ Services). `MacDelegate` answers.
+        # The empty NSRequiredContext makes the line show without being switched on in System Settings first.
+        NSServices:
+          - NSMenuItem:
+              default: New Seedboard Board from Selection
+            NSMessage: newBoardFromSelection
+            NSPortName: AMSSeedboard
+            NSSendTypes: [public.utf8-plain-text, NSStringPboardType]
+            NSRequiredContext: {}
         # So the app may ask whether PARAGON is installed.
         LSApplicationQueriesSchemes: [amspara]
         NSUbiquitousContainers:

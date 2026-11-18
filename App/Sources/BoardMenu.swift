@@ -69,7 +69,8 @@ enum BoardMenu {
         #if os(macOS)
         guard let view = PointerCatcher.PointerView.current else { return false }
         // The system's own menu: it stays until a line is picked or it is left.
-        MacMenu.make(found.actions).popUp(positioning: nil, at: p, in: view)
+        // (In the menu of empty board "Import from iPhone or iPad" follows "Picture…": MacHabits.swift.)
+        MacCamera.popUp(MacMenu.make(found.actions), at: p, in: view, session: session)
         session.takeKeys()
         #else
         BarDesk.shared.menu = found
