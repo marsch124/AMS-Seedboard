@@ -42,7 +42,11 @@ struct CanvasView: View {
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
-    private enum Target { case item(UUID), link(UUID), plus(UUID, Direction), size(UUID), empty }
+    private enum Target {
+        case item(UUID), link(UUID), plus(UUID, Direction), size(UUID), empty
+        /// An end dot of the chosen arrow (true: its start).
+        case end(UUID, Bool)
+    }
 
     private enum Drag {
         case idle
@@ -52,6 +56,8 @@ struct CanvasView: View {
         case sizing(UUID, CGRect)
         case plus(UUID, Direction)
         case joining(UUID)
+        /// An end of an arrow is dragged to another side or another shape (true: its start).
+        case end(UUID, Bool)
         case marquee
         case panning(CGSize)
     }
@@ -170,18 +176,17 @@ struct CanvasView: View {
         if let id = session.editing {
             if let item = session.board.item(id) {
                 itemField(item)
-            } else if let link = session.board.links.first(where: { $0.id == id }),
-                      let a = session.board.item(link.from), let b = session.board.item(link.to) {
-                let label = session.toScreen(Route.path(from: a.frame, to: b.frame, style: link.style).label)
+            } else if let spot = session.wordsField(for: id) {
+                // An arrow's words: typed where they stand, beside the line near its start.
                 field(isIdea: false)
                     .font(.system(size: 13 * session.scale, weight: .medium))
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(spot.leading ? .leading : .trailing)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .frame(width: 170)
                     .background(paint.plate, in: RoundedRectangle(cornerRadius: 6))
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(paint.chosen, lineWidth: 1.5))
-                    .position(label)
+                    .position(spot.centre)
             }
         }
     }
@@ -189,6 +194,10 @@ struct CanvasView: View {
     private func field(isIdea: Bool) -> some View {
         TextField("", text: Binding(get: { session.draft }, set: { session.typed($0) }), axis: .vertical)
             .textFieldStyle(.plain)
+            // A flow shape: Tab (or ⌘ with an arrow key) makes the next shape. Everything else passes on.
+            .onKeyPress(keys: [.tab, .rightArrow, .leftArrow, .downArrow, .upArrow], phases: .down) { press in
+                session.flowKey(press) ? .handled : .ignored
+            }
             .foregroundStyle(paint.ink)
             .focused($typing)
             .id(fieldIdentity(isIdea: isIdea))
@@ -285,6 +294,7 @@ struct CanvasView: View {
     }
 
     private func target(at p: CGPoint) -> Target {
+        if let end = session.linkEnd(at: p) { return .end(end.link, end.start) }
         let board = session.board
         if !session.readOnly, session.editing == nil, session.selection.count == 1,
            let id = session.selection.first, let item = board.item(id), !session.linking {
@@ -379,6 +389,8 @@ struct CanvasView: View {
             guard let item = board.item(id) else { drag = .idle; return }
             session.liveStart()
             drag = .sizing(id, item.frame)
+        case .end(let id, let start):
+            drag = .end(id, start)
         case .link, .empty:
             #if os(macOS)
             drag = .marquee
@@ -419,6 +431,11 @@ struct CanvasView: View {
         case .panning(let base):
             // The same step as every other way of moving the view, so the board knows the owner moved it.
             session.slide(from: base, by: value.translation)
+        case .end(let id, let start):
+            // A dashed line from the end that stays; the shape the end would land on lights up.
+            let pull = session.endPull(id, start: start, to: here)
+            rubber = pull.map { Rubber(from: $0.from, to: here) }
+            dropTarget = pull?.over
         case .idle, .waiting:
             break
         }
@@ -452,7 +469,8 @@ struct CanvasView: View {
                 var made: UUID?
                 let spot = session.board.landing(from: id, at: here, reach: SnapShow.reach(session.scale))?.centre ?? here
                 session.change { board in
-                    let new = board.add(item.kind, centre: spot, colour: item.colour)
+                    let kind = item.kind.nextInFlow
+                    let new = board.add(kind, centre: spot, colour: kind == item.kind ? item.colour : "")
                     board.link(from: id, to: new)
                     made = new
                 }
@@ -465,6 +483,8 @@ struct CanvasView: View {
                 session.linking = false
                 session.linkFrom = nil
             }
+        case .end(let id, let start):
+            session.moveLinkEnd(id, start: start, to: here)
         case .marquee, .panning, .idle:
             break
         }
@@ -476,7 +496,7 @@ struct CanvasView: View {
         switch t {
         case .plus(let id, let d):
             if session.board.item(id)?.kind == .idea { session.addChild(of: id) } else { session.addNext(from: id, direction: d) }
-        case .size:
+        case .size, .end:
             break
         case .item(let id):
             if session.linking {
@@ -556,6 +576,8 @@ struct CanvasView: View {
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard session.editing == nil else { return .ignored }
+        // A flow shape: Tab (or ⌘ with an arrow key) makes the next shape.
+        if session.flowKey(press) { return .handled }
         let command = press.modifiers.contains(.command)
         let item = session.single
         if command {

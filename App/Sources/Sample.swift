@@ -74,6 +74,41 @@ enum Sample {
             return board
         }
 
+        // Every look an arrow can have (0.2), for pictures: `-board Arrow`.
+        var looks = Board(title: "Arrow looks", created: now.addingTimeInterval(-86_400 * 30), colour: "blue")
+        let order = looks.add(.box, centre: CGPoint(x: 0, y: 0), text: "Order")
+        let stock = looks.add(.box, centre: CGPoint(x: 300, y: 0), text: "Stock")
+        let supplier = looks.add(.box, centre: CGPoint(x: 620, y: 0), text: "Supplier", colour: "orange")
+        let closed = looks.add(.note, centre: CGPoint(x: 620, y: -180), text: "Closed on\nSundays", colour: "yellow")
+        let pack = looks.add(.box, centre: CGPoint(x: 0, y: 230), text: "Pack")
+        let send = looks.add(.box, centre: CGPoint(x: 300, y: 230), text: "Send")
+        let begin = looks.add(.round, centre: CGPoint(x: 0, y: 440), text: "Start", colour: "green")
+        let wait = looks.add(.box, centre: CGPoint(x: 300, y: 440), text: "Wait a day")
+        let done = looks.add(.box, centre: CGPoint(x: 620, y: 440), text: "Done")
+        // Both ways, with a word beside the line.
+        if let l = looks.link(from: order, to: stock, text: "checks"), let i = looks.links.firstIndex(where: { $0.id == l }) {
+            looks.links[i].ends = .bothWays
+            looks.links[i].colour = "blue"
+        }
+        // Dashed.
+        if let l = looks.link(from: stock, to: supplier, text: "if low"), let i = looks.links.firstIndex(where: { $0.id == l }) {
+            looks.links[i].isDashed = true
+            looks.links[i].colour = "orange"
+        }
+        // A plain line, no ends.
+        if let l = looks.link(from: closed, to: supplier), let i = looks.links.firstIndex(where: { $0.id == l }) {
+            looks.links[i].ends = .none
+        }
+        looks.link(from: order, to: pack)
+        // There and back: two lines side by side on the same sides, each with its own word.
+        looks.link(from: pack, to: send, text: "ready")
+        looks.link(from: send, to: pack, text: "missing")
+        // Two arrows out of one side, and one of them goes round the shape in its way.
+        looks.link(from: begin, to: wait)
+        looks.link(from: wait, to: done)
+        looks.link(from: begin, to: done, text: "skip")
+        looks.changed = looks.created
+
         var ideas = made(.mindMap, "App ideas", "pink", daysAgo: 1)
         ideas.pinned = true
         return [
@@ -85,6 +120,7 @@ enum Sample {
             made(.flow, "Packing flow", "teal", daysAgo: 6),
             made(.mindMap, "Training year", "purple", daysAgo: 9),
             made(.steps, "Workshop bench", "green", daysAgo: 20, sent: true),
+            looks,
         ]
     }
 }

@@ -471,6 +471,10 @@ struct SelectionBar: View {
         ForEach(LinkStyle.allCases, id: \.self) { style in
             chip(style.word, .app(.seedArrow), "sel.style.\(style.rawValue)", .arrows, on: link.style == style) { session.setLinkStyle(style) }
         }
+        ForEach(LinkEnds.allCases, id: \.self) { ends in
+            chip(ends.word, .new(ends.mark), "sel.ends.\(ends.rawValue)", .arrows, on: link.ends == ends) { session.setLinkEnds(ends) }
+        }
+        chip("Dashed", .new(.dashed), "sel.dashed", .arrows, on: link.isDashed) { session.toggleLinkDashed() }
         chip("Turn round", .app(.repeat), "sel.turn", .arrows) { session.turnLinkRound() }
         chip("Colour", .app(.palette), "sel.colour", .arrows, on: showColours) { showColours.toggle() }
     }

@@ -134,10 +134,11 @@ final class EditTests: XCTestCase {
 
     func testAddNextJoinsAndKeepsKindAndSize() {
         var board = Board()
-        let a = board.add(.diamond, centre: .zero, colour: "blue")
+        // An oval is followed by its own kind (a diamond and a round box are followed by a Box: ArrowTests).
+        let a = board.add(.oval, centre: .zero, colour: "blue")
         let n = board.addNext(from: a, direction: .right)!
         let src = board.item(a)!, next = board.item(n)!
-        XCTAssertEqual(next.kind, .diamond)
+        XCTAssertEqual(next.kind, .oval)
         XCTAssertEqual(next.w, src.w); XCTAssertEqual(next.h, src.h)
         XCTAssertEqual(next.colour, "blue")
         XCTAssertEqual(next.x, src.x + src.w + 70, accuracy: 0.001)

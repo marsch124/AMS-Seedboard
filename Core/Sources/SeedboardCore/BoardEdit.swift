@@ -30,22 +30,26 @@ public extension Board {
     mutating func link(from: UUID, to: UUID, text: String = "") -> UUID? {
         guard from != to, let a = item(from), let b = item(to), a.kind != .frame, b.kind != .frame else { return nil }
         if let same = links.first(where: { $0.from == from && $0.to == to }) { return same.id }
-        let link = Link(from: from, to: to, text: text)
+        let link = Link(from: from, to: to, text: text.isEmpty ? wordForNewArrow(from: from) : text)
         links.append(link)
         return link.id
     }
 
-    /// The next shape in a flow: the same kind and size, one step away in the direction,
-    /// already joined by an arrow. It steps aside when the place is taken.
+    /// The next shape in a flow: the same kind and size (a plain Box after a diamond or a round box),
+    /// one step away in the direction, middle on middle, already joined by an arrow.
+    /// It steps aside when the place is taken. An arrow that carries a word gets 30 more room.
     @discardableResult
     mutating func addNext(from id: UUID, direction: Direction, gap: Double = 70) -> UUID? {
         guard let source = item(id), source.kind != .idea, source.kind != .frame else { return nil }
-        var next = Item(kind: source.kind, w: source.w, h: source.h, colour: source.colour)
+        let kind = source.kind.nextInFlow
+        var next = kind == source.kind ? Item(kind: kind, w: source.w, h: source.h, colour: source.colour) : Item(kind: kind)
+        let word = wordForNewArrow(from: id)
+        let gap = word.isEmpty ? gap : gap + 30
         switch direction {
-        case .right: next.x = source.x + source.w + gap; next.y = source.y
-        case .left: next.x = source.x - gap - next.w; next.y = source.y
-        case .down: next.x = source.x; next.y = source.y + source.h + gap
-        case .up: next.x = source.x; next.y = source.y - gap - next.h
+        case .right: next.x = source.x + source.w + gap; next.y = source.y + (source.h - next.h) / 2
+        case .left: next.x = source.x - gap - next.w; next.y = source.y + (source.h - next.h) / 2
+        case .down: next.x = source.x + (source.w - next.w) / 2; next.y = source.y + source.h + gap
+        case .up: next.x = source.x + (source.w - next.w) / 2; next.y = source.y - gap - next.h
         }
         // Step aside (down for sideways steps, right for up/down steps) until the place is free.
         var tries = 0
@@ -54,7 +58,7 @@ public extension Board {
             tries += 1
         }
         items.append(next)
-        links.append(Link(from: id, to: next.id))
+        links.append(Link(from: id, to: next.id, text: word))
         return next.id
     }
 
@@ -207,10 +211,10 @@ public extension Board {
 
     /// The arrow under the point, if one passes within the distance.
     func hitLink(_ point: CGPoint, within distance: Double = 8) -> UUID? {
+        let all = arrows()
         for link in links.reversed() {
-            guard let a = item(link.from), let b = item(link.to), !isHidden(a.id), !isHidden(b.id) else { continue }
-            let path = Route.path(from: a.frame, to: b.frame, style: link.style)
-            if Route.distance(from: point, to: path.points) <= distance { return link.id }
+            guard let arrow = all[link.id] else { continue }
+            if Route.distance(from: point, to: arrow.outline) <= distance { return link.id }
         }
         return nil
     }

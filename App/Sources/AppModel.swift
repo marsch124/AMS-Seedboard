@@ -84,6 +84,12 @@ final class AppModel: ObservableObject {
         }
         // For pictures: `-type` starts typing in the picked thing (the bar above the keyboard shows).
         if LaunchOptions.arguments.contains("-type"), let session, let id = session.selection.first { session.beginEdit(id) }
+        // For pictures: `-pickArrow <word>` chooses the first arrow whose words hold it.
+        if let word = LaunchOptions.value(for: "-pickArrow"), let session,
+           let link = session.board.links.first(where: { $0.text.localizedCaseInsensitiveContains(word) }) {
+            session.selection = []
+            session.selectedLink = link.id
+        }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // A link that arrived before the boards were loaded is followed now.
         if let id = waitingLink { follow(id) }
