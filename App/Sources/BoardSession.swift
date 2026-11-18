@@ -29,6 +29,8 @@ final class BoardSession: ObservableObject {
     @Published var linkFrom: UUID?
     /// iPhone and iPad: each press adds to what is chosen (the Mac holds Shift instead).
     @Published var choosingMore = false
+    /// The picture whose "Crop the picture" page is open (CropPage.swift).
+    @Published var cropping: UUID?
     /// The name of a frame's lane is being typed (LanesView.swift).
     @Published var laneTyping: LaneTyping?
     @Published private(set) var undoCount = 0
@@ -204,10 +206,17 @@ final class BoardSession: ObservableObject {
 
     // MARK: Typing
 
-    func beginEdit(_ id: UUID, isNew: Bool = false) {
+    /// Two quick presses on a picture, or its Caption button: the caption is typed in place under the picture.
+    func beginCaption(_ id: UUID) {
+        guard board.item(id)?.kind == .picture else { return }
+        beginEdit(id, caption: true)
+    }
+
+    func beginEdit(_ id: UUID, isNew: Bool = false, caption: Bool = false) {
         guard !readOnly else { return }
-        // A drawing and a picture have no words.
-        guard board.item(id)?.kind != .drawing, board.item(id)?.kind != .picture else { return }
+        // A drawing has no words; a picture has only its caption, which only the caption button and a double press start
+        // (a letter key or Return on a chosen picture still does not start typing).
+        guard board.item(id)?.kind != .drawing, caption || board.item(id)?.kind != .picture else { return }
         if editing != nil { commitEdit() }
         if let item = board.item(id) {
             draft = item.text

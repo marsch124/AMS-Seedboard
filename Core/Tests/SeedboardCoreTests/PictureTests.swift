@@ -96,10 +96,10 @@ final class PictureTests: XCTestCase {
         XCTAssertEqual(PictureKeeping.deletable(files: files, named: [], now: now, complete: false), [])
     }
 
-    func testTheBoardIsFormat3AndKeepsThePictureThroughASave() throws {
+    func testTheBoardIsInTheCurrentFormatAndKeepsThePictureThroughASave() throws {
         var (b, _) = board()
         b.touch()
-        XCTAssertEqual(b.format, 3)
+        XCTAssertEqual(b.format, Board.currentFormat)
         let back = try JSONDecoder().decode(Board.self, from: JSONEncoder().encode(b))
         XCTAssertEqual(back.pictureNames, ["a.jpg"])
     }

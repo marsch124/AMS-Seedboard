@@ -69,9 +69,12 @@ struct PictureHost: ViewModifier {
             .onReceive(PictureStore.shared.arrived) { _ in session.objectWillChange.send() }
             .onReceive(PictureDesk.shared.ask) { place in ask(at: place) }
             .onAppear {
-                guard LaunchOptions.arguments.contains("-pickPicture"),
+                // Launch words for pictures of the screen: -pickPicture chooses the first picture, -cropPicture opens its crop page.
+                let crop = LaunchOptions.arguments.contains("-cropPicture")
+                guard LaunchOptions.arguments.contains("-pickPicture") || crop,
                       let item = session.board.items.first(where: { $0.kind == .picture }) else { return }
                 session.select(item.id)
+                if crop { session.cropping = item.id }
             }
         #if os(macOS)
         base
@@ -153,6 +156,37 @@ extension BoardSession {
     }
 }
 
+/// The caption's lettering: the app's small label size (12 points on the board, grown and shrunk with the board).
+enum PictureCaption {
+    static let size: CGFloat = 12
+    static let font = Font.system(size: size)
+
+    /// The caption broken into lines no wider than the picture (a word wider than that is cut where it must).
+    static func lines(_ words: String, width: CGFloat) -> [String] {
+        func wide(_ text: String) -> CGFloat { Lettering.measure(text, size: size, bold: false, maxWidth: .greatestFiniteMagnitude).width }
+        var out: [String] = []
+        for paragraph in words.components(separatedBy: .newlines) {
+            var line = ""
+            for word in paragraph.split(separator: " ") {
+                var piece = String(word)
+                let tryLine = line.isEmpty ? piece : line + " " + piece
+                if wide(tryLine) <= width || line.isEmpty && piece.count <= 1 { line = tryLine; continue }
+                if !line.isEmpty { out.append(line); line = "" }
+                // A very long word: cut it where the line is full.
+                while wide(piece) > width, piece.count > 1 {
+                    var n = piece.count - 1
+                    while n > 1, wide(String(piece.prefix(n))) > width { n -= 1 }
+                    out.append(String(piece.prefix(n)))
+                    piece = String(piece.dropFirst(n))
+                }
+                line = piece
+            }
+            out.append(line)
+        }
+        return out
+    }
+}
+
 // MARK: Drawing
 
 extension BoardPainter {
@@ -160,16 +194,39 @@ extension BoardPainter {
     /// (missing, or iCloud is still bringing it) is a soft plate with the picture mark and "Picture not here yet".
     /// The picture for PARAGON, Share, Export and the list's small pictures (`handles` off) is read at once.
     func drawPicture(_ item: Item, _ ctx: GraphicsContext) {
+        drawPictureBody(item, ctx)
+        drawCaption(item, ctx)
+    }
+
+    /// The caption: under the picture, 6 points below it, centred, wrapped to the picture's width, in the small label size
+    /// and the secondary ink. It is not part of the picture's box. While it is typed, the field shows it instead.
+    private func drawCaption(_ item: Item, _ ctx: GraphicsContext) {
+        guard editing != item.id, let room = item.captionFrame else { return }
+        var y = room.minY
+        for line in PictureCaption.lines(item.captionWords, width: room.width) {
+            ctx.draw(Text(line).font(PictureCaption.font).foregroundColor(paint.faint), at: CGPoint(x: room.midX, y: y), anchor: .top)
+            y += CGFloat(Item.captionLine)
+        }
+    }
+
+    private func drawPictureBody(_ item: Item, _ ctx: GraphicsContext) {
         let f = item.frame
         let box = Path(roundedRect: f, cornerRadius: 4)
         let store = PictureStore.shared
         if let name = item.picture, let image = handles ? store.image(name) : store.imageNow(name) {
             var inside = ctx
             inside.clip(to: box)
-            // It keeps its shape (resizing does); a little difference is cropped, never stretched.
-            let k = max(f.width / CGFloat(image.width), f.height / CGFloat(image.height))
-            let w = CGFloat(image.width) * k, h = CGFloat(image.height) * k
-            inside.draw(Image(decorative: image, scale: 1), in: CGRect(x: f.midX - w / 2, y: f.midY - h / 2, width: w, height: h))
+            if let part = Item.cleanCrop(item.crop) {
+                // Cropped (0.4): the whole picture lies on the board at its own scale; only the part shows in the box.
+                let wholeW = f.width / CGFloat(part[2]), wholeH = f.height / CGFloat(part[3])
+                inside.draw(Image(decorative: image, scale: 1),
+                            in: CGRect(x: f.minX - CGFloat(part[0]) * wholeW, y: f.minY - CGFloat(part[1]) * wholeH, width: wholeW, height: wholeH))
+            } else {
+                // It keeps its shape (resizing does); a little difference is cropped, never stretched.
+                let k = max(f.width / CGFloat(image.width), f.height / CGFloat(image.height))
+                let w = CGFloat(image.width) * k, h = CGFloat(image.height) * k
+                inside.draw(Image(decorative: image, scale: 1), in: CGRect(x: f.midX - w / 2, y: f.midY - h / 2, width: w, height: h))
+            }
             ctx.stroke(box, with: .color(Part.pictures.text.opacity(0.28)), lineWidth: 0.75)
             return
         }

@@ -180,6 +180,10 @@ struct BoardView: View {
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
         }
+        // "Crop the picture" (CropPage.swift).
+        .sheet(isPresented: Binding(get: { session.cropping != nil }, set: { if !$0 { session.cropping = nil } }), onDismiss: { session.takeKeys() }) {
+            if let id = session.cropping { CropPage(session: session, id: id) }
+        }
         .alert("Name of the board", isPresented: $renaming) {
             TextField("Name", text: $newName)
                 .accessibilityIdentifier("rename.field")

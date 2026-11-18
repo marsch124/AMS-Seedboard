@@ -54,6 +54,34 @@ public extension Board {
         items[i].h = h
     }
 
+    /// Shows only a part of a picture (`part`: x, y, width, height, each 0 to 1 of the whole picture), or all of it (nil or
+    /// the whole). The picture keeps its scale — a point of the picture covers as many board points as before — and the part
+    /// that was shown stays exactly where it was on the board. The file is never touched, so a crop can always be changed
+    /// or taken back. Refused (false) for something that is not a picture, a board this version may not change, and a part
+    /// that is not four finite numbers, is smaller than 0.05 wide or high, or lies outside the picture.
+    @discardableResult
+    mutating func cropPicture(_ id: UUID, to part: [Double]?) -> Bool {
+        guard canBeChanged, let i = index(of: id), items[i].kind == .picture, items[i].w > 0, items[i].h > 0 else { return false }
+        let new: [Double]
+        if let part {
+            guard part.count == 4, part.allSatisfy(\.isFinite), part[0] >= -0.0001, part[1] >= -0.0001,
+                  part[2] >= 0.05, part[3] >= 0.05, part[0] + part[2] <= 1.0001, part[1] + part[3] <= 1.0001 else { return false }
+            let x = max(0, part[0]), y = max(0, part[1])
+            new = [x, y, min(part[2], 1 - x), min(part[3], 1 - y)]
+        } else {
+            new = [0, 0, 1, 1]
+        }
+        let old = items[i].crop ?? [0, 0, 1, 1]
+        // The whole picture as it lies on the board now.
+        let wholeW = items[i].w / old[2], wholeH = items[i].h / old[3]
+        items[i].x += (new[0] - old[0]) * wholeW
+        items[i].y += (new[1] - old[1]) * wholeH
+        items[i].w = new[2] * wholeW
+        items[i].h = new[3] * wholeH
+        items[i].crop = Item.cleanCrop(new)
+        return true
+    }
+
     /// The names of the picture files this board uses.
     var pictureNames: Set<String> { Set(items.compactMap { $0.kind == .picture ? $0.picture : nil }) }
 
@@ -86,4 +114,61 @@ public enum PictureKeeping {
             return file.name
         }
     }
+}
+
+// MARK: Crop and caption
+
+public extension Item {
+    /// The least a crop may show, as a part of the picture's width or height.
+    static let cropLeast: Double = 0.05
+
+    /// A stored crop made safe: not four finite numbers, or a part smaller than 0.05 wide or high, gives nil; a part that
+    /// reaches outside the picture is cut back to the picture; the whole picture is nil.
+    static func cleanCrop(_ raw: [Double]?) -> [Double]? {
+        guard let raw, raw.count == 4, raw.allSatisfy(\.isFinite) else { return nil }
+        let x = min(max(raw[0], 0), 1), y = min(max(raw[1], 0), 1)
+        let w = min(raw[2], 1 - x), h = min(raw[3], 1 - y)
+        guard w >= cropLeast, h >= cropLeast else { return nil }
+        if x == 0, y == 0, w == 1, h == 1 { return nil }
+        return [x, y, w, h]
+    }
+
+    /// The part of the picture that is shown (the whole picture when it is not cropped).
+    var shownPart: [Double] { Item.cleanCrop(crop) ?? [0, 0, 1, 1] }
+
+    /// The gap between a picture and its caption, and the height of one line of it (the caption is 12 points high).
+    static let captionGap: Double = 6
+    static let captionLine: Double = 15
+
+    /// The words of a caption, trimmed; empty = no caption. Only a picture has one.
+    var captionWords: String { kind == .picture ? text.trimmingCharacters(in: .whitespacesAndNewlines) : "" }
+
+    /// How many lines the caption takes under a picture this wide: a careful guess (the screen wraps the real words), so
+    /// the room kept for it is never too small.
+    static func captionLines(_ words: String, width: Double) -> Int {
+        let perLine = max(4, Int((width / 6.6).rounded(.down)))
+        var lines = 0
+        for paragraph in words.components(separatedBy: .newlines) {
+            var used = 0
+            var count = 1
+            for word in paragraph.split(separator: " ") {
+                let n = word.count
+                if used == 0 { used = n } else if used + 1 + n <= perLine { used += 1 + n } else { count += 1; used = n }
+                while used > perLine { count += 1; used -= perLine }
+            }
+            lines += count
+        }
+        return max(lines, 1)
+    }
+
+    /// The room of the caption under the picture: 6 points below it, as wide as the picture. nil without a caption.
+    var captionFrame: CGRect? {
+        let words = captionWords
+        guard !words.isEmpty else { return nil }
+        let lines = Item.captionLines(words, width: w)
+        return CGRect(x: x, y: y + h + Item.captionGap, width: w, height: Double(lines) * Item.captionLine + 2)
+    }
+
+    /// The picture and its caption together: what it needs room for.
+    var reach: CGRect { captionFrame.map { frame.union($0) } ?? frame }
 }

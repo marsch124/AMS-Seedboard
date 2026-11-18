@@ -105,6 +105,19 @@ struct BarActions {
 
     // MARK: Pieces both the bar and the menus use
 
+    /// A picture's caption (0.4): typed in place under the picture.
+    private func caption(_ id: UUID, drop: Int = 1) -> BarAction {
+        let session = session
+        return act("caption", "Caption", .new(.caption), show: .wideWord, drop: drop) { session.beginCaption(id) }
+    }
+
+    /// Crop a picture (0.4): opens "Crop the picture". Greyed while the picture's file is not here yet.
+    private func crop(_ item: Item, drop: Int = 2) -> BarAction {
+        let session = session, id = item.id
+        let here = item.picture.map { PictureStore.shared.image($0) != nil } ?? false
+        return act("crop", "Crop", .new(.crop), show: .wideWord, enabled: here, drop: drop) { session.commitEdit(); session.cropping = id }
+    }
+
     private func words(_ id: UUID, show: BarAction.Show = .wideWord, drop: Int = 1) -> BarAction {
         let session = session
         return act("words", "Words", .control(.edit), show: show, drop: drop) { session.beginEdit(id) }
@@ -261,7 +274,9 @@ struct BarActions {
             all.append(remove(gap: true))
             return all
         case .picture:
-            // A picture has no words, no tick and no colour: copy it, line it up, remove it.
+            // A picture has no words, no tick and no colour: a caption under it, a crop, copy it, line it up, remove it.
+            all.append(caption(item.id, drop: 1))
+            all.append(crop(item, drop: 2))
             all.append(duplicate(drop: 0))
             all += chooseMore()
             all.append(remove(gap: true))
@@ -334,6 +349,7 @@ struct BarActions {
         }
         // (A sketch has no words and carries no tick.)
         if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
+        if item.kind == .picture { all += [caption(item.id), crop(item)] }
         let isBranch = item.kind == .idea && item.parent != nil
         if item.kind.isShape || item.kind == .note || item.kind == .frame || isBranch { all.append(colour(for: item)) }
         if item.kind != .frame && item.kind != .drawing && item.kind != .picture { all.append(todo(on: item.todo, gap: false)) }
