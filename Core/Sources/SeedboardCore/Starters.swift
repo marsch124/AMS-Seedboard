@@ -50,18 +50,22 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
             for (kind, text) in kinds {
                 let w = Double(kind.defaultSize.width)
                 let mid = CGPoint(x: left + w / 2, y: 0)
-                ids.append(board.add(kind, centre: mid, text: text))
+                // Coloured from the start: the Start is green, the decision purple, the steps blue.
+                ids.append(board.add(kind, centre: mid, text: text, colour: kind == .round ? "green" : kind == .diamond ? "purple" : "blue"))
                 if kind == .diamond { diamondMid = mid }
                 left += w + gap
             }
             let again = Double(ItemKind.box.defaultSize.height)
             let low = board.add(.box, centre: CGPoint(x: diamondMid.x,
                                                       y: diamondMid.y + Double(ItemKind.diamond.defaultSize.height) / 2 + gap + again / 2),
-                                text: "Think again")
+                                text: "Think again", colour: "blue")
             board.link(from: ids[0], to: ids[1])
             board.link(from: ids[1], to: ids[2])
             board.link(from: ids[2], to: ids[3], text: "Yes")
             board.link(from: ids[2], to: low, text: "No")
+            for i in board.links.indices where !board.links[i].text.isEmpty {
+                board.links[i].colour = board.links[i].text == "Yes" ? "green" : "red"
+            }
         case .prosCons:
             let question = board.add(.text, centre: CGPoint(x: 0, y: -250), text: "What are we deciding?")
             if let i = board.index(of: question) {
@@ -85,7 +89,7 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
             var previous: UUID?
             for n in 1...5 {
                 let x = -total / 2 + Double(n - 1) * (w + gap) + w / 2
-                let box = board.add(.box, centre: CGPoint(x: x, y: 0), text: "Step \(n)")
+                let box = board.add(.box, centre: CGPoint(x: x, y: 0), text: "Step \(n)", colour: "blue")
                 board.add(.note, centre: CGPoint(x: x, y: 28 + 30 + 55), text: "What it needs")
                 if let previous { board.link(from: previous, to: box) }
                 previous = box

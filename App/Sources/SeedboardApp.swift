@@ -4,6 +4,7 @@ import AppKit
 #endif
 
 /// Launch arguments, for pictures and tests: `-sampleData`, `-board <id>`, `-settings`.
+/// `-search <word>` fills the search field over the boards list.
 enum LaunchOptions {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
 
