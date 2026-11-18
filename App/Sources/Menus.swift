@@ -199,6 +199,8 @@ struct BoardKeys: ViewModifier {
             .onCommand(#selector(NSResponder.selectAll(_:)),
                        perform: session.editing == nil && !session.board.isEmpty ? { session.selectAll() } : nil)
             .background(SpaceHand(session: session))
+            // 0.5: a photo, a scan or a sketch from the iPhone lands on this board (MacHabits.swift).
+            .modifier(MacTaker(session: session))
             #endif
             .onChange(of: has, initial: true) { _, new in MenuDesk.shared.keys(new, board: session.board.id) }
             .onDisappear { MenuDesk.shared.keys(false, board: session.board.id) }
@@ -422,6 +424,12 @@ struct SpaceHand: NSViewRepresentable {
                 guard event.keyCode == Self.space, spaceDown else { return event }
                 spaceDown = false
                 if !sliding { NSCursor.arrow.set() }
+                // 0.5: a short press with ONE picture chosen shows it at full size (Quick Look, MacHabits.swift).
+                if let item = session.single, MenuRules.spaceShowsPicture(slid: slid, held: Date().timeIntervalSince(spaceBegan), chosen: session.selection.count,
+                                                                         pictureChosen: item.kind == .picture, typing: session.editing != nil) {
+                    MacLook.show(item, in: session)
+                    return nil
+                }
                 // A short press without a drag: typing starts in the one chosen thing, as before.
                 if MenuRules.spaceStartsTyping(slid: slid, held: Date().timeIntervalSince(spaceBegan), chosen: session.selection.count,
                                                typing: session.editing != nil), let item = session.single {

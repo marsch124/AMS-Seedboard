@@ -168,7 +168,11 @@ struct BoardView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .navigationTitle(session.starterDraft ? (model.changing?.name ?? session.board.title) : session.board.title)
+        // The board's name: on the Mac a click renames it, a right-click shows its small menu (MacTitle.swift).
+        .modifier(BoardTitle(session: session, rename: {
+            newName = session.starterDraft ? (model.changing?.name ?? session.board.title) : session.board.title
+            renaming = true
+        }))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif

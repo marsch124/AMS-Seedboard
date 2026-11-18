@@ -45,6 +45,27 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>To put a photo straight onto a board.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>New Seedboard Board from Selection</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>newBoardFromSelection</string>
+			<key>NSPortName</key>
+			<string>AMSSeedboard</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.schabbauer.AMSSeedboard</key>

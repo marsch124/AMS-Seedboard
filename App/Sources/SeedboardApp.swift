@@ -21,6 +21,10 @@ enum LaunchOptions {
 struct SeedboardApp: App {
     @StateObject private var model = AppModel.shared
     @Environment(\.scenePhase) private var phase
+    #if os(macOS)
+    // 0.5: the Dock menu, Services, and the taker of a photo from the iPhone (MacHabits.swift).
+    @NSApplicationDelegateAdaptor(MacDelegate.self) private var macDelegate
+    #endif
 
     var body: some Scene {
         #if os(macOS)
@@ -33,7 +37,12 @@ struct SeedboardApp: App {
             SeedMenus(model: model)
             BoardCommands()
             ClipCommands()
+            // 0.5: Help ▸ How Seedboard Works and What's New; File ▸ Import from iPhone or iPad.
+            MacCommands()
         }
+
+        // 0.5: the guide in a small window of its own (Help menu, ⌘?).
+        GuideScene()
 
         Settings {
             SettingsView().environmentObject(model)
@@ -63,6 +72,8 @@ struct SeedboardApp: App {
             .onOpenURL { model.open(url: $0) }
             // File ▸ New Board's starter choice, a board found in Spotlight, and remembering where the owner left.
             .modifier(OutsideDoors(model: model))
+            // 0.5, the Mac only: knows the boards window, Quick Look of a picture (MacHabits.swift).
+            .modifier(MacRoot())
             // Leaving the app keeps what is being typed and writes everything at once.
             .onChange(of: phase) { _, new in
                 if new != .active { model.leaving() }
