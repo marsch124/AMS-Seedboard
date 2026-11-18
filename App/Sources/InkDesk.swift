@@ -98,6 +98,9 @@ final class InkDesk: ObservableObject {
         didSet { if !LaunchOptions.sampleData { UserDefaults.standard.set(colour, forKey: InkDesk.colourKey) } }
     }
     let wet = WetLine()
+    /// Tidy shapes (InkTidy.swift): the switch in the plate, and whether the tip has come to rest.
+    @Published var tidyShapes = TidyShapes.stored { didSet { TidyShapes.keep(tidyShapes) } }
+    var rest = InkRest()
 
     private static let widthKey = "ink.width"
     private static let colourKey = "ink.colour"
@@ -217,6 +220,7 @@ extension BoardSession {
         desk.lastAt = dot.time
         desk.strayed = 0
         desk.beganAt = Date()
+        desk.rest = InkRest(at: dot.location, time: TidyShapes.now)
         let p = toBoard(dot.location)
         if desk.rubber {
             liveStart()
@@ -234,6 +238,7 @@ extension BoardSession {
         desk.lastAt = latest.time
         for dot in real {
             desk.strayed = max(desk.strayed, hypot(dot.location.x - desk.landed.x, dot.location.y - desk.landed.y))
+            desk.rest.moved(to: dot.location, time: TidyShapes.now)
         }
         if desk.rub != nil {
             for dot in real { rubStep(to: toBoard(dot.location), first: false) }
@@ -275,6 +280,7 @@ extension BoardSession {
         // One stroke, one step for Undo.
         change { made = $0.addStroke(line.points, pressure: line.pressure, colour: desk.colour, width: desk.width, to: join) }
         if let made { desk.lastDrawing = (made, Date()) }
+        tidyAfterStroke(made, joined: join != nil)
     }
 
     /// The rubber went on to `p`: every stroke it touched on the way goes, whole.
