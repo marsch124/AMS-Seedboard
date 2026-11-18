@@ -150,7 +150,8 @@ extension BoardSession {
     func tidyGrid() {
         let ids = selection
         guard editing == nil else { return }
-        change { $0.tidyGrid(ids) }
+        // 0.9: the grid is columns about the square root of the count, pinned things stay (Views09.swift).
+        change { $0.tidyIntoGrid(ids) }
     }
 
     func tidyByColour() {
@@ -239,7 +240,7 @@ extension BarActions {
         let session = session
         var all: [BarAction] = []
         let pile = session.gridCount >= 3
-        if pile { all.append(think("tidy", "Tidy", .new(.tidy), show: .wideWord, drop: 3) { session.tidyGrid() }) }
+        if pile { all.append(think("tidy", "Tidy into a grid", .new(.tidy), show: .wideWord, drop: 3) { session.tidyGrid() }) }
         if let dots, !session.board.coloursOffered(for: session.selection).isEmpty {
             all.append(think("colour", "Colour", .app(.palette), show: .wideWord, on: dots.shown, drop: 2, dots.toggle))
         }
@@ -257,7 +258,7 @@ extension BarActions {
         let session = session
         var sort: [BarAction] = []
         if session.gridCount >= 3 {
-            sort.append(think("tidy", "Tidy", .new(.tidy)) { session.tidyGrid() })
+            sort.append(think("tidy", "Tidy into a grid", .new(.tidy)) { session.tidyGrid() })
             sort.append(think("byColour", "By colour", .new(.byColour)) { session.tidyByColour() })
         }
         if first, !sort.isEmpty { sort[0].gap = true }

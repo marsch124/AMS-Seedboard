@@ -344,6 +344,7 @@ struct BarActions {
             all.append(todo(on: item.todo))
         case .frame:
             all.append(BarAction(id: prefix + "lanes", word: "Lanes", glyph: .new(.lanes), kind: .lanes(item), show: .word, on: item.lanes != nil))
+            all.append(focusAction(show: .word, drop: 2))
             all.append(colour(for: item, show: .word))
             all.append(words(item.id))
             all.append(duplicate())
@@ -483,6 +484,7 @@ struct BarActions {
             }
         case .frame:
             more.append(list("lanes", "Lanes", .new(.lanes), on: item.lanes != nil, laneChoices(item)))
+            more.append(focusAction())
         default:
             if item.kind.isShape {
                 let kinds = ItemKind.flowShapes.map { kind in

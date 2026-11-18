@@ -41,6 +41,8 @@ final class BoardSession: ObservableObject {
     let ink = InkDesk()
     /// 0.5: the glide of the view and the things on their way (BoardGlide.swift, BoardMotion.swift).
     let motion = BoardMotion()
+    /// 0.9: Focus on a frame, Show frames, the small map (ViewsDesk.swift).
+    lazy var views = ViewsDesk { [weak self] in self?.objectWillChange.send() }
 
     /// A short line with an Undo button, after a step the owner may not have meant.
     struct Notice: Equatable {

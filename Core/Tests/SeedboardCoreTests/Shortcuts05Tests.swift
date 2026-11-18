@@ -156,13 +156,13 @@ final class Shortcuts05Tests: XCTestCase {
     /// "New board" offers his own starters: found by name, the exact name first.
     func testStartersAreFoundByName() {
         var shelf = StarterShelf()
-        var weekly = Board(title: "Weekly review")
+        var weekly = Board(title: "Weekly wrap")
         weekly.add(.note, centre: .zero, text: "What went well")
-        let own = shelf.saveAs(weekly, name: "Weekly review")
+        let own = shelf.saveAs(weekly, name: "Weekly wrap")
         let shown = shelf.shown
         XCTAssertEqual(shown.count, Starter.allCases.count + 1)
         XCTAssertEqual(Outside.starters(named: "", in: shown).count, shown.count)
-        XCTAssertEqual(Outside.starters(named: "weekly", in: shown).map(\.id), [own])
+        XCTAssertEqual(Outside.starters(named: "wrap", in: shown).map(\.id), [own])
         XCTAssertEqual(Outside.starters(named: "MIND MAP", in: shown).first?.builtin, .mindMap)
         XCTAssertEqual(Outside.starters(named: "plan", in: shown).first?.builtin, .steps)
         XCTAssertEqual(Outside.starters(named: "no such starter", in: shown).count, 0)

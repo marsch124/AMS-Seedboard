@@ -89,6 +89,12 @@ struct CanvasView: View {
                     painter.frames = snap.frames(for: session)
                     if case .idea(let id) = drag, let ghost { painter.ghost = (id, ghost) }
                     painter.draw(&sheet)
+                    // 0.9 Focus: everything outside the chosen frame is dimmed to about a quarter (the board's own colour over it).
+                    if let box = session.focusRect {
+                        var outside = Path(CGRect(x: -100_000, y: -100_000, width: 200_000, height: 200_000))
+                        outside.addRect(box)
+                        sheet.fill(outside, with: .color(paint.canvas.opacity(0.75)), style: FillStyle(eoFill: true))
+                    }
                     snap.shown(for: session).draw(sheet, paint: paint, scale: session.scale)
                     if let from = session.linkFrom, let item = session.board.item(from) {
                         let box = Path(roundedRect: item.frame.insetBy(dx: -6, dy: -5), cornerRadius: 9)
@@ -680,6 +686,9 @@ struct CanvasView: View {
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard session.editing == nil else { return .ignored }
+        // 0.9: while frames are shown the arrow keys, space and Escape belong to the show; Escape leaves Focus.
+        if session.views.showing { return session.showKey(press) }
+        if session.views.focus != nil, press.key == .escape { session.endFocus(); return .handled }
         // A key ends a glide at once, where it is (⌘+ and ⌘− go on from the glide's end instead).
         if !press.modifiers.contains(.command) { session.stopGlide() }
         // A flow shape: Tab (or ⌘ with an arrow key) makes the next shape.
