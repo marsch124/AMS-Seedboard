@@ -56,6 +56,12 @@ final class AppModel: ObservableObject {
            let item = session.board.items.first(where: { $0.text.localizedCaseInsensitiveContains(word) }) {
             session.select(item.id)
         }
+        // For pictures: `-pickArrow <word>` chooses the first arrow whose words hold it.
+        if let word = LaunchOptions.value(for: "-pickArrow"), let session,
+           let link = session.board.links.first(where: { $0.text.localizedCaseInsensitiveContains(word) }) {
+            session.selection = []
+            session.selectedLink = link.id
+        }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         checkParagon()
         #if DEBUG

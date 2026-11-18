@@ -465,6 +465,7 @@ final class BoardSession: ObservableObject {
                 let from = board.links[l].from
                 board.links[l].from = board.links[l].to
                 board.links[l].to = from
+                (board.links[l].fromSide, board.links[l].toSide) = (board.links[l].toSide, board.links[l].fromSide)
             }
         }
     }

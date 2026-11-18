@@ -130,6 +130,14 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
     public var style: LinkStyle
     /// An arrow head at the far end.
     public var head: Bool
+    /// 0.2: the side of the first item the owner chose for the line to leave from (nil: found by the app).
+    public var fromSide: Direction?
+    /// 0.2: the side of the second item the owner chose for the line to arrive at (nil: found by the app).
+    public var toSide: Direction?
+    /// 0.2: an arrow head at the near end as well (both ways).
+    public var tail: Bool?
+    /// 0.2: drawn with dashes.
+    public var dashed: Bool?
 
     public init(id: UUID = UUID(), from: UUID, to: UUID, text: String = "", colour: String = "",
                 style: LinkStyle = .elbow, head: Bool = true) {
@@ -142,7 +150,10 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
         self.head = head
     }
 
-    enum CodingKeys: String, CodingKey { case id, from, to, text, colour, style, head }
+    enum CodingKeys: String, CodingKey {
+        case id, from, to, text, colour, style, head
+        case fromSide, toSide, tail, dashed
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -153,6 +164,10 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
         colour = (try? c.decode(String.self, forKey: .colour)) ?? ""
         style = LinkStyle(rawValue: (try? c.decode(String.self, forKey: .style)) ?? "") ?? .elbow
         head = (try? c.decode(Bool.self, forKey: .head)) ?? true
+        fromSide = (try? c.decode(String.self, forKey: .fromSide)).flatMap { Direction(rawValue: $0) }
+        toSide = (try? c.decode(String.self, forKey: .toSide)).flatMap { Direction(rawValue: $0) }
+        tail = try? c.decode(Bool.self, forKey: .tail)
+        dashed = try? c.decode(Bool.self, forKey: .dashed)
     }
 }
 

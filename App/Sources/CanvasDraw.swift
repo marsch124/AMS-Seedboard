@@ -208,7 +208,7 @@ struct BoardPainter {
     /// The idea a dragged idea would hang under.
     var dropTarget: UUID?
     var handles = true
-    /// What lies behind the board (white for a picture), so the words on an arrow sit on the same colour.
+    /// What lies behind the board (white for a picture). Not needed since 0.2: the words on an arrow have no patch behind them.
     var ground: Color?
 
     static let handleGap: CGFloat = 17
@@ -231,12 +231,13 @@ struct BoardPainter {
                        style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
         }
 
-        for link in board.links { drawLink(link, byID, &ctx) }
+        drawArrows(&ctx)
 
         for item in board.items where item.kind != .frame && !facts.hidden.contains(item.id) {
             if ghost?.id == item.id { continue }
             drawItem(item, &ctx)
         }
+        drawArrowEnds(&ctx)
 
         if let ghost, let item = byID[ghost.id] {
             var moved = item
@@ -326,60 +327,6 @@ struct BoardPainter {
         let words = item.text.isEmpty ? "Frame" : item.text
         let text = ctx.resolve(Text(words).font(Lettering.font(size: 13, bold: true)).foregroundColor(paint.line(name)))
         ctx.draw(text, at: CGPoint(x: item.frame.minX + 12, y: item.frame.minY + 15), anchor: .leading)
-    }
-
-    private func drawLink(_ link: SeedboardCore.Link, _ byID: [UUID: Item], _ ctx: inout GraphicsContext) {
-        guard let a = byID[link.from], let b = byID[link.to],
-              !facts.hidden.contains(a.id), !facts.hidden.contains(b.id) else { return }
-        let route = Route.path(from: a.frame, to: b.frame, style: link.style)
-        let points = route.points
-        guard points.count > 1 else { return }
-        let colour = link.colour.isEmpty ? paint.arrow : paint.line(link.colour)
-        let chosen = selectedLink == link.id
-
-        var path = Path()
-        path.move(to: points[0])
-        if link.style == .curve {
-            let s = points[0], e = points[points.count - 1]
-            let sideways = route.leaves == .left || route.leaves == .right
-            let c1 = sideways ? CGPoint(x: (s.x + e.x) / 2, y: s.y) : CGPoint(x: s.x, y: (s.y + e.y) / 2)
-            let c2 = sideways ? CGPoint(x: (s.x + e.x) / 2, y: e.y) : CGPoint(x: e.x, y: (s.y + e.y) / 2)
-            path.addCurve(to: e, control1: c1, control2: c2)
-        } else {
-            for p in points.dropFirst() { path.addLine(to: p) }
-        }
-        if chosen {
-            ctx.stroke(path, with: .color(paint.chosen.opacity(0.35)), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
-        }
-        ctx.stroke(path, with: .color(colour), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-
-        if link.head {
-            // The head points the way the line arrives.
-            let tip = points[points.count - 1]
-            let v: CGPoint
-            switch route.arrives {
-            case .left: v = CGPoint(x: 1, y: 0)
-            case .right: v = CGPoint(x: -1, y: 0)
-            case .up: v = CGPoint(x: 0, y: 1)
-            case .down: v = CGPoint(x: 0, y: -1)
-            }
-            let back = CGPoint(x: tip.x - v.x * 9, y: tip.y - v.y * 9)
-            let n = CGPoint(x: -v.y, y: v.x)
-            var head = Path()
-            head.move(to: CGPoint(x: back.x + n.x * 5.5, y: back.y + n.y * 5.5))
-            head.addLine(to: tip)
-            head.addLine(to: CGPoint(x: back.x - n.x * 5.5, y: back.y - n.y * 5.5))
-            ctx.stroke(head, with: .color(colour), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-        }
-
-        if !link.text.isEmpty, editing != link.id {
-            let text = ctx.resolve(Text(link.text).font(.system(size: 13, weight: .medium)).foregroundColor(link.colour.isEmpty ? paint.ink : colour))
-            let size = text.measure(in: CGSize(width: 200, height: 100))
-            let plate = CGRect(x: route.label.x - size.width / 2 - 5, y: route.label.y - size.height / 2 - 2,
-                               width: size.width + 10, height: size.height + 4)
-            ctx.fill(Path(roundedRect: plate, cornerRadius: 5), with: .color(ground ?? paint.canvas))
-            ctx.draw(text, at: route.label, anchor: .center)
-        }
     }
 
     private func drawItem(_ item: Item, _ ctx: inout GraphicsContext) {
