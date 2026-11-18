@@ -38,7 +38,7 @@ struct CropPage: View {
             }
             HStack(spacing: 10) {
                 Button("Cancel") { close() }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .font(.body.weight(.medium))
                     .foregroundStyle(Part.pictures.text)
                     .frame(minHeight: 36)
@@ -46,7 +46,7 @@ struct CropPage: View {
                     .accessibilityIdentifier("crop.cancel")
                 Spacer(minLength: 0)
                 Button("Whole picture") { part = CGRect(x: 0, y: 0, width: 1, height: 1) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .font(.body.weight(.medium))
                     .foregroundStyle(Part.pictures.text)
                     .frame(minHeight: 36)

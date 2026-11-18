@@ -138,11 +138,11 @@ struct BoardList: View {
             HStack {
                 #if os(macOS)
                 SettingsLink { settingsLabel }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .accessibilityIdentifier("boards.settings")
                 #else
                 Button { showSettings = true } label: { settingsLabel }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .accessibilityIdentifier("boards.settings")
                 #endif
                 Spacer()
@@ -196,7 +196,7 @@ struct BoardList: View {
             .background(chosen ? Look.chosenRow : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .padding(.top, 4)
         .help("The home page: starters and all your boards")
         .accessibilityIdentifier("boards.home")
@@ -257,7 +257,7 @@ struct BoardList: View {
             .background(chosen ? Look.chosenRow : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityIdentifier("boards.row.\(board.title)")
         // A tiny dot at the row's end: this board's newest change, or one of its pictures, is on this device, not in iCloud yet.
         .overlay(alignment: .trailing) {

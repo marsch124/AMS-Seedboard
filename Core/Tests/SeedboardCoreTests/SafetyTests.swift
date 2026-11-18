@@ -232,9 +232,12 @@ final class SafetyTests: XCTestCase {
 /// Fails when a stored field is added (or renamed, or dropped) without raising `Board.currentFormat`.
 /// An older app carries a field it does not know, but it cannot USE it, so a new field always means a new
 /// format number: add the new list below under the new number, and leave the old lists as they are.
+/// Since format 5 the test also proves that every field is really WRITTEN (a field with a name and a reading
+/// line but no writing line was silently not saved), and it watches strokes, lanes, starters and sent tasks too.
 final class StoredFieldsTests: XCTestCase {
     private struct Fields: Equatable {
         var board: [String], item: [String], link: [String], sent: [String]
+        var stroke: [String] = [], lanes: [String] = [], starter: [String] = [], sentTask: [String] = []
     }
 
     private let golden: [Int: Fields] = [
@@ -257,33 +260,116 @@ final class StoredFieldsTests: XCTestCase {
                   item: ["answer", "bothSides", "colour", "crop", "end", "folded", "from", "h", "id", "kind", "lanes", "order", "parent", "picture", "row", "side", "start", "strokes", "text", "to", "todo", "w", "x", "y"],
                   link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
                   sent: ["kind", "path", "title", "when"]),
+        // 0.5: a door to another board, the day a bar was done, every thing that became a PARAGON task.
+        // From here on every list must match exactly, and strokes, lanes, starters and sent tasks are watched too.
+        5: Fields(board: ["changed", "colour", "created", "format", "id", "items", "kind", "links", "pinned", "sent", "sentTasks", "sentTodos", "title"],
+                  item: ["answer", "bothSides", "colour", "crop", "doneDay", "door", "end", "folded", "from", "h", "id", "kind", "lanes", "order", "parent", "picture", "row", "side", "start", "strokes", "text", "to", "todo", "w", "x", "y"],
+                  link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
+                  sent: ["kind", "path", "title", "when"],
+                  stroke: ["colour", "points", "pressure", "width"],
+                  lanes: ["cuts", "names", "way"],
+                  starter: ["board", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
+                  sentTask: ["id", "place", "words"]),
     ]
 
     func testAStoredFieldIsNeverAddedWithoutANewFormatNumber() throws {
         let want = try XCTUnwrap(golden[Board.currentFormat],
                                  "Board.currentFormat was raised: add the list of stored fields for the new format here.")
         let message = "A stored field changed: raise Board.currentFormat and add the new list under the new number."
-        // The names the code knows …
         let declared = Fields(board: Board.CodingKeys.allCases.map(\.rawValue).sorted(),
                               item: Item.CodingKeys.allCases.map(\.rawValue).sorted(),
                               link: Link.CodingKeys.allCases.map(\.rawValue).sorted(),
-                              sent: SentInfo.CodingKeys.allCases.map(\.rawValue).sorted())
+                              sent: SentInfo.CodingKeys.allCases.map(\.rawValue).sorted(),
+                              stroke: Stroke.CodingKeys.allCases.map(\.rawValue).sorted(),
+                              lanes: Lanes.CodingKeys.allCases.map(\.rawValue).sorted(),
+                              starter: StarterEntry.CodingKeys.allCases.map(\.rawValue).sorted(),
+                              sentTask: SentTask.CodingKeys.allCases.map(\.rawValue).sorted())
         XCTAssertEqual(declared, want, message)
-        // … and the names that really land in the file, from a board with everything filled in.
+    }
+
+    /// A field with a name and a reading line but no writing line is silently not saved. So: fill EVERY field of an
+    /// item, an arrow, a board, a stroke, lanes, a starter and a sent task, write them, and require the names in
+    /// the file to be exactly the listed ones.
+    func testEveryStoredFieldIsReallyWritten() throws {
+        let want = try XCTUnwrap(golden[Board.currentFormat])
+        let message = "A stored field is declared but not written (or written but not declared): add its encode line."
         let a = Item(kind: .idea, text: "a")
-        let b = Item(kind: .idea, text: "b", parent: a.id)
-        var board = Board(title: "Full", items: [a, b], links: [Link(from: a.id, to: b.id, text: "go")])
+        var b = Item(kind: .idea, text: "b", parent: a.id)
+        b.side = .left
+        b.start = "2026-12-01"; b.end = "2026-12-05"; b.row = 2
+        var lanes = Lanes(way: .columns, count: 3)
+        lanes.names = ["one", "two", "three"]
+        b.lanes = lanes
+        b.from = a.id; b.to = a.id; b.answer = true
+        b.strokes = [Stroke(colour: "blue", width: .thick, points: [0, 0, 4, 4], pressure: [0.5, 0.6])]
+        b.picture = "3F2A.jpg"
+        b.crop = [0.1, 0.1, 0.5, 0.5]
+        b.door = a.id
+        b.doneDay = "2026-12-04"
+        var arrow = Link(from: a.id, to: b.id, text: "go")
+        arrow.fromSide = .left; arrow.toSide = .right; arrow.tail = true; arrow.dashed = true
+        var board = Board(title: "Full", items: [a, b], links: [arrow])
+        board.kind = Board.timelineKind
         board.sent = SentInfo(when: Date(), kind: "note", title: "Full", path: "Resources/Full.md")
         board.sentTodos = [a.id]
+        board.noteSent(b.id, words: "b", place: SentTask.note)
+        let starter = StarterEntry(id: "own-1", name: "Mine", hint: "h", order: 1, removed: true, removedWhen: Date(),
+                                   builtin: "blank", board: board, changed: Date())
+
         let file = try JSONSerialization.jsonObject(with: JSONEncoder().encode(board)) as! [String: Any]
+        let item = (file["items"] as! [[String: Any]])[1]
+        let starterFile = try JSONSerialization.jsonObject(with: JSONEncoder().encode(starter)) as! [String: Any]
         let written = Fields(board: file.keys.sorted(),
-                             item: (file["items"] as! [[String: Any]])[1].keys.sorted(),
+                             item: item.keys.sorted(),
                              link: (file["links"] as! [[String: Any]])[0].keys.sorted(),
-                             sent: (file["sent"] as! [String: Any]).keys.sorted())
-        // Fields that are only written when they hold something may be missing; none may be unknown.
-        XCTAssertTrue(Set(written.board).isSubset(of: want.board), message)
-        XCTAssertTrue(Set(written.item).isSubset(of: want.item), message)
-        XCTAssertTrue(Set(written.link).isSubset(of: want.link), message)
-        XCTAssertTrue(Set(written.sent).isSubset(of: want.sent), message)
+                             sent: (file["sent"] as! [String: Any]).keys.sorted(),
+                             stroke: (item["strokes"] as! [[String: Any]])[0].keys.sorted(),
+                             lanes: (item["lanes"] as! [String: Any]).keys.sorted(),
+                             starter: starterFile.keys.sorted(),
+                             sentTask: (file["sentTasks"] as! [[String: Any]])[0].keys.sorted())
+        XCTAssertEqual(written, want, message)
+
+        // And everything comes back as it was written.
+        let back = try JSONDecoder().decode(Board.self, from: JSONEncoder().encode(board))
+        XCTAssertEqual(back, board)
+        XCTAssertEqual(try JSONDecoder().decode(StarterEntry.self, from: JSONEncoder().encode(starter)).board, board)
+    }
+
+    func testAnArrivalNeverCoversWhatIsOnTheBoard() {
+        var board = Board(title: "B", items: [Item(kind: .note, x: 0, y: 0), Item(kind: .box, x: 300, y: 200)])
+        let size = CGSize(width: 150, height: 110)
+        let first = board.arrivalSpot(size: size)
+        let box = board.items.map(\.frame).reduce(CGRect.null) { $0.union($1) }
+        XCTAssertEqual(first, CGPoint(x: box.maxX + 40, y: box.minY))
+        let firstFrame = CGRect(origin: first, size: size)
+        XCTAssertFalse(board.items.contains { $0.frame.intersects(firstFrame) })
+        // A second arrival in the same go lies under the first, 16 points apart.
+        let second = board.arrivalSpot(size: size, taken: [firstFrame])
+        XCTAssertEqual(second, CGPoint(x: first.x, y: firstFrame.maxY + 16))
+        // An empty board: the middle, then under it.
+        board.items = []
+        let middle = board.arrivalSpot(size: size)
+        XCTAssertEqual(middle, CGPoint(x: -75, y: -55))
+        XCTAssertEqual(board.arrivalSpot(size: size, taken: [CGRect(origin: middle, size: size)]), CGPoint(x: -75, y: 55 + 16))
+    }
+
+    func testTheBoardKnowsWhatBecameATask() {
+        var a = Item(kind: .box, text: "a"); a.todo = true
+        let b = Item(kind: .box, text: "b")
+        var board = Board(title: "B", items: [a, b])
+        XCTAssertEqual(board.todoState(of: a.id), .waiting)
+        XCTAssertNil(board.todoState(of: b.id))
+        board.noteSent(a.id, words: "a", place: SentTask.inbox)
+        board.noteSent(a.id, words: "a again", place: SentTask.note)
+        XCTAssertEqual(board.sentTasks.count, 1)
+        XCTAssertEqual(board.sentTask(a.id)?.words, "a again")
+        XCTAssertEqual(board.todoState(of: a.id), .inParagon)
+        // A board of 0.4 only has the list of sent boxes: still "in PARAGON".
+        board.sentTasks = []; board.sentTodos = [a.id]
+        XCTAssertEqual(board.todoState(of: a.id), .inParagon)
+        board.items.removeAll { $0.id == a.id }
+        board.noteSent(a.id, words: "a", place: SentTask.inbox)
+        board.dropSentTasksOfMissingThings()
+        XCTAssertTrue(board.sentTasks.isEmpty)
     }
 }

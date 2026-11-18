@@ -13,8 +13,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     # The version lives here only; the Info.plist reads it from these two.
-    MARKETING_VERSION: "0.4"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "0.5"
+    CURRENT_PROJECT_VERSION: "5"
 packages:
   # The rules: boards, layout, arrows, text in and out, what goes to PARAGON. No screen in it.
   SeedboardCore:
@@ -38,6 +38,8 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
+        # 0.5: printing a board (the Mac's sandbox asks for it).
+        com.apple.security.print: true
         com.apple.developer.icloud-services: [CloudDocuments]
         # Seedboard's own container first; PARAGON's second, so a board can be handed over.
         com.apple.developer.icloud-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
@@ -72,6 +74,10 @@ targets:
             CFBundleTypeRole: Viewer
         # iPad with a trackpad or mouse: clicks arrive as pointer touches, scrolling and pinching as their own events.
         UIApplicationSupportsIndirectInputEvents: true
+        # 0.5: a board open on one device offers itself on the others (Handoff).
+        NSUserActivityTypes: [com.schabbauer.AMSSeedboard.board]
+        # 0.5: a photo straight onto a board (iPhone and iPad), and a photo or scan from the iPhone on the Mac.
+        NSCameraUsageDescription: To put a photo straight onto a board.
         # So the app may ask whether PARAGON is installed.
         LSApplicationQueriesSchemes: [amspara]
         NSUbiquitousContainers:

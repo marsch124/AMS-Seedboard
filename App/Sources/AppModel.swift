@@ -19,6 +19,9 @@ final class AppModel: ObservableObject {
     @Published var safetyLine = ""
     /// A short line shown for a moment at the bottom.
     @Published var flash: String?
+    /// 0.5: the colour of the line (`say(_:tone:)`) and the one pill it may carry.
+    @Published var flashTone: FlashTone = .good
+    var flashAction: FlashAction?
     /// The Send to PARAGON page is asked for.
     @Published var showSend = false
     /// Boards whose newest change is on this device but not in iCloud yet (a small dot in the list).
@@ -553,12 +556,19 @@ final class AppModel: ObservableObject {
 
     // MARK: Small things
 
-    func say(_ line: String) {
+    /// Shows one line at the bottom for a few seconds. `tone`: green for plain news, brick red for a problem,
+    /// PARAGON's purple for what went to PARAGON. `action`: one small pill at the line's end (e.g. "Open").
+    func say(_ line: String, tone: FlashTone = .good, seconds: Double = 4, action: FlashAction? = nil) {
         flash = line
+        flashTone = tone
+        flashAction = action
         flashWork?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.flash = nil }
+        let work = DispatchWorkItem { [weak self] in
+            self?.flash = nil
+            self?.flashAction = nil
+        }
         flashWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
     }
 
     func showBoardsFolder() {

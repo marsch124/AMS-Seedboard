@@ -48,7 +48,7 @@ struct TimelineToolPill: View {
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help(help)
         .accessibilityLabel(word)
         .accessibilityIdentifier(id)
@@ -88,7 +88,7 @@ struct TimelineZoomCluster: View {
                 .background(Part.timeline.fill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             .help("Bring today into view (T)")
             .accessibilityLabel("Today")
             .accessibilityIdentifier("timeline.today")
@@ -109,7 +109,7 @@ struct TimelineZoomCluster: View {
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .disabled(!on)
         .opacity(on ? 1 : 0.35)
         .help(help)
@@ -231,7 +231,7 @@ struct TimelineSelectionBar: View {
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityIdentifier(id)
     }
 
@@ -246,7 +246,7 @@ struct TimelineSelectionBar: View {
                         .frame(width: 22, height: 22)
                         .overlay(Circle().stroke(paint.ink, lineWidth: item.colour == name ? 2 : 0).padding(-3))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .accessibilityLabel(name.capitalized)
                 .accessibilityIdentifier("colour.\(name)")
             }

@@ -89,6 +89,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case drawing
     /// A picture laid on the board (format 3): the picture itself is a file of its own, named in `Item.picture`.
     case picture
+    /// A door to another board (format 5): the board it leads to is in `Item.door`. Two presses open that board.
+    case door
 
     /// The flowchart shapes (`ItemKind.flowShapes`).
     public var isShape: Bool { ItemKind.flowShapes.contains(self) }
@@ -116,6 +118,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .section: return "Section"
         case .drawing: return "Sketch"
         case .picture: return "Picture"
+        case .door: return "Door"
         }
     }
 
@@ -137,6 +140,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .who, .message, .band, .section: return CGSize(width: 60, height: 17)
         case .drawing: return CGSize(width: 120, height: 80)
         case .picture: return CGSize(width: 240, height: 180)
+        case .door: return CGSize(width: 190, height: 56)
         }
     }
 }
@@ -187,6 +191,10 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     /// A picture only (format 4): the part of the picture that is shown, as x, y, width, height, each 0 to 1 of the
     /// whole picture. nil = all of it. Always clean (see `Item.cleanCrop`). The file itself is never changed.
     public var crop: [Double]?
+    /// A door only (format 5): the board it leads to.
+    public var door: UUID?
+    /// A timeline bar or milestone only (format 5): the day it was marked done, as "2026-12-01". nil = not done.
+    public var doneDay: String?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -215,6 +223,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case strokes
         case picture
         case crop
+        case door, doneDay
     }
 
     public init(from decoder: Decoder) throws {
@@ -246,6 +255,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         strokes = (try? c.decode([Lenient<Stroke>].self, forKey: .strokes))?.compactMap(\.value)
         picture = try? c.decode(String.self, forKey: .picture)
         crop = Item.cleanCrop(try? c.decode([Double].self, forKey: .crop))
+        door = try? c.decode(UUID.self, forKey: .door)
+        doneDay = try? c.decode(String.self, forKey: .doneDay)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -275,6 +286,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(strokes, forKey: .strokes)
         try c.encodeIfPresent(picture, forKey: .picture)
         try c.encodeIfPresent(crop, forKey: .crop)
+        try c.encodeIfPresent(door, forKey: .door)
+        try c.encodeIfPresent(doneDay, forKey: .doneDay)
     }
 
     public var frame: CGRect {
@@ -391,6 +404,48 @@ public struct SentInfo: Codable, Equatable, Sendable {
     }
 }
 
+/// One thing of a board that became a task in PARAGON (format 5): which thing, the task's words exactly as they
+/// were sent (without the box in front), and where it went. The board uses it to show "in PARAGON", to find the
+/// task again when PARAGON's note is read, and to send only what is new the next time.
+public struct SentTask: Codable, Equatable, Sendable {
+    /// The thing on the board.
+    public var id: UUID
+    /// The task line as it was sent, without "- [ ] " in front, e.g. "Permit (starts 1 Dec) >2026-12-05".
+    public var words: String
+    /// Where it went: `SentTask.inbox` (PARAGON's Inbox, by the waiting list) or `SentTask.note` (inside the note or
+    /// project the board became, or added to it later).
+    public var place: String
+    /// Fields in the file this version does not know: carried through a load and a save untouched.
+    public private(set) var extra: [String: JSONValue] = [:]
+
+    public static let inbox = "inbox"
+    public static let note = "note"
+
+    enum CodingKeys: String, CodingKey, CaseIterable { case id, words, place }
+
+    public init(id: UUID, words: String, place: String) {
+        self.id = id
+        self.words = words
+        self.place = place
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        words = (try? c.decode(String.self, forKey: .words)) ?? ""
+        place = (try? c.decode(String.self, forKey: .place)) ?? SentTask.inbox
+        extra = unknownFields(of: decoder, known: CodingKeys.allCases.map(\.rawValue))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        try writeUnknownFields(extra, to: encoder)
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(words, forKey: .words)
+        try c.encode(place, forKey: .place)
+    }
+}
+
 public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// Raise this when a new version writes something an older version would lose: a new stored field,
     /// a new kind of item or arrow. A test (`StoredFieldsTests`) fails when a field is added without it.
@@ -398,7 +453,9 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// `start`, `end` and `row`; a main branch's `side`. An app that only knows 1 shows such a board without letting it be changed.
     /// 3 (Seedboard 0.3): pictures on a board — the kind `picture` and the field `picture` on an item.
     /// 4 (Seedboard 0.4): a cropped picture — the field `crop` on an item (the part of the picture that is shown).
-    public static let currentFormat = 4
+    /// 5 (Seedboard 0.5): a door to another board — the kind `door` and the field `door` on an item; the day a
+    /// timeline bar was done — `doneDay` on an item; every thing that became a PARAGON task — `sentTasks` on the board.
+    public static let currentFormat = 5
 
     public var id: UUID
     public var title: String
@@ -413,6 +470,9 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public var sent: SentInfo?
     /// To-do boxes that already went to the PARAGON Inbox, so they are not sent twice.
     public var sentTodos: [UUID]
+    /// Every thing that became a task in PARAGON, with the words that were sent (format 5). One entry per thing:
+    /// use `noteSent` to add, never append by hand.
+    public var sentTasks: [SentTask] = []
     /// Fields in the file this version does not know: carried through a load and a save untouched.
     public private(set) var extra: [String: JSONValue] = [:]
     /// What kind of board this is: "timeline", "sequence" (Who does what), or nothing for an ordinary board.
@@ -436,6 +496,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey, CaseIterable {
         case id, title, created, changed, format, pinned, colour, items, links, sent, sentTodos
         case kind
+        case sentTasks
     }
 
     public init(from decoder: Decoder) throws {
@@ -454,6 +515,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         sentTodos = (try? c.decode([UUID].self, forKey: .sentTodos)) ?? []
         extra = unknownFields(of: decoder, known: CodingKeys.allCases.map(\.rawValue))
         kind = try? c.decode(String.self, forKey: .kind)
+        sentTasks = ((try? c.decode([Lenient<SentTask>].self, forKey: .sentTasks)) ?? []).compactMap(\.value)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -471,6 +533,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(sent, forKey: .sent)
         try c.encode(sentTodos, forKey: .sentTodos)
         try c.encodeIfPresent(kind, forKey: .kind)
+        // Written only when it holds something, so a board nothing was sent from stays as small as before.
+        if !sentTasks.isEmpty { try c.encode(sentTasks, forKey: .sentTasks) }
     }
 
     /// True when this version of the app may change the board: it was not written by a newer one, and

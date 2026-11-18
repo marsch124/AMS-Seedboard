@@ -6,6 +6,9 @@
 	<true/>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<!-- 0.5: printing a board. -->
+	<key>com.apple.security.print</key>
+	<true/>
 	<!-- PARAGON's shared folder, in the Mac's spelling (Team ID in front): Inbox lines wait there. -->
 	<key>com.apple.security.application-groups</key>
 	<array>

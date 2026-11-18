@@ -145,6 +145,9 @@ enum Lettering {
                 board.items[i].h = max(item.h, Double(t.height + 22))
             case .frame:
                 break
+            case .door:
+                // 0.5 groundwork: a door keeps the size it was given (the door lane draws it for real).
+                break
             case .bar, .milestone, .phase:
                 break
             case .who, .message, .band, .section:
@@ -227,6 +230,9 @@ struct BoardPainter {
     var handles = true
     /// Frames and lanes that light up, and the lane whose name is being typed (LanesView.swift).
     var frames = FrameShow()
+    /// 0.5: how each to-do thing stands (waiting, in PARAGON, done, cancelled) — `ParagonEcho.marks(for:)`.
+    /// A thing that is not in here and is ticked "to do" counts as waiting.
+    var todoStates: [UUID: TodoState] = [:]
     /// What lies behind the board (white for a picture). Not needed since 0.2: the words on an arrow have no patch behind them.
     var ground: Color?
 
@@ -308,7 +314,8 @@ struct BoardPainter {
             } else {
                 align = (facts.side[item.id] ?? .right) == .right ? .leading : .trailing
             }
-        case .box, .round, .diamond, .oval:
+        case .box, .round, .diamond, .oval, .door:
+            // 0.5 groundwork: a door is drawn as a plain box until the door lane draws it for real.
             let shape: Path
             switch item.kind {
             case .round: shape = Path(roundedRect: f, cornerRadius: min(f.height, f.width) / 2)

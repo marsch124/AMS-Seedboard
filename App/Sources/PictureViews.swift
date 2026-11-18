@@ -36,7 +36,7 @@ struct PictureTool: View {
                 .background(Part.pictures.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help("Picture (P)")
         .accessibilityLabel("Picture (P)")
         .accessibilityIdentifier("tool.picture")

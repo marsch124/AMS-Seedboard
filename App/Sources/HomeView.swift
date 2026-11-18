@@ -42,7 +42,7 @@ struct HomeView: View {
                             .padding(.vertical, 3)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .help("Rename, move, change and remove starters")
                     .accessibilityLabel("Edit the starters")
                     .accessibilityIdentifier("home.startersEdit")
@@ -196,7 +196,7 @@ struct StarterCard: View {
             }
             .modifier(CardPlate())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .starterMenu(starter, ask: ask)
         .accessibilityLabel("\(starter.name). \(starter.hint)")
     }
@@ -242,7 +242,7 @@ struct BoardCard: View {
             }
             .modifier(CardPlate())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityLabel("\(board.title). \(board.changedWords())")
     }
 }
@@ -300,7 +300,7 @@ struct StarterPicker: View {
                         .padding(.vertical, 3)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .accessibilityLabel("Edit the starters")
                 .accessibilityIdentifier("starters.edit")
                 }
@@ -355,7 +355,7 @@ struct SearchField: View {
                     ControlMarkView(.closeCircle, size: 17, colour: Color.secondary)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .help("Show every board again")
                 .accessibilityLabel("Clear the search")
                 .accessibilityIdentifier("boards.searchClear")

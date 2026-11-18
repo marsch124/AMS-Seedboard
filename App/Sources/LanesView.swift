@@ -176,7 +176,7 @@ struct LanesChip: View {
         Button { shown = true } label: {
             BarChip(word: "Lanes", glyph: .new(.lanes), part: .frames, on: shown || item.lanes != nil)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help("Split the frame into named lanes")
         .accessibilityIdentifier("sel.lanes")
         .modifier(PlatePresenter(shown: $shown, edge: .bottom, height: 250, closed: { session.takeKeys() }) {
@@ -243,7 +243,7 @@ struct LanesPlate: View {
                 .background(on ? Part.frames.fill : Part.frames.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityLabel(label ?? word)
         .accessibilityIdentifier(id)
     }

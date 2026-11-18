@@ -35,7 +35,7 @@ public struct Lanes: Codable, Equatable, Sendable {
         self.cuts = Lanes.even(n)
     }
 
-    enum CodingKeys: String, CodingKey {
+    enum CodingKeys: String, CodingKey, CaseIterable {
         case way
         case names
         case cuts

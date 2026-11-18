@@ -43,6 +43,8 @@
 	<array>
 		<string>amspara</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>To put a photo straight onto a board.</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.schabbauer.AMSSeedboard</key>
@@ -55,6 +57,10 @@
 			<string>Any</string>
 		</dict>
 	</dict>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.schabbauer.AMSSeedboard.board</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

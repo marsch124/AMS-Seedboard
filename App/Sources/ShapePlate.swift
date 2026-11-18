@@ -99,7 +99,7 @@ struct PlateHeading: View {
                 .foregroundStyle(part.text)
             Spacer(minLength: 12)
             Button("Cancel", action: cancel)
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .font(Txt.label.weight(.semibold))
                 .foregroundStyle(part.text)
                 .keyboardShortcut(.cancelAction)
@@ -140,7 +140,7 @@ struct ShapePlate: View {
                         .background(on ? Part.shapes.fill : Part.shapes.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .accessibilityLabel(kind.word)
                     .accessibilityIdentifier(prefix + kind.rawValue)
                 }
@@ -207,7 +207,7 @@ struct ShapeTool: View {
                     .frame(width: 18, height: 18, alignment: .bottomTrailing)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             // On the iPhone the corner is too small for a finger: it only shows that there is more (hold the tile).
             .allowsHitTesting(ShapeTool.cornerTakesPresses)
             .help("All shapes")
@@ -283,7 +283,7 @@ struct ShapeChip: View {
         Button { shown = true } label: {
             BarChip(word: "Shape", glyph: item.kind.mark, part: .shapes, on: shown)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help("Change it into another shape")
         .accessibilityIdentifier("sel.shape")
         .modifier(PlatePresenter(shown: $shown, edge: .bottom, closed: { session.takeKeys() }) {

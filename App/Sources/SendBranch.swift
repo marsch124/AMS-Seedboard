@@ -33,7 +33,7 @@ struct BranchSwitch: View {
                 .stroke(on ? Part.paragon.text : Color.primary.opacity(0.12), lineWidth: on ? 1.5 : 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityLabel(words)
         .accessibilityValue(on ? "On" : "Off")
         .accessibilityIdentifier("send.branchOnly")

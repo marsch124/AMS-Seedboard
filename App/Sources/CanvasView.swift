@@ -76,6 +76,7 @@ struct CanvasView: View {
                     sheet.translateBy(x: session.offset.width, y: session.offset.height)
                     sheet.scaleBy(x: session.scale, y: session.scale)
                     var painter = BoardPainter(board: session.board, facts: session.facts, paint: paint)
+                    painter.todoStates = ParagonEcho.shared.marks(for: session.board)
                     painter.scale = session.scale
                     painter.selection = session.selection
                     painter.selectedLink = session.selectedLink

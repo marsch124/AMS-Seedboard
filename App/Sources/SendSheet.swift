@@ -121,7 +121,7 @@ struct SendSheet: View {
                     Button("Open in PARAGON") { model.openInParagon(sent) }
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Part.paragon.text)
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                         .accessibilityIdentifier("send.openLast")
                 }
             }
@@ -193,7 +193,7 @@ struct SendSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(on ? Part.paragon.text : Color.primary.opacity(0.12), lineWidth: on ? 1.5 : 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityIdentifier("send.kind.\(value.rawValue)")
     }
 

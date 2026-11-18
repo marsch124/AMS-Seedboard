@@ -58,7 +58,7 @@ struct SequenceToolPill: View {
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help(help)
         .accessibilityLabel(word)
         .accessibilityIdentifier(id)
@@ -159,7 +159,7 @@ struct SequenceSelectionBar: View {
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityIdentifier(id)
     }
 
@@ -199,7 +199,7 @@ struct SequenceSelectionBar: View {
                 .overlay(Circle().stroke(edge ?? .clear, lineWidth: 1.5))
                 .frame(width: 22, height: 22)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityLabel(label)
         .accessibilityIdentifier(id)
     }

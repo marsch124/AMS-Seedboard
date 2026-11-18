@@ -91,7 +91,7 @@ final class CaptionCropTests: XCTestCase {
         var (b, id) = board()
         b.cropPicture(id, to: [0.2, 0.3, 0.4, 0.5])
         b.touch()
-        XCTAssertEqual(b.format, 4)
+        XCTAssertEqual(b.format, Board.currentFormat)
         let back = try JSONDecoder().decode(Board.self, from: JSONEncoder().encode(b))
         XCTAssertEqual(back.item(id)!.crop!, [0.2, 0.3, 0.4, 0.5])
         func read(_ crop: String) throws -> [Double]? {

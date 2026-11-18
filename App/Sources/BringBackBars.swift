@@ -99,7 +99,7 @@ private struct KeptBars: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
                     .background(Color.white.opacity(0.22), in: Capsule())
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .fixedSize()
                     .accessibilityIdentifier("\(name).button")
             }
@@ -108,7 +108,7 @@ private struct KeptBars: View {
                     .frame(width: 26, height: 26)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             .accessibilityLabel("Close")
             .accessibilityIdentifier("\(name).close")
         }

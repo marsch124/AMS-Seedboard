@@ -109,7 +109,7 @@ struct BoardView: View {
                                 .background(Color.white.opacity(0.22), in: Capsule())
                                 .pressRoom(0, 11)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                         .accessibilityIdentifier("board.noticeUndo")
                     }
                     .padding(.leading, 12)
@@ -128,7 +128,7 @@ struct BoardView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .background(Part.boards.fill, in: Capsule())
+                        .background(model.flashTone.fill, in: Capsule())
                         .accessibilityIdentifier("board.flash")
                 }
                 // The Draw tool's plate: pen and rubber, thickness, colours (InkViews.swift).
@@ -361,7 +361,7 @@ struct ToolPill: View {
                 .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(id)
@@ -405,7 +405,7 @@ struct ZoomCluster: View {
                 .contentShape(Rectangle())
                 .pressRoom(4, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(id)
@@ -513,7 +513,7 @@ struct UndoCluster: View {
                 .contentShape(Rectangle())
                 .pressRoom(4, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .disabled(!on)
         .opacity(on ? 1 : 0.35)
         .accessibilityLabel(help)

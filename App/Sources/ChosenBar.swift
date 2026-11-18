@@ -167,7 +167,7 @@ struct ChosenBar: View {
                 ChipLook(action: action, worded: worded, tint: tint)
                     .pressRoom(0, 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             .disabled(!action.enabled)
             .help(action.word)
             .accessibilityLabel(action.word)
@@ -177,7 +177,7 @@ struct ChosenBar: View {
                 ChipLook(action: action, worded: worded, tint: tint, lit: choosing == action.id)
                     .pressRoom(0, 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             .help(action.word)
             .accessibilityLabel(action.word)
             .accessibilityIdentifier(action.id)
@@ -200,7 +200,7 @@ struct ChosenBar: View {
             ChipLook(action: dots, worded: false, tint: tint, lit: showMore || rest.contains { $0.on })
                 .pressRoom(0, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .help("More")
         .accessibilityLabel("More")
         .accessibilityIdentifier(dots.id)
@@ -235,7 +235,7 @@ struct ColourRow: View {
                         .frame(width: Finger.dot, height: Finger.dot)
                         .pressRoom(7, 7)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .modifier(InUseRing(on: colour.on))
                 .accessibilityLabel(colour.word)
                 .accessibilityIdentifier(colour.id)
@@ -331,7 +331,7 @@ struct ActionList: View {
                     .contentShape(Rectangle())
                     .pressRoom(6, 8)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .accessibilityLabel("Back")
                 .accessibilityIdentifier("plate.back")
             } else {
@@ -343,7 +343,7 @@ struct ActionList: View {
             }
             Spacer(minLength: 12)
             Button("Cancel", action: close)
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .font(Txt.label.weight(.semibold))
                 .foregroundStyle(part.text)
                 .keyboardShortcut(.cancelAction)
@@ -386,7 +386,7 @@ struct ActionList: View {
             .background(line.on && !leads ? tone.soft : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .disabled(!line.enabled)
         .opacity(line.enabled ? 1 : 0.4)
         .accessibilityLabel(line.word)
