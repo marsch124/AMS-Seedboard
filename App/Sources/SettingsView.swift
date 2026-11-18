@@ -51,6 +51,8 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("settings.saveWarning")
                     }
+                    // Removed and earlier versions, Export all boards, Import boards (BringBackBars.swift).
+                    KeptSettingsRows()
                     #if os(macOS)
                     Button("Show the boards folder") { model.showBoardsFolder() }
                         .foregroundStyle(Part.boards.text)

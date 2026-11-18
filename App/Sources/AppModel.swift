@@ -27,7 +27,11 @@ final class AppModel: ObservableObject {
     @Published private(set) var saveWarning: String?
     /// A link led to a board that was removed: which one, and when. The place for a "Bring back" button
     /// (`bringBack`). Cleared when the board is back or another board is opened.
-    @Published private(set) var removedLink: RemovedBoard?
+    @Published var removedLink: RemovedBoard?
+    /// Two devices changed the same board: the one-line notice that says where the other version is kept.
+    @Published var clash: ClashNotice?
+    /// The page "Removed and earlier versions" is asked for over the main window (BringBack.swift).
+    @Published var keptPage: KeptPageAsk?
 
     struct RemovedBoard: Equatable {
         var id: UUID
@@ -53,6 +57,7 @@ final class AppModel: ObservableObject {
         store.onCloudChange = { [weak self] news in self?.cloudBrought(news) ?? [] }
         store.onCloudGone = { [weak self] gone in self?.cloudRemoved(gone) }
         store.onState = { [weak self] in self?.storeStateChanged() }
+        store.onClash = { [weak self] id, title in self?.clash = ClashNotice(id: id, title: title) }
         #if os(macOS)
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.leaving(closing: true) }
@@ -91,6 +96,8 @@ final class AppModel: ObservableObject {
             session.selectedLink = link.id
         }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
+        // For pictures: `-removed` opens "Removed and earlier versions", `-clash` shows the clash notice.
+        bringBackLaunch()
         // A link that arrived before the boards were loaded is followed now.
         if let id = waitingLink { follow(id) }
         checkParagon()
@@ -165,8 +172,8 @@ final class AppModel: ObservableObject {
         heldWatch = nil
         let taken = cloudBrought(news)
         store.took(news.filter { taken.contains($0.id) })
-        if news.contains(where: { !taken.contains($0.id) && heldNews[$0.id] == nil }) {
-            say("Another device changed this board while you were typing. Its version is kept as a safety copy.")
+        if let lost = news.first(where: { !taken.contains($0.id) && heldNews[$0.id] == nil }) {
+            clash = ClashNotice(id: lost.id, title: boards.first { $0.id == lost.id }?.title ?? lost.title)
         }
     }
 
@@ -241,7 +248,7 @@ final class AppModel: ObservableObject {
         safetyLine = store.safetyLine()
     }
 
-    private func write(_ board: Board) {
+    func write(_ board: Board) {
         if let i = boards.firstIndex(where: { $0.id == board.id }) { boards[i] = board } else { boards.insert(board, at: 0) }
         boards.sort { $0.changed > $1.changed }
         store.save(board)
@@ -383,8 +390,8 @@ final class AppModel: ObservableObject {
                 open(id)
             case .removed(let date):
                 waitingLink = nil
+                // Shown as a line with a "Bring back" button (BringBack.swift).
                 removedLink = RemovedBoard(id: id, removed: date)
-                say(BoardLink.removedLine(date))
             case .missing:
                 say("That board is not on this device yet. It opens when it arrives.")
             }
