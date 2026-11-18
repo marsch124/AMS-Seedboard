@@ -83,6 +83,21 @@ public extension Board {
         }
     }
 
+    /// 0.7: the Done button's word. One chosen bar or milestone marked done on the board says its day —
+    /// "Done 18 Nov" ("Done 3 Dec 2025" in another year); anything else (several chosen, not done, or ticked
+    /// off only in PARAGON, where no day is kept) says "Done".
+    func doneWord(for ids: Set<UUID>, today: Day) -> String {
+        let timed = ids.filter { item($0)?.span != nil }
+        guard timed.count == 1, let id = timed.first, let day = item(id)?.doneOn else { return "Done" }
+        return "Done \(day.words(seenFrom: today))"
+    }
+
+    /// 0.7: the line on the Dates page of a bar or milestone marked done: "Done on 18 Nov"; nil otherwise.
+    func doneLine(of id: UUID, today: Day) -> String? {
+        guard let day = item(id)?.doneOn else { return nil }
+        return "Done on \(day.words(seenFrom: today))"
+    }
+
     /// The Done button: when every chosen bar is done the mark comes off, otherwise all of them are done.
     /// Returns true when they are done afterwards.
     @discardableResult

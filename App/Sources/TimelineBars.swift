@@ -259,8 +259,10 @@ struct TimelineSelectionBar: View {
     }
 
     /// 0.5: Done marks the chosen bars and milestones done today (full colour while they are); again takes the mark off.
+    /// 0.7: one chosen bar that is done says its day: "Done 18 Nov".
     private var doneChip: some View {
-        chip("Done", .new(.done), "sel.done", .timeline, on: session.timelineChosenDone) {
+        chip(session.board.doneWord(for: session.selection, today: .today()), .new(.done), "sel.done", .timeline,
+             on: session.timelineChosenDone) {
             if let words = session.timelineToggleDone() { model.say(words) }
         }
     }
@@ -365,6 +367,13 @@ struct TimelineDatesSheet: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("dates.length")
             }
+            // 0.7: the day it was marked done.
+            if let done = session.board.doneLine(of: id, today: .today()) {
+                Text(done)
+                    .font(.caption)
+                    .foregroundStyle(Part.timeline.text)
+                    .accessibilityIdentifier("dates.done")
+            }
             if let earliest {
                 Text("It comes after \(forerunners), so it cannot start before \(earliest.long).")
                     .font(.caption)
@@ -389,7 +398,7 @@ struct TimelineDatesSheet: View {
         .frame(width: 340)
         #else
         .frame(maxWidth: 560, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(300)])
+        .presentationDetents([.height(session.board.item(id)?.isDone == true ? 322 : 300)])
         #endif
         // A new start moves the whole bar: the end follows, so the length stays.
         .onChange(of: start) { old, new in

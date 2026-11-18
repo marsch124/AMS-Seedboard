@@ -1,0 +1,27 @@
+AMS Seedboard 0.7 (build 7) - what to test
+
+This is a small version: the day a bar was done is now shown, and the course shows the iPad and the Mac.
+
+1. The Done button shows the day (iPhone, iPad, Mac)
+- Open a timeline board. Choose a bar and press Done. Choose that bar again: the Done button in the bar below reads "Done 18 Nov" (today's day and month).
+- Do the same with a milestone. It reads the same.
+- Choose two or more bars, one of them done: the button reads just "Done".
+- Choose a bar that is not done: the button reads "Done".
+- A done bar from another year (for example one marked done last December) reads "Done 3 Dec 2025", with the year. One from this year has no year.
+- Press the button on a done bar: the mark goes off and it reads "Done" again.
+
+2. The Dates page
+- Choose a done bar and press Dates. Under Starts and Ends there is one more line: "Done on 18 Nov".
+- Choose a bar that is not done and press Dates: no such line.
+- Cancel and Save work as before (Escape is Cancel on the Mac).
+
+3. A bar ticked off only in PARAGON
+- Send a timeline to PARAGON, then tick one task there and come back. The bar is drawn done. Choose it: the button reads "Done", with no day, and the Dates page has no "Done on" line. This is right: no day is kept for it.
+
+4. The course
+- Open the course from the app's docs. At the top there is a switch: iPhone, iPad, Mac. Press each one: the pictures and words change to that device.
+- There is a new chapter, "iPad and Mac": the list of boards beside the board, the Mac menu bar, the Mac keys, Escape for Cancel, and the Pencil and the trackpad. Read it and tell us where it is unclear or wrong.
+
+Also look at: Settings, What's new (the 0.7 entry) and How it works (Timeline board, the line about the day it was done).
+
+Tell us: anything that looks wrong in day or night, on iPhone, iPad or Mac, for example a long "Done 3 Dec 2025" that does not fit on the iPhone.

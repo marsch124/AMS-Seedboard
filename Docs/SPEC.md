@@ -1,4 +1,6 @@
-# AMS Seedboard — specification, version 0.6 (build 6)
+# AMS Seedboard — specification, version 0.7 (build 7)
+
+**Version 0.7 (build 7, 2026-11-18)** is a small version on top of 0.6: the day a bar or milestone was marked done is now shown (part **13**), and the course shows the iPad and the Mac too (13.3). Where part 13 and an older part disagree about a thing 0.7 changed, part 13 is right. Everything of 0.6 that 0.7 does not name is as it was. The board format is still 5.
 
 **Version 0.6 (build 6, 2026-11-18)** is a small version on top of 0.5: two fixes and a course. A bar or milestone marked Done now goes to PARAGON ticked, not open (5.3 and 12.1); the app icon's menu on the iPhone and iPad never has more than four lines (11.19 and 12.2); the link back to the board in a PARAGON note can be pressed (12.3); and Seedboard has its first course, `Docs/intro/index.html` (12.4). Everything is in part **12**. Where part 12 and an older part disagree about a thing 0.6 changed, part 12 is right. Everything of 0.5 that 0.6 does not name is as it was. The board format is still 5.
 
@@ -1350,3 +1352,30 @@ Version 0.6 (build 6, 2026-11-18). `project.yml`: `MARKETING_VERSION` 0.6, `CURR
 
 - `Guide.swift`: a new 0.6 entry in What's new (eight lines, above 0.5); How it works changed in Timeline board (Done), Send to PARAGON (done bars; Start: and Add what is new), What PARAGON gets (the ticked box, the count) and the three lines about the icon menu.
 - Tests: `Done06Tests` (2 data tests: a done bar arrives ticked with its day and an open one stays open; a done bar never goes to the Inbox); `Iphone05Tests` follows the four-line rule (two pinned boards: New board, New board from the clipboard, board 1, board 2; one pinned board: all four lines). What was not seen on a real device: the long press on the real icon on an iPhone with two pinned boards; a done task ticked in a real PARAGON note.
+
+## 13. New in 0.7
+
+Version 0.7 (build 7, 2026-11-18). `project.yml`: `MARKETING_VERSION` 0.7, `CURRENT_PROJECT_VERSION` 7. The board format stays 5 (`doneDay` has been stored since 0.5, 11.10). Texts: `Guide.swift`; course: `Docs/intro/index.html`.
+
+### 13.1 The Done button shows the day
+
+- Before (0.6 and older): `doneDay` (ISO day, set by Done) was kept and sent to PARAGON as `@done(day)` (12.1) but never shown. Now: it is shown in two places.
+- The selection bar (1221, `sel.done`): with ONE bar or milestone chosen that is done on the board (has `doneDay`), the button reads "Done 18 Nov" (day and short month, as the other dates in the app). When the year of `doneDay` is not the current year, the year is added: "Done 3 Dec 2025". The button is in full colour as before; pressing it still takes the mark off.
+- With SEVERAL chosen (any mix), the button reads "Done", as before, whether all, some or none are done, because their days may differ. The rule for several (all on, or all off when all were done) is unchanged.
+- A thing that is not done: the button reads "Done" (grey as before, 3.x).
+- A bar drawn done only because its task is ticked off in PARAGON (read back, `todoStates`) has NO `doneDay`: the button reads "Done", because no day is kept for it. Taking the mark off still says "It is ticked off in PARAGON, so it stays done."
+
+### 13.2 The Dates page says when it was done
+
+- The Dates page (Starts, Ends, Cancel and Save) of a done bar or milestone has one more line under the dates: "Done on 18 Nov" (the year added when it is not this year, as in 13.1). It is text only; it changes nothing and Cancel and Save work as before.
+- A bar or milestone that is not done, and one done only in PARAGON, has no such line.
+- Nothing is written to the board or to PARAGON by this version; `doneDay` and `@done(day)` are as in 12.1.
+
+### 13.3 The course shows the iPad and the Mac
+
+- `Docs/intro/index.html`: a device switch iPhone · iPad · Mac at the top changes the pictures and the wording to that device. A new chapter "iPad and Mac" shows the list of boards beside the board, the Mac menu bar, the Mac keys, Escape = Cancel, and the Pencil and the trackpad. The course is still not built into the app.
+
+### 13.4 Texts and tests
+
+- `Guide.swift`: a new 0.7 entry in What's new (six lines, above 0.6); How it works changed in Timeline board (a new line after Done: the day it was done).
+- `Docs/WHAT-TO-TEST-0.7.txt` is new.
