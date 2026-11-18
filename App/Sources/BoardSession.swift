@@ -638,7 +638,15 @@ final class BoardSession: ObservableObject {
 
     /// The first time the board's place on screen is known, it is shown whole — and again whenever its
     /// room changes (a window still settling, a page opening over it), until the owner has moved or zoomed it.
-    func placeIfNeeded(_ size: CGSize) { place.resized(to: size, showing: board.bounds) }
+    func placeIfNeeded(_ size: CGSize) {
+        if board.isTimeline {
+            // A timeline is placed by its days, not by where its things lie.
+            place.size = size
+            if !place.movedByOwner, size.width > 10 { timelineFit() }
+            return
+        }
+        place.resized(to: size, showing: board.bounds)
+    }
 
     /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.
     func resized(_ size: CGSize) {

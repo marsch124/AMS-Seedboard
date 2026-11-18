@@ -354,7 +354,7 @@ struct TimelineView: View {
             }
             dropTarget = bar(at: value.location, except: id)
         case .panning(let base):
-            session.offset = CGSize(width: base.width + value.translation.width, height: base.height + value.translation.height)
+            session.slide(from: base, by: value.translation)
             session.clampTimeline()
         case .idle, .waiting:
             break
