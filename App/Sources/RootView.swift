@@ -72,9 +72,13 @@ struct BoardList: View {
     @State private var renaming: Board?
     @State private var newName = ""
     @State private var removing: Board?
+    /// The iPhone's list with search and "+" at the bottom (for now only with the launch word `-thumbRow`).
+    private var thumbRow: Bool { phone && LaunchOptions.thumbRow }
 
     var body: some View {
         VStack(spacing: 0) {
+            // `-thumbRow` (0.5, for the owner's pick): on the iPhone search and "+" sit at the bottom instead.
+            if !thumbRow {
             Button {
                 // On the iPhone the choices come up from the bottom; a small pop-up there comes out empty.
                 if sizeClass == .compact { showStarterSheet = true } else { showStarters = true }
@@ -108,6 +112,7 @@ struct BoardList: View {
             SearchField(text: $search)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 4)
+            }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -134,7 +139,7 @@ struct BoardList: View {
             }
             .accessibilityIdentifier("boards.list")
 
-            Divider()
+            if thumbRow { ThumbRow(search: $search, open: open) } else { Divider() }
             HStack {
                 #if os(macOS)
                 SettingsLink { settingsLabel }
