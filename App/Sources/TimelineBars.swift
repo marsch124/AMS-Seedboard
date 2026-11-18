@@ -255,6 +255,10 @@ struct TimelineSelectionBar: View {
             doneChip
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
         }
+        // 0.9: a phase folds its rows away (a bar and a milestone have nothing to fold).
+        if item.kind == .phase, session.board.canFold(item.id) {
+            chip(item.folded ? "Unfold" : "Fold", .control(.chevron), "sel.fold", .timeline, on: item.folded) { session.toggleTimelineFold(item.id) }
+        }
         chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
     }
 

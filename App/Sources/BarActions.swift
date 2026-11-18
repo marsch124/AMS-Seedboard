@@ -447,6 +447,23 @@ struct BarActions {
         return all
     }
 
+    /// 0.9: the right-click menu of a timeline (the Mac): Fold / Unfold for the phase under the pointer, then the board's.
+    func timelineMenu(phase: Item?) -> [BarAction] {
+        let session = session
+        var all: [BarAction] = []
+        if !session.readOnly {
+            if let phase, session.board.canFold(phase.id) {
+                all.append(act("fold", phase.folded ? "Unfold" : "Fold", .control(.chevron)) { session.toggleTimelineFold(phase.id) })
+            }
+            all.append(act("foldAll", "Fold all phases", .control(.chevron), enabled: session.board.canFoldAny, gap: !all.isEmpty) { session.foldAllTimelinePhases(true) })
+            all.append(act("unfoldAll", "Unfold all", .control(.chevron), enabled: session.board.canUnfoldAny) { session.foldAllTimelinePhases(false) })
+        }
+        if session.canAddToCalendar {
+            all.append(act("calendar", "Add to Calendar…", .new(.calendar), gap: !all.isEmpty) { AppModel.shared.showCalendar = true })
+        }
+        return all
+    }
+
     /// The menu of a chosen arrow.
     func arrowMenu(_ link: SeedboardCore.Link) -> [BarAction] {
         let session = session

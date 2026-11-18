@@ -42,6 +42,8 @@ targets:
         com.apple.security.files.user-selected.read-write: true
         # 0.5: printing a board (the Mac's sandbox asks for it).
         com.apple.security.print: true
+        # 0.9: milestones into the calendar (the Mac's sandbox asks for it).
+        com.apple.security.personal-information.calendars: true
         com.apple.developer.icloud-services: [CloudDocuments]
         # Seedboard's own container first; PARAGON's second, so a board can be handed over.
         com.apple.developer.icloud-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
@@ -82,6 +84,8 @@ targets:
         NSUserActivityTypes: [com.schabbauer.AMSSeedboard.board]
         # 0.5: a photo straight onto a board (iPhone and iPad), and a photo or scan from the iPhone on the Mac.
         NSCameraUsageDescription: To put a photo straight onto a board.
+        # 0.9: a timeline's milestones into the calendar (write-only: Seedboard can add events, never read them).
+        NSCalendarsWriteOnlyAccessUsageDescription: To put a timeline's milestones into your calendar.
         # 0.5, the Mac: words marked in another app become a board (right-click ▸ Services). `MacDelegate` answers.
         # The empty NSRequiredContext makes the line show without being switched on in System Settings first.
         NSServices:

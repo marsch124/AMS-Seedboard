@@ -373,6 +373,20 @@ public struct PhaseGroup: Equatable, Sendable {
     /// From the first day of its earliest bar to the last day of its latest; nil when it is empty.
     public var start: Day?
     public var end: Day?
+    /// 0.9: the phase is folded away: `shownPhaseGroups` count its rows as one (the heading's own).
+    public var folded: Bool = false
+    /// 0.9: how many bars and milestones lie under the phase (folded or not).
+    public var bars: Int = 0
+    public var milestones: Int = 0
+
+    /// "4 bars", "1 bar, 2 milestones": the small words on a folded phase's band; nil for an empty phase.
+    public var foldWords: String? {
+        guard bars + milestones > 0 else { return nil }
+        let b = bars == 1 ? "1 bar" : "\(bars) bars"
+        let m = milestones == 1 ? "1 milestone" : "\(milestones) milestones"
+        if milestones == 0 { return b }
+        return bars == 0 ? m : "\(b), \(m)"
+    }
 }
 
 // MARK: The rules
@@ -466,10 +480,11 @@ public extension Board {
         var groups: [PhaseGroup] = []
         for (n, item) in rows.enumerated() {
             if item.kind == .phase {
-                groups.append(PhaseGroup(id: item.id, firstRow: n, lastRow: n, start: nil, end: nil))
+                groups.append(PhaseGroup(id: item.id, firstRow: n, lastRow: n, start: nil, end: nil, folded: item.folded))
             } else if !groups.isEmpty, let span = item.span {
                 let g = groups.count - 1
                 groups[g].lastRow = n
+                if item.kind == .milestone { groups[g].milestones += 1 } else { groups[g].bars += 1 }
                 groups[g].start = groups[g].start.map { min($0, span.start) } ?? span.start
                 groups[g].end = groups[g].end.map { max($0, span.end) } ?? span.end
             } else if !groups.isEmpty {
@@ -478,6 +493,87 @@ public extension Board {
         }
         return groups
     }
+
+    // MARK: Folding phases (0.9)
+    // Folding is only how the rows are shown: every row keeps its stored `row` number.
+
+    /// The rows a folded phase hides: everything under it down to the next phase.
+    var hiddenTimelineIDs: Set<UUID> {
+        var hidden = Set<UUID>()
+        var folded = false
+        for item in timelineRows {
+            if item.kind == .phase { folded = item.folded } else if folded { hidden.insert(item.id) }
+        }
+        return hidden
+    }
+
+    /// The rows that are in sight, from the top: `timelineRows` without what a folded phase hides.
+    var shownTimelineRows: [Item] {
+        let hidden = hiddenTimelineIDs
+        return hidden.isEmpty ? timelineRows : timelineRows.filter { !hidden.contains($0.id) }
+    }
+
+    /// Where a row is on screen, counted from 0 at the top; nil when a folded phase hides it.
+    func shownRow(of id: UUID) -> Int? { shownTimelineRows.firstIndex { $0.id == id } }
+
+    /// The stored place (`timelineRow`) of the nth row on screen; past the last, the end of all rows.
+    func storedRow(forShown n: Int) -> Int {
+        let shown = shownTimelineRows
+        guard n < shown.count else { return timelineRows.count }
+        return timelineRow(of: shown[max(n, 0)].id) ?? timelineRows.count
+    }
+
+    /// The phases with their rows as counted on screen: a folded phase is one row high.
+    var shownPhaseGroups: [PhaseGroup] {
+        let hidden = hiddenTimelineIDs
+        let rows = timelineRows
+        var out: [PhaseGroup] = []
+        var counted = 0
+        for g in phaseGroups {
+            // Rows above this phase that are in sight, then the phase's own and the ones under it that stay.
+            counted = rows[..<g.firstRow].filter { !hidden.contains($0.id) }.count
+            let kept = rows[g.firstRow...g.lastRow].filter { !hidden.contains($0.id) }.count
+            var copy = g
+            copy.firstRow = counted
+            copy.lastRow = counted + kept - 1
+            out.append(copy)
+        }
+        return out
+    }
+
+    /// The phase that holds this row (the phase itself for its own row); nil above the first phase.
+    func phase(holding id: UUID) -> PhaseGroup? {
+        guard let row = timelineRow(of: id) else { return nil }
+        return phaseGroups.first { row >= $0.firstRow && row <= $0.lastRow }
+    }
+
+    /// True for a phase that has rows under it to fold away.
+    func canFold(_ id: UUID) -> Bool {
+        guard let item = item(id), item.kind == .phase else { return false }
+        return item.folded || (phaseGroups.first { $0.id == id }.map { $0.lastRow > $0.firstRow } ?? false)
+    }
+
+    /// Folds or unfolds one phase.
+    mutating func setFolded(_ id: UUID, _ folded: Bool) {
+        guard let i = index(of: id), items[i].kind == .phase else { return }
+        items[i].folded = folded
+    }
+
+    /// Folds (or unfolds) every phase that has rows under it. Returns how many changed.
+    @discardableResult
+    mutating func foldAllPhases(_ folded: Bool) -> Int {
+        var changed = 0
+        for g in phaseGroups {
+            guard let i = index(of: g.id), items[i].folded != folded, (!folded || g.lastRow > g.firstRow) else { continue }
+            items[i].folded = folded
+            changed += 1
+        }
+        return changed
+    }
+
+    /// True when "Fold all phases" would do something / when "Unfold all" would.
+    var canFoldAny: Bool { phaseGroups.contains { !$0.folded && $0.lastRow > $0.firstRow } }
+    var canUnfoldAny: Bool { phaseGroups.contains { $0.folded } }
 
     // MARK: Adding
 

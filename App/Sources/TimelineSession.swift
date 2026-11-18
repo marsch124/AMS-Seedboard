@@ -45,7 +45,7 @@ extension BoardSession {
 
     /// Where a bar, a milestone or a phase heading is on screen. A phase has no bar of its own: its row's band.
     func timelineRect(of id: UUID) -> CGRect? {
-        guard let item = board.item(id), let row = board.timelineRow(of: id) else { return nil }
+        guard let item = board.item(id), let row = board.shownRow(of: id) else { return nil }
         let g = timelineGeometry
         guard let span = item.span else {
             return CGRect(x: g.namesWidth, y: g.y(ofRow: row), width: Double(chartWidth), height: g.rowHeight)
@@ -124,7 +124,7 @@ extension BoardSession {
     /// The rows never slide further than their last one; the days slide freely.
     func clampTimeline() {
         let g = timelineGeometry
-        let rows = Double(board.timelineRows.count)
+        let rows = Double(board.shownTimelineRows.count)
         // Room under the last row for the tools at the bottom.
         let lowest = min(0, Double(viewSize.height) - g.headerHeight - rows * g.rowHeight - timeline.bottomRoom)
         let y = min(0, max(Double(offset.height), lowest))
@@ -133,7 +133,7 @@ extension BoardSession {
 
     /// Slides just enough to bring a row (and the start of its bar) into sight.
     func timelineReveal(_ id: UUID) {
-        guard viewSize.width > 10, let row = board.timelineRow(of: id) else { return }
+        guard viewSize.width > 10, let row = board.shownRow(of: id) else { return }
         let g = timelineGeometry
         var dx = 0.0, dy = 0.0
         let top = g.y(ofRow: row), bottom = top + g.rowHeight
@@ -162,7 +162,9 @@ extension BoardSession {
         let first = g.day(atX: g.namesWidth)
         let last = max(first, g.day(atX: Double(viewSize.width)) - 1)
         let day = (today >= first && today <= last) ? today : first + max(1, (last - first) / 6)
-        let row = single.flatMap { board.timelineRow(of: $0.id) }.map { $0 + 1 }
+        var row = single.flatMap { board.timelineRow(of: $0.id) }.map { $0 + 1 }
+        // Under a folded phase the new row goes after the rows it hides, so it stays in sight.
+        if let phase = single, phase.kind == .phase, phase.folded, let group = board.phaseGroups.first(where: { $0.id == phase.id }) { row = group.lastRow + 1 }
         let days = timeline.scale.newBarDays
         var made: UUID?
         change { board in
@@ -231,14 +233,48 @@ extension BoardSession {
 
     /// Up and down arrow keys: the row above or below is chosen.
     func timelineSelectRow(by step: Int) {
-        let rows = board.timelineRows
+        let rows = board.shownTimelineRows
         guard !rows.isEmpty else { return }
-        let here = single.flatMap { board.timelineRow(of: $0.id) }
+        let here = single.flatMap { board.shownRow(of: $0.id) }
         let next = min(max((here ?? (step > 0 ? -1 : rows.count)) + step, 0), rows.count - 1)
         selection = [rows[next].id]
         selectedLink = nil
         timelineReveal(rows[next].id)
     }
+}
+
+// MARK: Folding phases (0.9)
+
+extension BoardSession {
+    /// Folds or unfolds one phase. What the fold hides is no longer chosen. One Undo step.
+    func toggleTimelineFold(_ id: UUID) {
+        guard !readOnly, board.isTimeline, board.canFold(id), let item = board.item(id) else { return }
+        if editing != nil { commitEdit() }
+        let folding = !item.folded
+        change { $0.setFolded(id, folding) }
+        dropHiddenChoices()
+        clampTimeline()
+    }
+
+    /// "Fold all phases" and "Unfold all": every phase at once. One Undo step.
+    func foldAllTimelinePhases(_ fold: Bool) {
+        guard !readOnly, board.isTimeline, fold ? board.canFoldAny : board.canUnfoldAny else { return }
+        if editing != nil { commitEdit() }
+        change { $0.foldAllPhases(fold) }
+        dropHiddenChoices()
+        clampTimeline()
+    }
+
+    /// The chosen rows that a fold hides are let go.
+    private func dropHiddenChoices() {
+        let hidden = board.hiddenTimelineIDs
+        guard !hidden.isEmpty, !selection.isDisjoint(with: hidden) else { return }
+        selection.subtract(hidden)
+        if linkFrom.map(hidden.contains) == true { linkFrom = nil }
+    }
+
+    /// The phase that is the only thing chosen, for the Fold / Unfold line.
+    var chosenPhase: Item? { single.flatMap { $0.kind == .phase ? $0 : nil } }
 }
 
 /// The short lines a timeline says.

@@ -89,6 +89,16 @@ struct SeedMenus: Commands {
                 if let session { model.makeTimeline(of: session) }
             }
             .disabled(session == nil || session?.board.isEmpty == true || session?.board.placesItself == true || session?.starterDraft == true)
+            // 0.9: a timeline: phases fold away; milestones go into the calendar (CalendarAdd.swift).
+            Button("Fold All Phases") { session?.foldAllTimelinePhases(true) }
+                .disabled(session == nil || session?.readOnly == true || session?.board.canFoldAny != true)
+            Button("Unfold All Phases") { session?.foldAllTimelinePhases(false) }
+                .disabled(session == nil || session?.readOnly == true || session?.board.canUnfoldAny != true)
+            Button("Add to Calendar…") {
+                session?.commitEdit()
+                model.showCalendar = true
+            }
+            .disabled(session?.canAddToCalendar != true)
             Divider()
             Button("Save as a Starter…") {
                 if let session { session.commitEdit(); model.ask(.save(session.board)) }
