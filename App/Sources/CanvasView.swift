@@ -547,7 +547,7 @@ struct CanvasView: View {
 
     private func tap(_ t: Target, at p: CGPoint) {
         let now = Date()
-        let double: (UUID?) -> Bool = { id in lastTapID == id && now.timeIntervalSince(lastTapAt) < 0.42 }
+        let double: (UUID?) -> Bool = { id in lastTapID == id && now.timeIntervalSince(lastTapAt) < Finger.twoPressWindow }
         switch t {
         case .plus(let id, let d):
             if session.board.item(id)?.kind == .idea { session.addChild(of: id) } else { session.addNext(from: id, direction: d) }

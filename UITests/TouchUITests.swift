@@ -32,7 +32,7 @@ final class TouchUITests: XCTestCase {
         throw XCTSkip("iPhone and iPad only: on the Mac two clicks on empty board make a sticky note.")
         #else
         let app = XCUIApplication()
-        app.launchArguments = ["-sampleData"]
+        app.launchArguments = ["-sampleData", "-twoPressWindow", "2"]
         app.launch()
         press(app, "boards.new")
         press(app, "starter.blank")
@@ -40,8 +40,13 @@ final class TouchUITests: XCTestCase {
         waitFor(app, "zoom.value", toSay: "100 %")
         press(app, "zoom.in")
         waitFor(app, "zoom.value", toSay: "125 %")
-        let canvas = element(app, "board.canvas")
-        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)).doubleTap()
+        // Two presses on empty board. The test's own double tap puts the second press 8 ms after the first lifts —
+        // faster than any finger: on the iPad simulator (iOS 27) it arrives before the board's press recogniser is
+        // ready again and is lost (in 0.4 as in 0.5). So two single presses, about 0.6 s apart, and
+        // `-twoPressWindow 2` (DEBUG) lets them count as one double press (a person's window is 0.42 s).
+        let spot = element(app, "board.canvas").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        spot.tap()
+        spot.tap()
         waitFor(app, "zoom.value", toSay: "100 %")
         // Nothing was made by the two presses (before 0.2 they made a sticky note).
         waitFor(app, "board.count", toSay: "Empty")

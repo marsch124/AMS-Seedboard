@@ -83,7 +83,7 @@ private struct PictureWaysOnTile: ViewModifier {
                 .accessibilityLabel("More ways to add a picture")
                 .accessibilityIdentifier("tool.pictureWays")
             }
-            .modifier(PlatePresenter(shown: $shown, edge: .top, height: 150, closed: { start() }) {
+            .modifier(PlatePresenter(shown: $shown, edge: PlateEdge.overTile, height: 150, closed: { start() }) {
                 PicturePlate(pick: { way in
                     picked = way
                     shown = false

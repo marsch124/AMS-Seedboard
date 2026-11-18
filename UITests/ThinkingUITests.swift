@@ -56,7 +56,10 @@ final class ThinkingUITests: XCTestCase {
         }
         make.tap()
 
-        let field = element(app, "makeMap.field")
+        // The question is the system's own alert: on iPhone and iPad its field does not carry the identifier
+        // given in SwiftUI, so it is found by its identifier OR by its words "The middle idea".
+        let field = app.textFields.matching(NSPredicate(format: "identifier == %@ OR placeholderValue == %@",
+                                                        "makeMap.field", "The middle idea")).firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the question for the middle idea did not open")
         XCTAssertEqual(field.value as? String, "Summer cabin", "the middle idea is not filled in with the board's name")
         XCTAssertTrue(app.buttons["Cancel"].firstMatch.exists, "the question has no Cancel")

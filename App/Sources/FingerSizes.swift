@@ -18,6 +18,17 @@ enum Finger {
     /// Mac and in 0.1 (false). One switch, should the owner want the sticky note back.
     static let twoPressesFit = on
 
+    /// Two presses (or clicks) on the board count as one double press when the second lands within this many
+    /// seconds. Screen tests only (DEBUG): `-twoPressWindow <seconds>` widens it, because the test's own double
+    /// tap is faster than any finger (8 ms: on the iPad simulator the second press is lost before the board
+    /// hears it) and two single test taps lie about 0.6 s apart.
+    static let twoPressWindow: TimeInterval = {
+        #if DEBUG
+        if let wider = LaunchOptions.value(for: "-twoPressWindow").flatMap(Double.init), wider > 0 { return wider }
+        #endif
+        return 0.42
+    }()
+
     /// A chip in the bar for what is chosen: its height, and the gap to the next chip and the next row.
     static let chipHeight: CGFloat = on ? 36 : 28
     static let chipGap: CGFloat = on ? 8 : 5

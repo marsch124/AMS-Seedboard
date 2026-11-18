@@ -44,6 +44,19 @@ final class ShapeChoice: ObservableObject {
     }
 }
 
+/// The edge that sets a plate ABOVE its tile in the tool row at the bottom of the board. The Mac reads the edge as
+/// the side where the pop-up goes; the iPad (iOS 18 and later) as the side of the pop-up that carries the arrow.
+/// With `.top` on the iPad the plate opened UNDER the tool row, squeezed to a 14-point strip nobody could see or press.
+enum PlateEdge {
+    static var overTile: Edge {
+        #if os(macOS)
+        return .top
+        #else
+        return .bottom
+        #endif
+    }
+}
+
 /// Shows a small plate: a pop-up on the Mac and the iPad, a low sheet on the iPhone
 /// (a pop-up comes out empty there).
 struct PlatePresenter<Plate: View>: ViewModifier {
@@ -217,7 +230,7 @@ struct ShapeTool: View {
             .accessibilityLabel("All shapes")
             .accessibilityIdentifier("tool.shapes")
         }
-        .modifier(PlatePresenter(shown: $shown, edge: .top, closed: {
+        .modifier(PlatePresenter(shown: $shown, edge: PlateEdge.overTile, closed: {
             if let kind = picked {
                 picked = nil
                 choice.used(kind)

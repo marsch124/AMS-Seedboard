@@ -131,7 +131,15 @@ final class SeedboardUITests: XCTestCase {
         let app = launch(["-settings"])
         XCTAssertTrue(element(app, "settings.howItWorks").waitForExistence(timeout: 15))
         XCTAssertTrue(element(app, "settings.whatsNew").exists)
-        XCTAssertTrue(element(app, "settings.version").exists)
+        // The version is the last row; on the iPad the Settings sheet is shorter than the list, and a row
+        // out of sight is not made yet: the list is moved up to it, as the owner would.
+        let version = element(app, "settings.version")
+        #if !os(macOS)
+        for _ in 0..<4 where !version.exists {
+            element(app, "settings.howItWorks").swipeUp()
+        }
+        #endif
+        XCTAssertTrue(version.waitForExistence(timeout: 5), "settings.version is missing")
     }
 
     func testChoosingAShapeShowsItsBar() {
