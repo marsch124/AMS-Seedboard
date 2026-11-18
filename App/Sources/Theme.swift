@@ -93,6 +93,7 @@ struct FilledButton: ButtonStyle {
             .background(part.fill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.5)
             .contentShape(Rectangle())
+            .pressRoom(0, 5)
     }
 }
 

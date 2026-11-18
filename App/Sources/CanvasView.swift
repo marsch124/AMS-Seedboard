@@ -25,6 +25,8 @@ struct CanvasView: View {
     /// A pinch began during this press: the rest of the press is not a drag or a tap.
     @State private var pinched = false
     @State private var pressing = false
+    /// iPhone and iPad: what kind of press is going on, and what was chosen before it landed.
+    @State private var notes = PressNotes()
     @State private var lastTapBare = false
     /// When the press began: on a touch screen an idea lifts only after a short hold.
     @State private var pressBegan = Date.distantPast
@@ -101,9 +103,11 @@ struct CanvasView: View {
                     }
                 }
                 .contentShape(Rectangle())
+                #if os(macOS)
                 .gesture(dragGesture)
-                #if !os(macOS)
-                .simultaneousGesture(pinchGesture)
+                #else
+                // iPhone and iPad: Apple's own recognisers lie over the drawing (TouchLayer.swift).
+                .overlay(touchLayer)
                 #endif
                 .accessibilityElement()
                 .accessibilityIdentifier("board.canvas")
@@ -142,6 +146,7 @@ struct CanvasView: View {
         .onChange(of: phase) { _, _ in resetPress() }
         .onDisappear { resetPress() }
         .onChange(of: session.editing, initial: true) { _, new in
+            session.typing(in: new)
             DispatchQueue.main.async {
                 if new != nil { typing = true } else { keys = true }
             }
@@ -289,33 +294,42 @@ struct CanvasView: View {
         #if os(macOS)
         return NSEvent.modifierFlags.contains(.shift)
         #else
-        return false
+        return notes.shift
         #endif
     }
+
+    /// A finger is pressing (not a mouse, a trackpad or the Pencil): press areas are finger size.
+    private var byFinger: Bool { Finger.on && !notes.precise }
 
     private func target(at p: CGPoint) -> Target {
         if let end = session.linkEnd(at: p) { return .end(end.link, end.start) }
         let board = session.board
         if !session.readOnly, session.editing == nil, session.selection.count == 1,
            let id = session.selection.first, let item = board.item(id), !session.linking {
-            let slack = 9 / session.scale
-            for handle in BoardPainter.handles(for: item, side: session.facts.side[id] ?? .right, scale: session.scale) {
-                if handle.rect.insetBy(dx: -slack, dy: -slack).contains(p) {
-                    switch handle.kind {
-                    case .plus(let d): return .plus(id, d)
-                    case .size: return .size(id)
-                    }
+            // Press areas are counted on screen: 9 points round each control, for a finger at least
+            // 32 points at every zoom; the nearest control wins.
+            let handles = BoardPainter.handles(for: item, side: session.facts.side[id] ?? .right, scale: session.scale)
+            if let i = Fingers.control(at: session.toScreen(p), boxes: handles.map { session.toScreen($0.rect) },
+                                       onThing: board.hit(p) != nil, least: byFinger ? Fingers.control : 0) {
+                switch handles[i].kind {
+                case .plus(let d): return .plus(id, d)
+                case .size: return .size(id)
                 }
             }
         }
-        if let id = board.hit(p) { return .item(id) }
+        if let id = board.hit(p, scale: Double(session.scale), least: byFinger ? Fingers.button : 0) { return .item(id) }
         if let id = board.hitLink(p, within: Double(9 / session.scale)) { return .link(id) }
         return .empty
     }
 
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
-            .onChanged { value in
+            .onChanged { pressMoved(Press($0)) }
+            .onEnded { pressEnded(Press($0)) }
+    }
+
+    /// A press landed or moved: the Mac's click and drag, or TouchLayer's finger, Pencil or pointer.
+    private func pressMoved(_ value: Press) {
                 pressing = true
                 guard !pinched else { return }
                 switch drag {
@@ -337,8 +351,10 @@ struct CanvasView: View {
                 default:
                     update(value)
                 }
-            }
-            .onEnded { value in
+    }
+
+    /// The press was lifted.
+    private func pressEnded(_ value: Press) {
                 defer {
                     snap = SnapShow()
                     drag = .idle
@@ -355,10 +371,9 @@ struct CanvasView: View {
                     return
                 }
                 finish(value)
-            }
     }
 
-    private func begin(_ t: Target, _ value: DragGesture.Value) {
+    private func begin(_ t: Target, _ value: Press) {
         let board = session.board
         switch t {
         case .item(let id):
@@ -369,7 +384,7 @@ struct CanvasView: View {
                 #if os(iOS)
                 // A slide that starts on an idea moves the view. The idea lifts only after a short hold,
                 // so it is never torn off its map by accident.
-                guard value.time.timeIntervalSince(pressBegan) >= Self.hold else {
+                guard value.precise || value.time.timeIntervalSince(pressBegan) >= Self.hold else {
                     drag = .panning(session.offset)
                     return
                 }
@@ -395,12 +410,13 @@ struct CanvasView: View {
             #if os(macOS)
             drag = .marquee
             #else
-            drag = .panning(session.offset)
+            // A mouse or a trackpad draws the choosing box, as on the Mac; a finger slides the board.
+            drag = value.pointer ? .marquee : .panning(session.offset)
             #endif
         }
     }
 
-    private func update(_ value: DragGesture.Value) {
+    private func update(_ value: Press) {
         let s = session.scale
         let delta = CGSize(width: value.translation.width / s, height: value.translation.height / s)
         let here = session.toBoard(value.location)
@@ -441,7 +457,7 @@ struct CanvasView: View {
         }
     }
 
-    private func finish(_ value: DragGesture.Value) {
+    private func finish(_ value: Press) {
         let here = session.toBoard(value.location)
         switch drag {
         case .waiting(let t):
@@ -531,6 +547,11 @@ struct CanvasView: View {
             if session.linking {
                 session.linking = false
                 session.linkFrom = nil
+            } else if Finger.twoPressesFit, double(nil) {
+                // iPhone and iPad: two presses on empty board show the whole board (the Mac makes a sticky note).
+                withAnimation(.easeOut(duration: 0.2)) { session.fit() }
+                lastTapAt = .distantPast
+                return
             } else if double(nil), lastTapBare, session.selection.isEmpty, session.selectedLink == nil {
                 // Two presses on empty board (with nothing chosen before the first): a sticky note right there.
                 session.add(.note, at: p)
@@ -546,29 +567,51 @@ struct CanvasView: View {
         }
     }
 
-    #if !os(macOS)
-    private var pinchGesture: some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                if pinchBase == nil {
-                    pinchBase = session.scale
-                    pinched = true
-                    // Whatever one finger had begun is settled as it stands.
-                    session.liveEnd(keep: true)
-                    drag = .idle
-                    snap = SnapShow()
-                    marquee = nil
-                    rubber = nil
-                    ghost = nil
-                    dropTarget = nil
-                    hanging = nil
-                }
-                session.zoom(to: (pinchBase ?? 1) * value.magnification, around: value.startLocation)
+    #if os(iOS)
+    // MARK: iPhone and iPad (TouchLayer.swift)
+
+    /// Apple's own recognisers over the drawing. One finger, the Pencil or the pointer comes back
+    /// here as a press; two fingers, scrolling and a trackpad's pinch move the view by themselves.
+    private var touchLayer: some View {
+        // Pencil drawing plugs in here: `ink:` (see InkHook).
+        TouchLayer(session: session, onPress: { phase, value in
+            notes.shift = value.shift
+            notes.precise = value.precise
+            switch phase {
+            case .began:
+                notes.selection = session.selection
+                notes.link = session.selectedLink
+                pressMoved(value)
+            case .moved:
+                pressMoved(value)
+            case .ended:
+                pressEnded(value)
+            case .lost(let takeBack):
+                pressLost(value, takeBack: takeBack)
             }
-            .onEnded { _ in
-                pinchBase = nil
-                if !pressing { pinched = false }
+        })
+    }
+
+    /// The press was taken away. By a second finger (or the page's edge swipe): two fingers only ever
+    /// slide and zoom the board, so a small shove of a thing is taken back without an undo step, and
+    /// what was chosen before is chosen again. Otherwise things stay as they stand.
+    private func pressLost(_ value: Press, takeBack: Bool) {
+        if takeBack {
+            var kept = false
+            switch drag {
+            case .moving, .sizing:
+                kept = !Fingers.isShove(moved: Double(hypot(value.translation.width, value.translation.height)),
+                                        after: value.time.timeIntervalSince(pressBegan))
+                session.liveEnd(keep: kept)
+            default:
+                break
             }
+            if !kept {
+                session.selection = notes.selection.filter { session.board.item($0) != nil }
+                session.selectedLink = notes.link.flatMap { id in session.board.links.contains { $0.id == id } ? id : nil }
+            }
+        }
+        resetPress()
     }
     #endif
 
