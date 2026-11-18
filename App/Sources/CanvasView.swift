@@ -24,6 +24,8 @@ struct CanvasView: View {
     @State private var pinched = false
     @State private var pressing = false
     @State private var lastTapBare = false
+    /// The guide lines while a drag catches (pick 11).
+    @State private var snap = SnapShow()
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
@@ -48,6 +50,7 @@ struct CanvasView: View {
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, size in
                     ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(paint.canvas))
+                    SnapShow.grid(ctx, size: size, offset: session.offset, scale: session.scale, paint: paint)
                     var sheet = ctx
                     sheet.translateBy(x: session.offset.width, y: session.offset.height)
                     sheet.scaleBy(x: session.scale, y: session.scale)
@@ -60,6 +63,7 @@ struct CanvasView: View {
                     painter.handles = !session.readOnly
                     if case .idea(let id) = drag, let ghost { painter.ghost = (id, ghost) }
                     painter.draw(&sheet)
+                    snap.shown(for: session).draw(sheet, paint: paint, scale: session.scale)
                     if let from = session.linkFrom, let item = session.board.item(from) {
                         let box = Path(roundedRect: item.frame.insetBy(dx: -6, dy: -5), cornerRadius: 9)
                         sheet.stroke(box, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2.5 / session.scale, dash: [6 / session.scale, 4 / session.scale]))
@@ -126,6 +130,7 @@ struct CanvasView: View {
     private func resetPress() {
         session.liveEnd(keep: true)
         drag = .idle
+        snap = SnapShow()
         marquee = nil
         rubber = nil
         ghost = nil
@@ -296,6 +301,7 @@ struct CanvasView: View {
             }
             .onEnded { value in
                 defer {
+                    snap = SnapShow()
                     drag = .idle
                     marquee = nil
                     rubber = nil
@@ -347,7 +353,7 @@ struct CanvasView: View {
         let here = session.toBoard(value.location)
         switch drag {
         case .moving(let ids):
-            session.live { $0.move(ids, by: delta) }
+            snap.guides = session.liveMove(ids, by: delta, reach: SnapShow.reach(s))
         case .idea(let id):
             ghost = delta
             if let over = session.board.hit(here), over != id, session.board.item(over)?.kind == .idea,
@@ -357,8 +363,13 @@ struct CanvasView: View {
                 dropTarget = nil
             }
         case .sizing(let id, let base):
-            session.live { $0.resize(id, to: CGRect(x: base.minX, y: base.minY, width: base.width + delta.width, height: base.height + delta.height)) }
-        case .plus(let id, _), .joining(let id):
+            snap.guides = session.liveResize(id, to: CGRect(x: base.minX, y: base.minY, width: base.width + delta.width, height: base.height + delta.height), reach: SnapShow.reach(s))
+        case .plus(let id, _):
+            // The new shape lands in line with its neighbours: the outline and the guides show where.
+            let land = session.board.landing(from: id, at: here, reach: SnapShow.reach(s))
+            snap = SnapShow(guides: land?.guides ?? [], landing: land?.frame)
+            if let item = session.board.item(id) { rubber = Rubber(from: item.centre, to: land?.centre ?? here) }
+        case .joining(let id):
             if let item = session.board.item(id) { rubber = Rubber(from: item.centre, to: here) }
         case .marquee:
             let a = value.startLocation, b = value.location
@@ -396,8 +407,9 @@ struct CanvasView: View {
             } else {
                 // Dropped on empty board: the next shape appears there, already joined.
                 var made: UUID?
+                let spot = session.board.landing(from: id, at: here, reach: SnapShow.reach(session.scale))?.centre ?? here
                 session.change { board in
-                    let new = board.add(item.kind, centre: here, colour: item.colour)
+                    let new = board.add(item.kind, centre: spot, colour: item.colour)
                     board.link(from: id, to: new)
                     made = new
                 }
@@ -481,6 +493,7 @@ struct CanvasView: View {
                     // Whatever one finger had begun is settled as it stands.
                     session.liveEnd(keep: true)
                     drag = .idle
+                    snap = SnapShow()
                     marquee = nil
                     rubber = nil
                     ghost = nil

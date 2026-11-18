@@ -56,6 +56,10 @@ final class AppModel: ObservableObject {
            let item = session.board.items.first(where: { $0.text.localizedCaseInsensitiveContains(word) }) {
             session.select(item.id)
         }
+        // For pictures: `-pickAll <words>` chooses every thing whose words hold one of them ("New idea,Worth,plan").
+        if let words = LaunchOptions.value(for: "-pickAll")?.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }), let session {
+            session.selection = Set(session.board.items.filter { item in words.contains { item.text.localizedCaseInsensitiveContains($0) } }.map(\.id))
+        }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         checkParagon()
         #if DEBUG
