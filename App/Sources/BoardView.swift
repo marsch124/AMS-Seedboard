@@ -379,14 +379,14 @@ struct ZoomCluster: View {
 
     private var ordinary: some View {
         HStack(spacing: 2) {
-            button(.app(.zoomOut), "zoom.out", "Smaller") { session.zoom(to: session.scale / 1.25) }
+            button(.app(.zoomOut), "zoom.out", "Smaller") { session.zoomStep(by: 1 / 1.25) }
             Text("\(Int((session.scale * 100).rounded())) %")
                 .font(Txt.pill)
                 .monospacedDigit()
                 .frame(width: 44)
                 .accessibilityIdentifier("zoom.value")
-            button(.app(.zoomIn), "zoom.in", "Bigger") { session.zoom(to: session.scale * 1.25) }
-            button(.app(.seedFit), "zoom.fit", "Show the whole board") { withAnimation(.easeOut(duration: 0.2)) { session.fit() } }
+            button(.app(.zoomIn), "zoom.in", "Bigger") { session.zoomStep(by: 1.25) }
+            button(.app(.seedFit), "zoom.fit", "Show the whole board") { session.fit() }
                 .padding(.leading, Finger.pairGap - 2)
         }
         .padding(4)

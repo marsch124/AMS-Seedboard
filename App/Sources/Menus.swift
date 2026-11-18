@@ -112,10 +112,10 @@ struct SeedMenus: Commands {
 
         // View.
         CommandGroup(before: .toolbar) {
-            Button("Zoom In") { if let session { session.zoom(to: session.scale * 1.25) } }
+            Button("Zoom In") { session?.zoomStep(by: 1.25) }
                 .keyboardShortcut("+", modifiers: .command)
                 .disabled(session == nil)
-            Button("Zoom Out") { if let session { session.zoom(to: session.scale / 1.25) } }
+            Button("Zoom Out") { session?.zoomStep(by: 1 / 1.25) }
                 .keyboardShortcut("-", modifiers: .command)
                 .disabled(session == nil)
             Button("Actual Size") { session?.actualSize() }

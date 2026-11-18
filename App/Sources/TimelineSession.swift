@@ -73,7 +73,7 @@ extension BoardSession {
     /// View ▸ Actual Size (⌘0). A timeline has no life size: its standard size is the weeks scale it opens in,
     /// the day in the middle staying where it is. Any other board goes to life size.
     func actualSize() {
-        if board.isTimeline { setTimeScale(.weeks) } else { zoom(to: 1) }
+        if board.isTimeline { setTimeScale(.weeks) } else { zoomStep(to: 1) }
     }
 
     /// Brings today into view, a third of the way in from the names.

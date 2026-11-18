@@ -233,6 +233,8 @@ struct BoardPainter {
     /// 0.5: how each to-do thing stands (waiting, in PARAGON, done, cancelled) — `ParagonEcho.marks(for:)`.
     /// A thing that is not in here and is ticked "to do" counts as waiting.
     var todoStates: [UUID: TodoState] = [:]
+    /// 0.5: things on their way and in the hand (BoardMotion.swift). Empty for every picture: the end state.
+    var motion = MotionLooks()
     /// What lies behind the board (white for a picture). Not needed since 0.2: the words on an arrow have no patch behind them.
     var ground: Color?
 
@@ -243,10 +245,11 @@ struct BoardPainter {
         if board.isSequence { SequencePainter.whole(board, paint: paint, ground: ground).draw(&ctx); return }
         let byID = board.items.reduce(into: [UUID: Item]()) { $0[$1.id] = $1 }
 
-        for item in board.items where item.kind == .frame { drawFrame(item, &ctx) }
+        for item in board.items where item.kind == .frame { var layer = motionLayer(ctx, for: item); drawFrame(item, &layer) }
 
         // Mind-map branches.
         for item in board.items where item.kind == .idea && !facts.hidden.contains(item.id) {
+            let ctx = motionLayer(ctx, for: item)
             guard let parentID = item.parent, let parent = byID[parentID] else { continue }
             let ends = Route.branch(from: parent.frame, to: item.frame, side: facts.side[item.id] ?? .right)
             var path = Path()
@@ -261,7 +264,7 @@ struct BoardPainter {
 
         for item in board.items where item.kind != .frame && !facts.hidden.contains(item.id) {
             if ghost?.id == item.id { continue }
-            drawItem(item, &ctx)
+            drawInMotion(item, &ctx)
         }
         drawArrowEnds(&ctx)
 
@@ -296,7 +299,7 @@ struct BoardPainter {
         ctx.draw(text, at: CGPoint(x: item.frame.minX + 12, y: item.frame.minY + 15), anchor: .leading)
     }
 
-    private func drawItem(_ item: Item, _ ctx: inout GraphicsContext) {
+    func drawItem(_ item: Item, _ ctx: inout GraphicsContext) {
         let f = item.frame
         let depth = facts.depth[item.id] ?? 0
         let look = Lettering.style(for: item, depth: depth)
@@ -329,7 +332,7 @@ struct BoardPainter {
             }
             // By day a shape lies a little above the board: a faint shadow, one point down.
             var body = ctx
-            if !paint.night { body.addFilter(.shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)) }
+            if !paint.night { body.addFilter(liftShadow(of: item, rest: Motion.rest)) }
             if item.colour.isEmpty {
                 body.fill(shape, with: .color(paint.plate))
                 ctx.stroke(shape, with: .color(paint.edge), lineWidth: 1.4)
@@ -343,7 +346,7 @@ struct BoardPainter {
         case .note:
             let paper = Path(roundedRect: f, cornerRadius: 4)
             var shade = ctx
-            shade.addFilter(.shadow(color: .black.opacity(paint.night ? 0.35 : 0.14), radius: 3, x: 0, y: 1.5))
+            shade.addFilter(liftShadow(of: item, rest: Motion.Shadow(dark: paint.night ? 0.35 : 0.14, radius: 3, down: 1.5)))
             shade.fill(paper, with: .color(paint.note(item.colour)))
             align = .leading
             anchorLeading = true

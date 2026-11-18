@@ -39,6 +39,8 @@ final class BoardSession: ObservableObject {
     @Published var timeline = TimelineLook()
     /// Drawing by hand: the Draw tool, pen or rubber, thickness, colour, and the running line (InkDesk.swift).
     let ink = InkDesk()
+    /// 0.5: the glide of the view and the things on their way (BoardGlide.swift, BoardMotion.swift).
+    let motion = BoardMotion()
 
     /// A short line with an Undo button, after a step the owner may not have meant.
     struct Notice: Equatable {
@@ -84,6 +86,7 @@ final class BoardSession: ObservableObject {
         var fitted = new
         Lettering.fit(&fitted, facts: MapFacts(new), widen: widen)
         if let old { fitted.makeRoom(since: old) }
+        noteMotion(to: fitted, live: liveBase != nil)
         board = fitted
         facts = MapFacts(fitted)
     }
@@ -188,11 +191,13 @@ final class BoardSession: ObservableObject {
         guard var new = liveBase else { return }
         work(&new)
         set(new)
+        motionLift(since: liveBase)
     }
 
     func liveEnd(keep: Bool) {
         guard let base = liveBase else { return }
         liveBase = nil
+        motionDrop()
         if keep, board != base {
             var kept = board
             kept.touch()
@@ -663,18 +668,21 @@ final class BoardSession: ObservableObject {
 
     /// Every way of moving the view goes through `place`, which remembers that the owner moved it.
     func pan(by delta: CGSize) {
+        stopGlide()
         place.pan(by: delta)
         if board.isTimeline { clampTimeline() }
     }
 
     /// A finger slide on empty board: the view as it stood when the slide began, moved by the finger's way.
     func slide(from start: CGSize, by way: CGSize) {
+        stopGlide()
         place.slide(from: start, by: way)
         if board.isTimeline { clampTimeline() }
     }
 
     /// Zooms so the board point under the screen point stays where it is.
     func zoom(to newScale: CGFloat, around point: CGPoint? = nil) {
+        stopGlide()
         if board.isTimeline {
             let anchor = point ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
             timelineZoom(by: newScale / max(scale, 0.01), around: anchor)
@@ -684,14 +692,22 @@ final class BoardSession: ObservableObject {
     }
 
     /// Two fingers (iPhone, iPad): the board slides with the point between them and zooms round it, in one step.
-    func pinch(from old: CGPoint, to new: CGPoint, by factor: CGFloat) { place.pinch(from: old, to: new, by: Double(factor)) }
+    func pinch(from old: CGPoint, to new: CGPoint, by factor: CGFloat) { stopGlide(); place.pinch(from: old, to: new, by: Double(factor)) }
+
+    /// One step of a glide (BoardGlide.swift): only where the view stands, nothing about who moved it.
+    func stand(at offset: CGSize, scale: Double) {
+        var next = place
+        next.offset = offset
+        next.scale = scale
+        place = next
+    }
 
     /// The thing last typed in while the iPhone's view was zoomed in for typing.
     private var typedIn: UUID?
 
     /// iPhone: while words are typed the view is at least life size round them; afterwards it goes
     /// back to the zoom before. Ideas typed one after the other do not zoom out in between.
-    func typing(in id: UUID?) {
+    func typingJump(in id: UUID?) {
         guard Finger.phone else { return }
         func box(_ id: UUID) -> CGRect? {
             if let item = board.item(id) { return item.frame }
@@ -716,7 +732,7 @@ final class BoardSession: ObservableObject {
     /// Shows the whole board, never bigger than life size.
     func fit() {
         if board.isTimeline { timelineFit(); return }
-        place.fit(board.bounds)
+        glide(Glide.wholeBoard) { place.fit(board.bounds) }
     }
 
     /// The board is reopened: the zoom and the spot the owner left it at come back (pick 26).
@@ -725,6 +741,7 @@ final class BoardSession: ObservableObject {
     /// The first time the board's place on screen is known, it is shown whole — and again whenever its
     /// room changes (a window still settling, a page opening over it), until the owner has moved or zoomed it.
     func placeIfNeeded(_ size: CGSize) {
+        settleGlide()
         if board.isTimeline {
             // A timeline is placed by its days, not by where its things lie.
             place.size = size
@@ -737,8 +754,10 @@ final class BoardSession: ObservableObject {
 
     /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.
     func resized(_ size: CGSize) {
-        placeIfNeeded(size)
-        if let id = editing { reveal(id) }
+        retarget {
+            placeIfNeeded(size)
+            if let id = editing { reveal(id) }
+        }
     }
 
     /// Moves the view just enough to bring an item into sight.
@@ -751,7 +770,7 @@ final class BoardSession: ObservableObject {
         var dx: CGFloat = 0, dy: CGFloat = 0
         if r.maxX > safe.maxX { dx = safe.maxX - r.maxX } else if r.minX < safe.minX { dx = safe.minX - r.minX }
         if r.maxY > safe.maxY { dy = safe.maxY - r.maxY } else if r.minY < safe.minY { dy = safe.minY - r.minY }
-        if dx != 0 || dy != 0 { pan(by: CGSize(width: dx, height: dy)) }
+        if dx != 0 || dy != 0 { glide(Glide.intoSight) { pan(by: CGSize(width: dx, height: dy)) } }
     }
 
     // MARK: Board-wide
