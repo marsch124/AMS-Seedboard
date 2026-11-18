@@ -160,6 +160,8 @@ public extension Board {
     /// Gives an item a new size, never smaller than it can sensibly be.
     mutating func resize(_ id: UUID, to rect: CGRect) {
         guard let i = index(of: id) else { return }
+        // A drawing's lines stretch with its box (Ink.swift).
+        if items[i].kind == .drawing { scaleDrawing(id, to: rect); return }
         let least: CGSize = items[i].kind == .frame ? CGSize(width: 120, height: 80) : CGSize(width: 44, height: 28)
         var r = rect.standardized
         if r.width < least.width { r.size.width = least.width }
@@ -204,6 +206,9 @@ public extension Board {
             return dx * dx + dy * dy <= 1.03
         case .idea, .text:
             return f.insetBy(dx: -5, dy: -4).contains(p)
+        case .drawing:
+            // Only on its lines (2 points to either side), never anywhere in its box.
+            return f.insetBy(dx: -2, dy: -2).contains(p) && (item.inkDistance(to: p) ?? .infinity) <= 2
         default:
             return f.contains(p)
         }
@@ -251,10 +256,12 @@ public extension Board {
         let ideas = items.filter { $0.kind == .idea }.count
         let shapes = items.filter { $0.kind.isShape }.count
         let notes = items.filter { $0.kind == .note }.count
+        let sketches = items.filter { $0.kind == .drawing }.count
         var parts: [String] = []
         if ideas > 0 { parts.append(ideas == 1 ? "1 idea" : "\(ideas) ideas") }
         if shapes > 0 { parts.append(shapes == 1 ? "1 shape" : "\(shapes) shapes") }
         if notes > 0 { parts.append(notes == 1 ? "1 note" : "\(notes) notes") }
+        if sketches > 0 { parts.append(sketches == 1 ? "1 sketch" : "\(sketches) sketches") }
         return parts.isEmpty ? "Empty" : parts.joined(separator: " · ")
     }
 }

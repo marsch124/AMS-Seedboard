@@ -125,6 +125,8 @@ struct BoardView: View {
                         .background(Part.boards.fill, in: Capsule())
                         .accessibilityIdentifier("board.flash")
                 }
+                // The Draw tool's plate: pen and rubber, thickness, colours (InkViews.swift).
+                DrawPlate(session: session, desk: session.ink)
                 // Wide enough: the tools in the middle, the zoom buttons at the right.
                 // Otherwise the zoom buttons sit in their own row above the tools.
                 ViewThatFits(in: .horizontal) {
@@ -287,6 +289,7 @@ struct ToolPill: View {
                 tool(.seedNote, .notes, "tool.note", "Sticky note (N)") { session.add(.note) }
                 tool(.seedText, .text, "tool.text", "Text (T)") { session.add(.text) }
                 tool(.seedFrame, .frames, "tool.frame", "Frame (F)") { session.add(.frame) }
+                DrawTool(session: session, desk: session.ink)
             }
             .padding(6)
         }
@@ -468,8 +471,11 @@ struct SelectionBar: View {
         case .bar, .milestone, .phase:
             // A timeline's rows have their own bar (TimelineBars.swift).
             EmptyView()
+        case .drawing:
+            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
         }
-        chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }
+        // (A drawing has no words.)
+        if item.kind != .drawing { chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) } }
     }
 
     @ViewBuilder

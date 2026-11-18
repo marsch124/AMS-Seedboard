@@ -33,6 +33,8 @@ final class BoardSession: ObservableObject {
     @Published private(set) var redoCount = 0
     /// Timeline boards only: the scale of the days (see TimelineSession.swift).
     @Published var timeline = TimelineLook()
+    /// Drawing by hand: the Draw tool, pen or rubber, thickness, colour, and the running line (InkDesk.swift).
+    let ink = InkDesk()
 
     /// A short line with an Undo button, after a step the owner may not have meant.
     struct Notice: Equatable {
@@ -199,6 +201,8 @@ final class BoardSession: ObservableObject {
 
     func beginEdit(_ id: UUID, isNew: Bool = false) {
         guard !readOnly else { return }
+        // A drawing has no words.
+        guard board.item(id)?.kind != .drawing else { return }
         if editing != nil { commitEdit() }
         if let item = board.item(id) {
             draft = item.text
@@ -512,7 +516,8 @@ final class BoardSession: ObservableObject {
     }
 
     func toggleTodo() {
-        let ids = selection
+        // A drawing carries no tick.
+        let ids = selection.filter { board.item($0)?.kind != .drawing }
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
         change { board in

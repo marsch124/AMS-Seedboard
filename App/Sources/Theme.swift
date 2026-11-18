@@ -10,6 +10,8 @@ enum Part: String, CaseIterable {
     case boards, mindMap, shapes, arrows, notes, text, frames, paragon
     /// The timeline board: its tools, its Today button, its Dates page.
     case timeline
+    /// Drawing by hand: the Draw tool and its plate.
+    case drawing
 
     private typealias RGB = (Double, Double, Double)
 
@@ -23,6 +25,7 @@ enum Part: String, CaseIterable {
         case .frames: return (hex(0x178378), hex(0x5CCBBE))
         case .paragon: return (hex(0x6B4EA8), hex(0xB59CEB))
         case .timeline: return (hex(0xC4551F), hex(0xF59A66))
+        case .drawing: return (hex(0xBF2F52), hex(0xF2879C))
         case .text: return nil   // ink: the primary text colour
         }
     }

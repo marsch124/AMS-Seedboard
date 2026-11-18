@@ -121,6 +121,8 @@ enum Sample {
             made(.mindMap, "Training year", "purple", daysAgo: 9),
             made(.steps, "Workshop bench", "green", daysAgo: 20, sent: true),
             looks,
+            // Drawing by hand (0.2), for pictures: `-board Sketch` (SampleSketch.swift).
+            sketch(now: now),
         ]
     }
 }

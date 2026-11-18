@@ -147,6 +147,9 @@ enum Lettering {
                 break
             case .bar, .milestone, .phase:
                 break
+            case .drawing:
+                // As big as its lines (Ink.swift).
+                break
             }
         }
         board.layoutMaps()
@@ -317,6 +320,8 @@ struct BoardPainter {
             return [plus(side == .right ? .right : .left)]
         case .frame:
             return [knob]
+        case .drawing:
+            return [knob]
         case .text:
             return [plus(.right), plus(.down)]
         default:
@@ -391,6 +396,10 @@ struct BoardPainter {
         case .frame:
             return
         case .bar, .milestone, .phase:
+            return
+        case .drawing:
+            // Lines drawn by hand (InkDraw.swift): no words, no tick.
+            drawInk(item, ctx)
             return
         }
 

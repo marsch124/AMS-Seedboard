@@ -80,6 +80,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case idea, box, round, diamond, oval, note, text, frame
     /// A timeline board's own things (format 2): a bar on days, a one-day milestone, a heading row.
     case bar, milestone, phase
+    /// Lines drawn by hand (format 2): the strokes are in `Item.strokes` (Ink.swift).
+    case drawing
 
     /// The four flowchart shapes.
     public var isShape: Bool { self == .box || self == .round || self == .diamond || self == .oval }
@@ -97,6 +99,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .bar: return "Bar"
         case .milestone: return "Milestone"
         case .phase: return "Phase"
+        case .drawing: return "Sketch"
         }
     }
 
@@ -111,6 +114,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .text: return CGSize(width: 120, height: 28)
         case .frame: return CGSize(width: 440, height: 300)
         case .bar, .milestone, .phase: return CGSize(width: 150, height: 22)
+        case .drawing: return CGSize(width: 120, height: 80)
         }
     }
 }
@@ -147,6 +151,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var end: String?
     /// Timeline: the row, 0 at the top.
     public var row: Int?
+    /// A drawing's lines, measured from its corner (Ink.swift). nil for everything else.
+    public var strokes: [Stroke]?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -170,6 +176,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case id, kind, text, x, y, w, h, colour, todo, parent, order, folded, bothSides
         case side
         case start, end, row
+        case strokes
     }
 
     public init(from decoder: Decoder) throws {
@@ -194,6 +201,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         start = try? c.decode(String.self, forKey: .start)
         end = try? c.decode(String.self, forKey: .end)
         row = try? c.decode(Int.self, forKey: .row)
+        strokes = (try? c.decode([Lenient<Stroke>].self, forKey: .strokes))?.compactMap(\.value)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -216,6 +224,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(start, forKey: .start)
         try c.encodeIfPresent(end, forKey: .end)
         try c.encodeIfPresent(row, forKey: .row)
+        try c.encodeIfPresent(strokes, forKey: .strokes)
     }
 
     public var frame: CGRect {

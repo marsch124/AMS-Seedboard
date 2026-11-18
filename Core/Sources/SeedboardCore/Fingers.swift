@@ -55,10 +55,12 @@ public extension Board {
     /// that size round it, and among several the nearest wins. `scale`: screen points per board point.
     func hit(_ point: CGPoint, scale: Double, least: Double = Fingers.button) -> UUID? {
         if let exact = hit(point) { return exact }
+        // A drawing is caught near its lines: 6 screen points for a pointer, half a finger for a finger.
+        if scale > 0, let sketch = inkHit(point, reach: max(least / 2, Ink.reach) / scale) { return sketch }
         guard least > 0, scale > 0 else { return nil }
         let side = least / scale
         var best: (id: UUID, far: Double)?
-        for item in items where item.kind != .frame && !isHidden(item.id) {
+        for item in items where item.kind != .frame && item.kind != .drawing && !isHidden(item.id) {
             let f = item.frame
             let dx = max(0, (side - Double(f.width)) / 2)
             let dy = max(0, (side - Double(f.height)) / 2)

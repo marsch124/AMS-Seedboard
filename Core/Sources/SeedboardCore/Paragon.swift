@@ -96,7 +96,7 @@ public enum ParagonExport {
         }
         section("Flow", flow, into: &out)
 
-        section("Notes", noteBullets(board), into: &out)
+        section("Notes", noteBullets(board, picture: picture != nil), into: &out)
 
         let tasks = board.items.filter { $0.todo && !oneLine($0.text).isEmpty }.map { "- [ ] \(oneLine($0.text))" }
         section("Tasks", tasks, into: &out)
@@ -129,7 +129,7 @@ public enum ParagonExport {
         for group in groups { out += group.joined(separator: "\n") + "\n\n" }
 
         out += "## Notes\n\n"
-        let notes = noteBullets(board)
+        let notes = noteBullets(board, picture: picture != nil)
         if !notes.isEmpty { out += notes.joined(separator: "\n") + "\n\n" }
 
         out += "## Log\n\n- \(stamp(now, "yyyy-MM-dd")): Project created from a Seedboard board\n"
@@ -253,13 +253,20 @@ public enum ParagonExport {
         out += "## \(name)\n\n" + lines.joined(separator: "\n") + "\n\n"
     }
 
-    private static func noteBullets(_ board: Board) -> [String] {
-        board.items.filter { ($0.kind == .note || $0.kind == .text) && !oneLine($0.text).isEmpty }
-            .map { "- \(oneLine($0.text))" }
+    private static func noteBullets(_ board: Board, picture: Bool = true) -> [String] {
+        // A drawing has no words: one plain line stands in its place.
+        board.items.filter { (($0.kind == .note || $0.kind == .text) && !oneLine($0.text).isEmpty) || $0.kind == .drawing }
+            .map { $0.kind == .drawing ? "- " + sketchLine(picture: picture) : "- \(oneLine($0.text))" }
+    }
+
+    /// What a note or project says where a drawing is.
+    public static func sketchLine(picture: Bool = true) -> String {
+        picture ? "A sketch (see the picture)" : "A sketch (on the board)"
     }
 
     static func label(_ item: Item) -> String {
         let words = oneLine(item.text)
+        if item.kind == .drawing { return "A sketch" }
         return words.isEmpty ? "(empty)" : words
     }
 

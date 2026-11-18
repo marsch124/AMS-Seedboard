@@ -90,6 +90,8 @@ final class AppModel: ObservableObject {
             session.selection = []
             session.selectedLink = link.id
         }
+        // For pictures: `-draw` opens the board with the Draw tool on and its plate showing.
+        if LaunchOptions.arguments.contains("-draw") { session?.ink.on = true }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // A link that arrived before the boards were loaded is followed now.
         if let id = waitingLink { follow(id) }
