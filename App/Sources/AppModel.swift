@@ -388,6 +388,7 @@ final class AppModel: ObservableObject {
         copy.changed = Date()
         copy.sent = nil
         copy.sentTodos = []
+        copy.sentTasks = []
         copy.pinned = false
         write(copy)
         open(copy.id)
