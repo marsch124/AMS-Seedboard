@@ -251,8 +251,8 @@ final class TimelineTests: XCTestCase {
     func testATimelineIsKeptInTheFileAndAnOlderBoardStaysOrdinary() throws {
         var (board, permit, _, _) = chain()
         board.addMilestone("Move in", on: dec1 + 30)
-        XCTAssertEqual(Board.currentFormat, 2)
-        XCTAssertEqual(board.format, 2)
+        XCTAssertGreaterThanOrEqual(Board.currentFormat, 2)
+        XCTAssertEqual(board.format, Board.currentFormat)
         let data = try JSONEncoder().encode(board)
         let back = try JSONDecoder().decode(Board.self, from: data)
         XCTAssertEqual(back, board)
@@ -270,7 +270,7 @@ final class TimelineTests: XCTestCase {
         XCTAssertFalse(written.contains("\"start\""))
         XCTAssertFalse(written.contains("\"kind\":\"timeline\""))
         // The 0.1 app's own rule (format above the one it knows = look, do not change) still holds for the next format.
-        let newer = try JSONDecoder().decode(Board.self, from: Data(#"{"id":"11111111-1111-1111-1111-111111111111","format":3,"kind":"timeline"}"#.utf8))
+        let newer = try JSONDecoder().decode(Board.self, from: Data(#"{"id":"11111111-1111-1111-1111-111111111111","format":\#(Board.currentFormat + 1),"kind":"timeline"}"#.utf8))
         XCTAssertFalse(newer.canBeChanged)
     }
 

@@ -179,7 +179,7 @@ final class InkTests: XCTestCase {
         // A finger's stroke has no pressure in the file; a note has no strokes.
         XCTAssertEqual((item["strokes"] as! [[String: Any]])[1].keys.sorted(), ["colour", "points", "width"])
         XCTAssertNil((file["items"] as! [[String: Any]])[1]["strokes"])
-        XCTAssertEqual(board.format, 2)
+        XCTAssertEqual(board.format, Board.currentFormat)
         // Tenths stay tenths in the file (no 26.299999999).
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("26.3,36,"))
 
