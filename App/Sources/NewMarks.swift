@@ -23,7 +23,7 @@ enum NewMark: String, CaseIterable {
     case picture, saveStarter
     // 0.4: a caption under a picture, cropping a picture (stand-ins until the lead swaps them)
     case caption, crop
-    // 0.5 (stand-ins until the icon helper's drawings are pinned at the join): a door to another board; next note and
+    // 0.5: a door to another board; next note and
     // next shape while typing; turn a thing into another kind; tidy a pile into a grid; sort by colour; break an idea
     // into notes; a bar is done; catch up; share, as PDF, as words, print; take a photo, scan a page.
     case door, nextNote, nextShape, turnInto, tidy, byColour, breakNotes, done, catchUp
@@ -74,22 +74,22 @@ enum NewMark: String, CaseIterable {
         // Stand-ins until the lead swaps them for the real drawings.
         case .caption: return .seedCaption
         case .crop: return .seedCrop
-        // 0.5 stand-ins: swapped for the real drawings (seedDoor, seedNextNote, …) at the join.
-        case .door: return .seedFrame
-        case .nextNote: return .seedNextIdea
-        case .nextShape: return .seedNextIdea
-        case .turnInto: return .seedBranch
-        case .tidy: return .seedSameSize
-        case .byColour: return .seedEvenGaps
-        case .breakNotes: return .seedOutLevel
-        case .done: return .seedToday
-        case .catchUp: return .seedCalendar
-        case .share: return .seedExport
-        case .pdf: return .seedDocument
-        case .words: return .seedCaption
-        case .print: return .seedDocument
-        case .camera: return .seedPicture
-        case .scan: return .seedDocument
+        // 0.5: the real drawings (AMS-Icons 8e79eaf).
+        case .door: return .seedDoor
+        case .nextNote: return .seedNextNote
+        case .nextShape: return .seedNextShape
+        case .turnInto: return .seedTurnInto
+        case .tidy: return .seedTidy
+        case .byColour: return .seedByColour
+        case .breakNotes: return .seedBreakNotes
+        case .done: return .seedDone
+        case .catchUp: return .seedCatchUp
+        case .share: return .seedShare
+        case .pdf: return .seedPDF
+        case .words: return .seedWords
+        case .print: return .seedPrint
+        case .camera: return .seedCamera
+        case .scan: return .seedScan
         }
     }
 }
