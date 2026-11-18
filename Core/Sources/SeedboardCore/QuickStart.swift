@@ -99,22 +99,25 @@ public struct QuickAction: Equatable, Sendable {
 public enum QuickActions {
     /// How many pinned boards the menu offers.
     public static let pinnedShown = 2
+    /// How many lines the device shows (iPhone and iPad show four of the app's own; a fifth falls off).
+    public static let most = 4
 
-    /// The lines, in order: New board, New mind map, New board from the clipboard, then the first two pinned
-    /// boards as the list shows them (each with its count line under the name). A board made by a newer
-    /// Seedboard is offered too: it opens to be read.
+    /// The lines, at most four, in order: New board, New mind map (only while there is room for it), New board
+    /// from the clipboard, then the first two pinned boards as the list shows them (each with its count line under
+    /// the name). 0.6: with two boards pinned, New mind map makes way, so both pinned boards fit. A board made by
+    /// a newer Seedboard is offered too: it opens to be read.
     public static func list(pinned: [Board]) -> [QuickAction] {
-        var out = [
-            QuickAction(title: "New board", subtitle: nil, link: NewLink.link(.starter(Starter.blank.id)), mark: .add),
-            QuickAction(title: "New mind map", subtitle: nil, link: NewLink.link(.starter(Starter.mindMap.id)), mark: .mindMap),
-            QuickAction(title: "New board from the clipboard", subtitle: nil, link: NewLink.link(.clipboard), mark: .paste),
-        ]
-        for board in pinned.filter(\.pinned).prefix(pinnedShown) {
+        let boards = pinned.filter(\.pinned).prefix(pinnedShown).map { board in
             let name = ParagonExport.oneLine(board.title)
-            out.append(QuickAction(title: name.isEmpty ? "Board" : name, subtitle: board.countLine,
-                                   link: "seedboard://board/\(board.id.uuidString)", mark: .board))
+            return QuickAction(title: name.isEmpty ? "Board" : name, subtitle: board.countLine,
+                               link: "seedboard://board/\(board.id.uuidString)", mark: .board)
         }
-        return out
+        var out = [QuickAction(title: "New board", subtitle: nil, link: NewLink.link(.starter(Starter.blank.id)), mark: .add)]
+        if boards.count + 3 <= most {
+            out.append(QuickAction(title: "New mind map", subtitle: nil, link: NewLink.link(.starter(Starter.mindMap.id)), mark: .mindMap))
+        }
+        out.append(QuickAction(title: "New board from the clipboard", subtitle: nil, link: NewLink.link(.clipboard), mark: .paste))
+        return out + boards
     }
 }
 

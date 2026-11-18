@@ -1,0 +1,25 @@
+AMS Seedboard 0.6 (build 6) - what to test
+
+This is a small version: two fixes and a course.
+
+1. A done bar goes to PARAGON done (iPhone, iPad, Mac)
+- Open a timeline board with a few bars and a milestone. Choose a bar and press Done.
+- Press Send to PARAGON and choose As a project (or As a note). Look at the box "What PARAGON gets": the done task has a filled, ticked box and its words are struck through. The line under the box says, for example, 5 tasks (1 done).
+- Send. Open the note in PARAGON: the done bar is already ticked, with the day you marked it. The other bars are still open.
+- Switch on "Also remind me when a bar starts": the done bar gets no Start: line.
+- Mark a bar to-do and Done, then choose Only the to-do boxes: the done bar is not sent to the Inbox.
+- Send a board as a project, then mark one more bar Done and open Send again: Add what is new does not offer that bar. Take the Done mark off: it is offered again.
+
+2. The app icon menu (iPhone and iPad)
+- Pin two boards. Press and hold the Seedboard icon on the home screen. You should see four lines: New board, New board from the clipboard, and your two pinned boards. Both pinned boards are there.
+- Unpin one board: the lines are New board, New mind map, New board from the clipboard and the one pinned board.
+
+3. The link back in a PARAGON note (needs PARAGON build 339 or later)
+- In a note that Seedboard sent, press the line "Open the board in Seedboard": tap on the iPhone and iPad, hold the Command key and click on the Mac. The board opens. It works while you read the note and while you write in it.
+
+4. The course
+- A short interactive tour of the whole app, with a practice screen. Try it and tell us where it is unclear.
+
+Also look at: Settings, What's new (the 0.6 entry) and How it works (Timeline board, Send to PARAGON).
+
+Tell us: anything that looks wrong in day or night, on iPhone, iPad or Mac.

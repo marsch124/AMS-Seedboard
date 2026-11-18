@@ -27,13 +27,16 @@ public struct PreviewRow: Equatable, Sendable {
     public var date: Day?
     /// How far the line is set in (a sub-task, an idea under an idea).
     public var indent: Int
+    /// A task that arrives already ticked (a timeline bar marked done, 0.6).
+    public var done: Bool
 
-    public init(kind: Kind, words: String, day: String? = nil, date: Day? = nil, indent: Int = 0) {
+    public init(kind: Kind, words: String, day: String? = nil, date: Day? = nil, indent: Int = 0, done: Bool = false) {
         self.kind = kind
         self.words = words
         self.day = day
         self.date = date
         self.indent = indent
+        self.done = done
     }
 }
 
@@ -58,6 +61,8 @@ public extension ParagonExport {
             let indent = line.prefix { $0 == " " }.count / 2
             if trimmed.hasPrefix("- [ ] ") {
                 rows.append(taskRow(String(trimmed.dropFirst(6)), indent: indent))
+            } else if trimmed.hasPrefix("- [x] ") {
+                rows.append(taskRow(String(trimmed.dropFirst(6)), indent: indent, done: true))
             } else if trimmed.hasPrefix("- ") {
                 rows.append(PreviewRow(kind: .plain, words: shown(String(trimmed.dropFirst(2))), indent: indent))
             } else if trimmed.hasPrefix("> ") {
@@ -74,14 +79,14 @@ public extension ParagonExport {
         lines.map { taskRow($0, indent: 0) }
     }
 
-    private static func taskRow(_ words: String, indent: Int) -> PreviewRow {
-        var body = words
+    private static func taskRow(_ words: String, indent: Int, done: Bool = false) -> PreviewRow {
+        var body = words.replacingOccurrences(of: #"(?<!\S)@done\([^)]*\)"#, with: " ", options: .regularExpression)
         var date: Day?
         if let found = body.range(of: #"(?<!\S)>\d{4}-\d{2}-\d{2}(?!\S)"#, options: .regularExpression) {
             date = Day(iso: String(body[found].dropFirst()))
             body.removeSubrange(found)
         }
-        return PreviewRow(kind: .task, words: shown(body), day: date?.short, date: date, indent: indent)
+        return PreviewRow(kind: .task, words: shown(body), day: date?.short, date: date, indent: indent, done: done)
     }
 
     /// Words as PARAGON shows them: "[name](address)" is its name, "[[Title]]" the title, "**bold**" plain.
@@ -97,7 +102,9 @@ public extension ParagonExport {
     static func countLine(_ rows: [PreviewRow], inInbox: Int = 0) -> String {
         let tasks = rows.filter { $0.kind == .task }.count
         let headings = rows.filter { $0.kind == .heading(level: 3) }.count
-        var parts = [tasks == 0 ? "No tasks" : (tasks == 1 ? "1 task" : "\(tasks) tasks")]
+        let done = rows.filter { $0.kind == .task && $0.done }.count
+        var parts = [tasks == 0 ? "No tasks" : (tasks == 1 ? "1 task" : "\(tasks) tasks")
+            + (done == 0 ? "" : " (\(done) done)")]
         if headings > 0 { parts.append(headings == 1 ? "1 heading" : "\(headings) headings") }
         if inInbox > 0 { parts.append("\(inInbox) already in the Inbox") }
         if let last = rows.compactMap(\.date).max() { parts.append("last day \(last.short)") }

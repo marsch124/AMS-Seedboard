@@ -81,11 +81,24 @@ struct ParagonGetsBox: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 RoundedRectangle(cornerRadius: 2.5, style: .continuous)
                     .stroke(Part.paragon.text, lineWidth: 1.3)
+                    .background(RoundedRectangle(cornerRadius: 2.5, style: .continuous).fill(row.done ? Part.paragon.text : .clear))
+                    .overlay {
+                        if row.done {
+                            // A drawn tick, white on the filled box: the task arrives done.
+                            Path { p in
+                                p.move(to: CGPoint(x: 2.3, y: 5.2))
+                                p.addLine(to: CGPoint(x: 4.3, y: 7.3))
+                                p.addLine(to: CGPoint(x: 7.8, y: 2.9))
+                            }
+                            .stroke(.white, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+                        }
+                    }
                     .frame(width: 10, height: 10)
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
                 Text(row.words)
                     .font(.caption)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(row.done ? .secondary : .primary)
+                    .strikethrough(row.done, color: .secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 6)
                 if let day = row.day {

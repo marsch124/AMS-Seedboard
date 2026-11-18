@@ -115,13 +115,17 @@ final class Iphone05Tests: XCTestCase {
         }
         let boards = [board("Not pinned", pinned: false), board("Summer\ncabin", pinned: true), board("Boat", pinned: true), board("Third", pinned: true)]
         let all = QuickActions.list(pinned: boards)
-        XCTAssertEqual(all.count, 5)
-        XCTAssertEqual(all.suffix(2).map(\.title), ["Summer cabin", "Boat"])
+        // 0.6: the device shows four lines; with two pinned boards New mind map makes way, so both fit.
+        XCTAssertEqual(all.count, 4)
+        XCTAssertEqual(all.map(\.title), ["New board", "New board from the clipboard", "Summer cabin", "Boat"])
         XCTAssertEqual(all.suffix(2).map(\.mark), [.board, .board])
-        XCTAssertEqual(all[3].link, "seedboard://board/\(boards[1].id.uuidString)")
-        XCTAssertEqual(all[3].subtitle, boards[1].countLine)
+        XCTAssertEqual(all[2].link, "seedboard://board/\(boards[1].id.uuidString)")
+        XCTAssertEqual(all[2].subtitle, boards[1].countLine)
         // Each of those links opens that board.
-        XCTAssertEqual(BoardLink.id(from: URL(string: all[4].link)!), boards[2].id)
+        XCTAssertEqual(BoardLink.id(from: URL(string: all[3].link)!), boards[2].id)
+        // One pinned board: New mind map still fits.
+        XCTAssertEqual(QuickActions.list(pinned: [boards[1]]).map(\.title),
+                       ["New board", "New mind map", "New board from the clipboard", "Summer cabin"])
         // Every link of the menu is one the app understands.
         for line in all {
             let url = URL(string: line.link)!

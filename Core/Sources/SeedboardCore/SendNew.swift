@@ -158,7 +158,9 @@ public extension ParagonExport {
         let would = sent.kind == "project"
             ? projectHandover(board: board, title: sent.title, picture: nil, now: sent.when)
             : noteHandover(board: board, title: sent.title, picture: nil, now: sent.when)
-        let unknown = would.tasks.filter { board.sentTask($0.id) == nil && !board.sentTodos.contains($0.id) }
+        // 0.6: a bar marked done after the sending is not offered as a new (open) task.
+        let unknown = would.tasks.filter { board.sentTask($0.id) == nil && !board.sentTodos.contains($0.id)
+            && board.item($0.id)?.isDone != true }
         var result = NewTasks(new: unknown, there: [], renamed: 0, moved: 0)
 
         if !board.sentTasks.contains(where: { $0.place == SentTask.note }) {

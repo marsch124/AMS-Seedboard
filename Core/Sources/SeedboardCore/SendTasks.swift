@@ -80,6 +80,9 @@ extension ParagonExport {
             return pad + "- \(plain ?? words) \(inInboxWords)"
         }
         made.tasks.append(MadeTask(id: item.id, words: words))
+        // 0.6: a bar or milestone marked done goes to PARAGON already ticked, with the day it was done,
+        // written the way PARAGON writes a done task itself: "- [x] words >due @done(2026-11-18)".
+        if let day = item.doneOn { return pad + "- [x] " + words + " @done(\(day.iso))" }
         return pad + "- [ ] " + words
     }
 

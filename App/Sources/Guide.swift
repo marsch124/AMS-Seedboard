@@ -299,6 +299,7 @@ enum Guide {
             "Dates: choose a bar and press Dates. Set Starts and Ends, then Save. Changing Starts moves the whole bar and its length stays. Changing Ends makes it longer or shorter. Cancel, or Escape on the Mac, leaves it as it was.",
             "The bar for a chosen row shows its dates in words and offers Name, Colour (nine colours), Dates, Done, To do, Duplicate and Remove. It is orange, with Remove in red. A phase has no Done.",
             "Done: marks the bar or milestone done today. The bar turns paler, a tick in its own colour stands at its end, and its name in the left column turns grey. Done is then in full colour; press it again to take the mark off. With several rows chosen, Done marks them all, or takes the mark off all when all were done. A copy of a done bar is not done.",
+            "A done bar goes to PARAGON already ticked, with the day it was done. It never goes to the Inbox as a new to-do, has no Start: reminder and is not offered by Add what is new. See Send to PARAGON.",
             "Late: a bar whose last day is before today and that is not done has a red end and a red name. A late milestone has a red edge and a red name.",
             "The part of a bar that lies before the red Today line and is not done is darker, so a bar in work is dark up to today.",
             "In the corner above the names stands one line, for example 3 of 8 done · 1 late · ends 20 Feb. Bars and milestones are counted. 1 late shows only when something is late, in red. The end is the last day of the latest bar, with the year when it is not this year. The same line is in the picture for PARAGON and in the small pictures.",
@@ -507,6 +508,7 @@ enum Guide {
             "When every ticked box is already in PARAGON, the page says, for example, All 4 to-do boxes are already in PARAGON. With nothing ticked it says No to-do boxes are waiting. Choose a box and press To do first.",
             "Say where they come from: a switch shown with Only the to-do boxes (and with Add what is new when the tasks go to the Inbox). It is on at first, and each device remembers your choice. On, every to-do in the Inbox ends with its way back: a link with the board's name that opens the board in Seedboard, for example Order timber, then Summer cabin as a link. When the board is a project in PARAGON, the to-do points to that project instead.",
             "A timeline bar sent as a to-do keeps its days, for example Permit (starts 1 Dec), due 5 Dec, so it lands in the Inbox with its date.",
+            "A bar or milestone marked Done is not a to-do any more. In a note or a project it arrives already ticked, with the day it was done, for example Permit (starts 1 Dec), due 5 Dec. It gets no Start: line, never goes to the Inbox with Only the to-do boxes, and Add what is new does not offer a bar that was marked done after the sending. If you take the Done mark off again, Add what is new offers it again.",
             "Also remind me when a bar starts: a switch on a timeline's Send page, off each time the page opens. On, every bar longer than 3 days gets one more task right before its own, on its first day, for example Start: Foundation, due 8 Dec. It works for a note, a project, the to-dos and Add what is new.",
             "On a timeline, As a project says, for example, All 6 bars and 1 milestone become tasks with their days.",
             "Send this branch: choose one idea, then press Send to PARAGON. The page has a switch, Only the branch, with the idea's words. It is off at first.",
@@ -534,8 +536,8 @@ enum Guide {
         ]),
         Part(title: "What PARAGON gets", text: [
             "Under the rows and switches of the Send page stands a box, What PARAGON gets. It shows the very words Send will write, read out of the same text, so what arrives cannot differ from it. It follows the row you choose, the name and the switches.",
-            "For a note or a project: the board's small picture (for a sent branch the words The picture), the parts such as Outcome, Tasks, Notes and Log in bold, headings in purple, each task with an empty purple box and its day at the right (for example 12 Dec), plain lines in grey, pushed in by level. For the to-dos and Add what is new: the task lines. Links show as their name.",
-            "The box is 168 points high and scrolls. Under it a line counts, for example 13 tasks · 3 headings · 1 already in the Inbox · last day 20 Feb. Parts that are 0 are left out; with no tasks it says No tasks.",
+            "For a note or a project: the board's small picture (for a sent branch the words The picture), the parts such as Outcome, Tasks, Notes and Log in bold, headings in purple, each task with an empty purple box and its day at the right (for example 12 Dec), a done task with a filled, ticked purple box and its words struck through, plain lines in grey, pushed in by level. For the to-dos and Add what is new: the task lines. Links show as their name.",
+            "The box is 168 points high and scrolls. Under it a line counts, for example 13 tasks · 3 headings · 1 already in the Inbox · last day 20 Feb. Parts that are 0 are left out; with no tasks it says No tasks. The tasks that arrive done are counted in it, for example 5 tasks (1 done).",
         ]),
         Part(title: "Add what is new", text: [
             "When a board already went to PARAGON as a note or a project and has things that became tasks since, the Send page has a new first row, chosen when the page opens: Add what is new to “Summer cabin”.",
@@ -730,7 +732,7 @@ enum Guide {
             "While you type in the search, the keyboard comes up and the search field and + ride on top of it; the Settings line steps aside until you are done. The + also works with the keyboard up.",
             "Every row shows the board's small picture at the right and, under the name, when it was changed and what is on it, for example Changed 2 days ago · 5 shapes · 5 notes. A sent board adds how far it is in PARAGON: Changed 2 days ago · 5 of 13 done · 5 shapes · 5 notes.",
             "With no board at all, the list shows the sprout, Plant a seed, Every idea starts on a board., and the starters themselves, two in a row. Press one and your first board opens.",
-            "Press and hold Seedboard's app icon for: New board, New mind map, New board from the clipboard, and your first two pinned boards. New mind map takes your own version of the Mind map starter. New board from the clipboard follows the rule of New board from text; with no words on the clipboard you get a blank board and the line There were no words to paste. This is a blank board. An iPhone may show only the first four lines.",
+            "Press and hold Seedboard's app icon for: New board, New mind map (only while fewer than two boards are pinned), New board from the clipboard, and your first two pinned boards. New mind map takes your own version of the Mind map starter. New board from the clipboard follows the rule of New board from text; with no words on the clipboard you get a blank board and the line There were no words to paste. This is a blank board. The menu has at most four lines, the most the iPhone and iPad show: with two boards pinned, New mind map is left out so that both pinned boards fit; with fewer than two pinned boards you get all of the first three lines and the pinned boards after them.",
             "Hold the Picture tile for Photos, Take a photo and Scan a page. See Pictures.",
             "Swipe three fingers left to undo, right to redo, or shake to undo. See Choosing, moving, sizing, copying, removing, undo.",
             "The board is the same as on the iPad and the Mac. Tools, bar, plus signs, folding, arrows, notes, lanes, timelines and Send all work.",
@@ -749,6 +751,16 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.6", date: "2026-11-18", items: [
+            "Fixed: a bar or milestone marked Done went to PARAGON as an open task. Before: in a note or a project it arrived with an empty box, as if it still had to be done. Now: it arrives already ticked, with the day it was done, written the way PARAGON writes a done task itself.",
+            "Fixed: a done bar no longer asks to be started. Before: with Also remind me when a bar starts on, a done bar still got a Start: line. Now it gets none.",
+            "Fixed: a done bar never goes to the Inbox. Before: Only the to-do boxes sent it as a new task. Now it is left out, because it is not a thing to do any more.",
+            "Fixed: Add what is new no longer offers a bar that you marked Done after the sending, because there is nothing left to do. If you take the Done mark off again, it is offered again.",
+            "Send page: a done task shows as done in What PARAGON gets. Before: every task had an empty box. Now a done task has a filled, ticked purple box and its words are struck through, and the count line says, for example, 5 tasks (1 done).",
+            "Fixed: the app icon's menu on the iPhone and iPad. Before: it offered five lines but the device shows only four, so your second pinned board fell off the end. Now it offers at most four: New board, New mind map, New board from the clipboard, then your first two pinned boards. When two boards are pinned, New mind map makes way, so both boards fit; it is back as soon as fewer than two are pinned.",
+            "PARAGON: the link back to the board in a note can be pressed. Before: it worked only while you read the note. Now, in PARAGON build 339 or later, tap it on the iPhone and iPad, or hold ⌘ and click it on the Mac, and the board opens here, also while you write in the note.",
+            "A course: a short interactive tour of the whole app, with a practice screen.",
+        ]),
         Release(version: "0.5", date: "2026-11-18", items: [
             // Feel (picks 1 to 6)
             "Feel: the board glides. Before: a zoom step, Show the whole board, bringing a new idea into sight and the iPhone's zoom for typing jumped in one go. Now: a zoom step glides in 0.22 seconds with the middle held still and the percent counting along, Show the whole board in 0.30, a new idea slides into sight in 0.18, and the iPhone's typing zoom in 0.18. A finger, a click, a scroll or a key stops a glide at once. Three quick presses on Bigger are three full steps.",
@@ -832,7 +844,7 @@ enum Guide {
 
             // iPhone and iPad (pick 31)
             "iPhone: search and New board under the thumb. Before: the green New board button and Search boards stood at the top of the list. Now: the list starts right under the title, and at the bottom sit the round search field and a round green + (44 points). While you search they ride on the keyboard. Mac and iPad are as before.",
-            "iPhone and iPad: press the app icon long for New board, New mind map, New board from the clipboard and your first two pinned boards.",
+            "iPhone and iPad: press the app icon long for New board, New mind map, New board from the clipboard and your first two pinned boards. At most four lines: New mind map is left out when two boards are pinned.",
             "iPhone and iPad: the camera on the Picture tile. Hold the tile for a plate, Add a picture: Photos, Take a photo, Scan a page. Scan a page straightens paper or a whiteboard and puts up to 12 pages on the board.",
             "iPhone and iPad: three fingers swiped left undo, right redo, and a shake offers Undo. One gesture always takes back exactly one step.",
 
