@@ -212,7 +212,9 @@ final class PictureStore: @unchecked Sendable {
         lock.unlock()
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 25_000_000_000)
-            let named = Set(AppModel.shared.boards.flatMap { $0.pictureNames })
+            // Named by a board, or by a starter (a starter keeps a board of its own).
+            var named = Set(AppModel.shared.boards.flatMap { $0.pictureNames })
+            for entry in AppModel.shared.shelf.entries.values { named.formUnion(entry.board?.pictureNames ?? []) }
             let folders = [self.local] + [self.cloud].compactMap { $0 }
             _ = await AppModel.shared.store.kept { places in
                 Self.tidy(pictures: folders, places: places, named: named)
@@ -236,6 +238,8 @@ final class PictureStore: @unchecked Sendable {
         // Every file that can name a picture, read as plain bytes: boards, removed boards, safety copies, earlier versions.
         var roots = places.boards + places.removed
         roots.append(places.safety)
+        // Starters sit in a folder beside each Pictures folder; a starter's board may name a picture too.
+        roots += folders.map { $0.deletingLastPathComponent().appendingPathComponent("Starters", isDirectory: true) }
         var blobs: [Data] = []
         for root in roots {
             guard let walk = fm.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey], options: []) else { continue }

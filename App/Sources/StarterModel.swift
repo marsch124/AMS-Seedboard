@@ -150,7 +150,7 @@ extension AppModel {
     func changeStarter(_ id: String) {
         guard let starter = shelf.starter(id), let work = shelf.workingBoard(for: id) else { return }
         showStarterPage = false
-        if changing != nil { endChange() }
+        leaveChange()
         session?.commitEdit()
         saveNow()
         let draft = BoardSession(board: work)
@@ -181,6 +181,12 @@ extension AppModel {
         }
         endChange()
         say("Saved the starter “\(name)”.")
+    }
+
+    /// The owner goes somewhere else without pressing Cancel or Save: what was changed is kept.
+    func leaveChange() {
+        guard changing != nil else { return }
+        if changing?.dirty == true { saveChange() } else { endChange() }
     }
 
     /// Closes the working copy (saved, cancelled, or left).

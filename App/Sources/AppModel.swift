@@ -226,6 +226,8 @@ final class AppModel: ObservableObject {
     /// The device copy is written before this returns; iCloud's copy gets background time to finish
     /// (iPhone and iPad), or two more seconds when the Mac app closes for good.
     func leaving(closing: Bool = false) {
+        // The app closes for good while a starter is being changed: what was changed is kept.
+        if closing { leaveChange() }
         session?.commitEdit()
         saveNow()
         starterStore.flush()
@@ -276,8 +278,9 @@ final class AppModel: ObservableObject {
 
     func open(_ id: UUID?) {
         guard id != openID || session == nil else { return }
-        // Going to another board while a starter is being changed leaves that change unsaved.
-        if changing != nil { endChange() }
+        // Going to another board (or back to the list) while a starter is being changed keeps what was
+        // changed, like everything else in the app: only Cancel throws it away.
+        leaveChange()
         session?.commitEdit()
         saveNow()
         // Leaving a board ends its typing: news that was held for it is offered now.

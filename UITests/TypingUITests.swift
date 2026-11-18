@@ -1,5 +1,7 @@
 import XCTest
 
+// The Mac only: the simulator's test keyboard cannot press Shift and Return together.
+#if os(macOS)
 /// Shift and Return while typing make a new line and the typing goes on (0.3).
 final class TypingUITests: XCTestCase {
     override func setUp() {
@@ -49,3 +51,4 @@ final class TypingUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 8), .completed, "Return did not end the typing")
     }
 }
+#endif
