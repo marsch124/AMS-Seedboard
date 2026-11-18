@@ -41,13 +41,19 @@ final class WetLine: ObservableObject {
     private(set) var pressed = false
     /// The rubber's place while it rubs (board points).
     private(set) var rubberAt: CGPoint?
+    /// 0.9: the rubber's reach while it rubs (screen points), the highlighter's line, the lasso's loop.
+    private(set) var rubberReach = Ink.rubber
+    private(set) var highlighter = false
+    private(set) var lasso = false
 
-    func begin(at point: CGPoint, force: Double?, colour: String, width: InkWidth) {
+    func begin(at point: CGPoint, force: Double?, colour: String, width: InkWidth, highlighter: Bool = false, lasso: Bool = false) {
+        self.highlighter = highlighter
+        self.lasso = lasso
         points = [point]
         pressure = [force ?? 1]
         ahead = []
         aheadPressure = []
-        pressed = force != nil
+        pressed = force != nil && !highlighter && !lasso
         self.colour = colour
         self.width = width
         live = true
@@ -65,8 +71,9 @@ final class WetLine: ObservableObject {
         objectWillChange.send()
     }
 
-    func rub(at point: CGPoint?) {
+    func rub(at point: CGPoint?, reach: Double = Ink.rubber) {
         rubberAt = point
+        rubberReach = reach
         objectWillChange.send()
     }
 
@@ -77,6 +84,8 @@ final class WetLine: ObservableObject {
         ahead = []
         aheadPressure = []
         live = false
+        highlighter = false
+        lasso = false
         rubberAt = nil
         objectWillChange.send()
     }
@@ -87,8 +96,30 @@ final class WetLine: ObservableObject {
 final class InkDesk: ObservableObject {
     /// The Draw tool is on: a finger and the mouse draw too.
     @Published var on = false
-    /// The rubber instead of the pen.
-    @Published var rubber = false
+    /// The rubber instead of the pen. (0.9: pen, highlighter, rubber and lasso are one at a time.)
+    @Published var rubber = false {
+        didSet { if rubber { highlighter = false; lasso = false } }
+    }
+    /// 0.9: the highlighter pen (key H while drawing): wide, see-through, under the ink; its own four colours.
+    @Published var highlighter = false {
+        didSet { if highlighter { rubber = false; lasso = false } }
+    }
+    /// 0.9: the lasso (key L while drawing): a loop round pencil lines chooses them.
+    @Published var lasso = false {
+        didSet { if lasso { rubber = false; highlighter = false } }
+    }
+    /// 0.9: the highlighter's colour (yellow, green, pink, blue).
+    @Published var highlightColour = "yellow" {
+        didSet { if !LaunchOptions.sampleData { UserDefaults.standard.set(highlightColour, forKey: InkDesk.highlightKey) } }
+    }
+    /// 0.9: how near a line the rubber must come.
+    @Published var rubberSize = RubberSize.medium {
+        didSet { if !LaunchOptions.sampleData { UserDefaults.standard.set(rubberSize.rawValue, forKey: InkDesk.rubberKey) } }
+    }
+    /// 0.9: "Draw on it": the picture the lines go into (points from its corner); nil: lines make sketches.
+    @Published var target: UUID?
+    /// 0.9: the sketches the lasso just chose (so the box round them can be dragged).
+    var lassoed: Set<UUID> = []
     /// Thickness and colour are remembered on this device (not in iCloud): the last used come back.
     @Published var width: InkWidth {
         didSet { if !LaunchOptions.sampleData { UserDefaults.standard.set(width.rawValue, forKey: InkDesk.widthKey) } }
@@ -104,6 +135,8 @@ final class InkDesk: ObservableObject {
 
     private static let widthKey = "ink.width"
     private static let colourKey = "ink.colour"
+    private static let highlightKey = "ink.highlightColour"
+    private static let rubberKey = "ink.rubberSize"
 
     init() {
         // Pictures and tests always start with plain ink, medium.
@@ -111,22 +144,44 @@ final class InkDesk: ObservableObject {
         width = stored?.string(forKey: InkDesk.widthKey).flatMap { InkWidth(rawValue: $0) } ?? .medium
         let name = stored?.string(forKey: InkDesk.colourKey) ?? ""
         colour = Palette.names.contains(name) ? name : ""
+        highlightColour = Ink.highlighterColour(stored?.string(forKey: InkDesk.highlightKey) ?? "")
+        rubberSize = stored?.string(forKey: InkDesk.rubberKey).flatMap { RubberSize(rawValue: $0) } ?? .medium
     }
 
     /// Leaves the Draw tool; the next line is a pen's again.
     func leave() {
         if on { on = false }
         if rubber { rubber = false }
+        if highlighter { highlighter = false }
+        if lasso { lasso = false }
+        target = nil
+        lassoed = []
     }
 
     func pick(width new: InkWidth) {
         width = new
         rubber = false
+        highlighter = false
+        lasso = false
     }
 
     func pick(colour new: String) {
         colour = new
         rubber = false
+        highlighter = false
+        lasso = false
+    }
+
+    /// The ordinary pen again.
+    func usePen() {
+        rubber = false
+        highlighter = false
+        lasso = false
+    }
+
+    func pick(highlightColour new: String) {
+        highlightColour = Ink.highlighterColour(new)
+        highlighter = true
     }
 
     /// iPad Settings › Apple Pencil › "Only Draw with Apple Pencil": a finger then never draws.
@@ -148,7 +203,7 @@ final class InkDesk: ObservableObject {
     func pencil(_ wish: PencilWish) {
         switch wish {
         case .nothing: break
-        case .swap: rubber.toggle()
+        case .swap: if lasso || highlighter { usePen() } else { rubber.toggle() }
         case .plate: if on { leave() } else { on = true }
         }
     }
@@ -182,6 +237,8 @@ extension BoardSession {
     /// Does this touch draw? Asked once, when it lands (TouchLayer's `InkHook.claims`).
     func inkClaims(_ dot: InkDot) -> Bool {
         guard !readOnly, !board.isTimeline else { return false }
+        // 0.9: a touch inside the box round what the lasso chose moves it (the ordinary press does that).
+        if lassoBoxHit(toBoard(dot.location)) != nil { return false }
         switch dot.kind {
         case .pencil:
             if ink.on { return true }
@@ -225,8 +282,12 @@ extension BoardSession {
         if desk.rubber {
             liveStart()
             desk.rub = InkDesk.Rub(base: board, last: p)
-            desk.wet.rub(at: p)
+            desk.wet.rub(at: p, reach: desk.rubberSize.screenReach)
             rubStep(to: p, first: true)
+        } else if desk.lasso {
+            desk.wet.begin(at: p, force: nil, colour: "", width: .thin, lasso: true)
+        } else if desk.highlighter {
+            desk.wet.begin(at: p, force: nil, colour: desk.highlightColour, width: .thick, highlighter: true)
         } else {
             desk.wet.begin(at: p, force: dot.force, colour: desk.colour, width: desk.width)
         }
@@ -242,7 +303,7 @@ extension BoardSession {
         }
         if desk.rub != nil {
             for dot in real { rubStep(to: toBoard(dot.location), first: false) }
-            desk.wet.rub(at: toBoard(latest.location))
+            desk.wet.rub(at: toBoard(latest.location), reach: desk.rubberSize.screenReach)
         } else {
             desk.wet.add(real.map { (toBoard($0.location), $0.force) }, ahead: predicted.map { (toBoard($0.location), $0.force) })
         }
@@ -263,8 +324,14 @@ extension BoardSession {
         }
         let points = desk.wet.points
         let force = desk.wet.pressed ? desk.wet.pressure : nil
+        let highlighted = desk.wet.highlighter
+        let looped = desk.wet.lasso
         desk.wet.clear()
         guard !cancelled, let first = points.first, !readOnly else { return }
+        if looped {
+            lassoEnded(points)
+            return
+        }
         // A tap of the Pencil on a drawing's line (no tool chosen) chooses the drawing instead of leaving a dot on it.
         let tap = desk.strayed <= CGFloat(Ink.tapWay) && desk.lastAt - desk.landedAt <= Ink.tapSeconds
         if tap, kind == .pencil, !desk.on, let id = board.inkHit(first, reach: Ink.reach / Double(scale)) {
@@ -273,20 +340,59 @@ extension BoardSession {
         }
         let line = Ink.thin(points, pressure: force, tolerance: Ink.tolerance(scale: Double(scale)))
         guard let box = Ink.bounds(of: line.points) else { return }
+        let pen = highlighted ? Ink.highlighter : nil
+        let paintColour = highlighted ? desk.highlightColour : desk.colour
+        // 0.9: "Draw on it": the line is a mark on the picture, measured from its corner.
+        if let target = desk.target {
+            guard board.item(target)?.kind == .picture else { desk.target = nil; return }
+            change { _ = $0.addPictureStroke(line.points, colour: paintColour, width: desk.width, pen: pen, on: target) }
+            return
+        }
         // Strokes close together in time and place are one drawing.
         let join = board.drawingToJoin(box, last: desk.lastDrawing?.id,
                                        after: desk.beganAt.timeIntervalSince(desk.lastDrawing?.at ?? .distantPast))
         var made: UUID?
         // One stroke, one step for Undo.
-        change { made = $0.addStroke(line.points, pressure: line.pressure, colour: desk.colour, width: desk.width, to: join) }
+        change { made = $0.addStroke(line.points, pressure: line.pressure, colour: paintColour, width: desk.width, pen: pen, to: join) }
         if let made { desk.lastDrawing = (made, Date()) }
-        tidyAfterStroke(made, joined: join != nil)
+        if !highlighted { tidyAfterStroke(made, joined: join != nil) }
+    }
+
+    // MARK: The lasso (0.9, pick 39)
+
+    /// The loop was drawn: strokes mostly inside it are chosen; those of a sketch that was only partly chosen are
+    /// split off into a sketch of their own first. All of it is ONE step for Undo. Nothing inside: nothing happens.
+    private func lassoEnded(_ points: [CGPoint]) {
+        var chosen: Set<UUID> = []
+        change { chosen = $0.lasso(loop: points) }
+        if chosen.isEmpty {
+            // A change that found nothing leaves no step; the loop may still have chosen a whole sketch (no change at all).
+            chosen = Set(board.lassoMarks(loop: points).map(\.drawing))
+            guard !chosen.isEmpty else { return }
+        }
+        selectedLink = nil
+        selection = chosen
+        ink.lassoed = chosen
+    }
+
+    /// The box round the sketches the lasso chose (board points), a little roomy.
+    var lassoBox: CGRect? {
+        guard !ink.lassoed.isEmpty, selection == ink.lassoed else { return nil }
+        let frames = selection.compactMap { board.item($0)?.frame }
+        guard let first = frames.first else { return nil }
+        return frames.dropFirst().reduce(first) { $0.union($1) }.insetBy(dx: -6, dy: -6)
+    }
+
+    /// The first chosen sketch when the point lies inside the lasso's box: pressing there moves them all.
+    func lassoBoxHit(_ p: CGPoint) -> UUID? {
+        guard let box = lassoBox, box.contains(p) else { return nil }
+        return selection.sorted { $0.uuidString < $1.uuidString }.first
     }
 
     /// The rubber went on to `p`: every stroke it touched on the way goes, whole.
     private func rubStep(to p: CGPoint, first: Bool) {
         guard var rub = ink.rub else { return }
-        let found = rub.base.strokes(near: p, from: first ? nil : rub.last, reach: Ink.rubber / Double(scale)).subtracting(rub.gone)
+        let found = rub.base.strokes(near: p, from: first ? nil : rub.last, reach: ink.rubberSize.reach(scale: Double(scale))).subtracting(rub.gone)
         rub.last = p
         if !found.isEmpty {
             rub.gone.formUnion(found)
@@ -297,6 +403,18 @@ extension BoardSession {
     }
 
     // MARK: The Draw tool
+
+    /// "Draw on it" (0.9, pick 37): the Draw tool opens with this picture as the target; the lines go into the picture.
+    func drawOnPicture(_ id: UUID) {
+        guard !readOnly, board.item(id)?.kind == .picture, !board.placesItself else { return }
+        if editing != nil { commitEdit() }
+        linking = false
+        linkFrom = nil
+        clearSelection()
+        ink.usePen()
+        ink.target = id
+        ink.on = true
+    }
 
     /// The Draw tool was pressed: on, or off again.
     func toggleDraw() {
@@ -339,7 +457,7 @@ extension BoardSession {
         if desk.mouse?.start != value.startLocation {
             // A new drag (an older one that never ended is given up).
             if desk.mouse?.ink == true { inkEnded(cancelled: true) }
-            let draws = desk.on && !readOnly && !board.isTimeline
+            let draws = desk.on && !readOnly && !board.isTimeline && lassoBoxHit(toBoard(value.startLocation)) == nil
             desk.mouse = (value.startLocation, draws)
             if draws {
                 inkBegan(InkDot(location: value.startLocation, force: nil, time: dot.time, kind: .pointer))

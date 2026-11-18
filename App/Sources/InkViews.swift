@@ -51,6 +51,12 @@ struct DrawPlate: View {
             EmptyView()
         } else if desk.on {
             VStack(spacing: 4) {
+                if desk.target != nil {
+                    Text("Drawing on the picture. Press Done when you are finished.")
+                        .font(Txt.note)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("draw.onPicture")
+                }
                 plate
                 if InkDesk.pencilOnly {
                     Text("Fingers slide the board: “Only Draw with Apple Pencil” is on in Settings.")
@@ -60,7 +66,7 @@ struct DrawPlate: View {
                         .accessibilityIdentifier("draw.pencilOnly")
                 }
             }
-        } else if desk.rubber {
+        } else if desk.rubber && desk.target == nil {
             rubberLine
         }
     }
@@ -68,16 +74,29 @@ struct DrawPlate: View {
     private var plate: some View {
         WrapRow(spacing: Finger.chipGap) {
             HStack(spacing: Finger.chipGap) {
-                tile(.draw, "draw.pen", "Pen", on: !desk.rubber) { desk.rubber = false }
+                tile(.draw, "draw.pen", "Pen", on: pen) { desk.usePen() }
+                word("Highlighter", "draw.highlighter", on: desk.highlighter, help: "Highlighter (H)") { desk.highlighter.toggle() }
                 tile(.rubber, "draw.rubber", "Rubber", on: desk.rubber) { desk.rubber = true }
+                word("Lasso", "draw.lasso", on: desk.lasso, help: "Lasso (L): draw a loop round pencil lines to choose them") { desk.lasso.toggle() }
             }
-            HStack(spacing: Finger.chipGap) {
-                tile(.thin, "draw.thin", "Thin", on: !desk.rubber && desk.width == .thin) { desk.pick(width: .thin) }
-                tile(.medium, "draw.medium", "Medium", on: !desk.rubber && desk.width == .medium) { desk.pick(width: .medium) }
-                tile(.thick, "draw.thick", "Thick", on: !desk.rubber && desk.width == .thick) { desk.pick(width: .thick) }
+            if desk.rubber {
+                // 0.9: how near a line the rubber must come; it takes whole lines.
+                HStack(spacing: Finger.chipGap) {
+                    ForEach(RubberSize.allCases, id: \.self) { size in
+                        word(size.word, "draw.rubber." + size.rawValue, on: desk.rubberSize == size, help: size.word + " rubber") { desk.rubberSize = size }
+                    }
+                }
+            } else if desk.highlighter {
+                highlightDots
+            } else if !desk.lasso {
+                HStack(spacing: Finger.chipGap) {
+                    tile(.thin, "draw.thin", "Thin", on: pen && desk.width == .thin) { desk.pick(width: .thin) }
+                    tile(.medium, "draw.medium", "Medium", on: pen && desk.width == .medium) { desk.pick(width: .medium) }
+                    tile(.thick, "draw.thick", "Thick", on: pen && desk.width == .thick) { desk.pick(width: .thick) }
+                }
+                dots
             }
-            dots
-            InkTidySwitch(session: session, desk: desk)
+            if desk.target == nil { InkTidySwitch(session: session, desk: desk) }
             Button("Done") {
                 desk.leave()
                 session.takeKeys()
@@ -95,6 +114,54 @@ struct DrawPlate: View {
         .accessibilityIdentifier("draw.plate")
     }
 
+    /// The ordinary pen is in use (not the highlighter, rubber or lasso).
+    private var pen: Bool { !desk.rubber && !desk.highlighter && !desk.lasso }
+
+    /// A small button with a word (the plate has no hand-drawn mark for it yet).
+    private func word(_ title: String, _ id: String, on: Bool, help: String, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            session.takeKeys()
+        } label: {
+            Text(title)
+                .font(Txt.label)
+                .foregroundStyle(on ? Color.white : Part.drawing.text)
+                .padding(.horizontal, 9)
+                .frame(height: Finger.shape.height)
+                .background(on ? Part.drawing.fill : Part.drawing.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .pressRoom(4, 4)
+        }
+        .buttonStyle(PressStyle())
+        .help(help)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier(id)
+    }
+
+    /// The highlighter's four colours.
+    private var highlightDots: some View {
+        let paint = Paint(scheme)
+        return HStack(spacing: Finger.on ? 10 : Finger.dotGap) {
+            ForEach(Ink.highlighterColours, id: \.self) { name in
+                Button {
+                    desk.pick(highlightColour: name)
+                    session.takeKeys()
+                } label: {
+                    Circle()
+                        .fill(paint.line(name).opacity(0.55))
+                        .frame(width: Finger.on ? 26 : Finger.dot, height: Finger.on ? 26 : Finger.dot)
+                        .pressRoom(5, 9)
+                }
+                .buttonStyle(PressStyle(wash: nil))
+                .modifier(InUseRing(on: desk.highlightColour == name))
+                .accessibilityLabel(name.capitalized + " highlighter")
+                .accessibilityIdentifier("draw.highlight." + name)
+            }
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 4)
+    }
+
     /// Plain ink first, then the palette.
     private var dots: some View {
         let paint = Paint(scheme)
@@ -110,7 +177,7 @@ struct DrawPlate: View {
                         .pressRoom(5, 9)
                 }
                 .buttonStyle(PressStyle(wash: nil))
-                .modifier(InUseRing(on: !desk.rubber && desk.colour == name))
+                .modifier(InUseRing(on: pen && desk.colour == name))
                 .accessibilityLabel(name.isEmpty ? "Ink" : name.capitalized)
                 .accessibilityIdentifier("draw.colour." + (name.isEmpty ? "ink" : name))
             }
@@ -176,13 +243,26 @@ struct InkLayer: View {
             var sheet = ctx
             sheet.translateBy(x: offset.width, y: offset.height)
             sheet.scaleBy(x: scale, y: scale)
-            if wet.live {
+            if wet.live, wet.lasso {
+                // The lasso's loop: a thin dashed line that closes itself.
+                var loop = Path()
+                if let first = wet.points.first {
+                    loop.move(to: first)
+                    for p in wet.points.dropFirst() { loop.addLine(to: p) }
+                    loop.closeSubpath()
+                }
+                sheet.fill(loop, with: .color(Part.drawing.fill.opacity(0.10)))
+                sheet.stroke(loop, with: .color(Part.drawing.fill),
+                             style: StrokeStyle(lineWidth: 1.5 / scale, lineCap: .round, lineJoin: .round, dash: [5 / scale, 4 / scale]))
+            } else if wet.live, wet.highlighter {
+                InkDraw.highlight(wet.points + wet.ahead, colour: InkDraw.colour(wet.colour, paint: paint), in: sheet)
+            } else if wet.live {
                 // The same painting as a kept line; the predicted way is the last bit of it.
                 InkDraw.stroke(wet.points + wet.ahead, pressure: wet.pressed ? wet.pressure + wet.aheadPressure : nil,
                                base: wet.width.points, colour: InkDraw.colour(wet.colour, paint: paint), in: sheet)
             }
             if let at = wet.rubberAt {
-                let r = CGFloat(Ink.rubber) / scale
+                let r = CGFloat(wet.rubberReach) / scale
                 let ring = Path(ellipseIn: CGRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2))
                 sheet.fill(ring, with: .color(paint.plate.opacity(0.6)))
                 sheet.stroke(ring, with: .color(paint.faint), lineWidth: 1.5 / scale)

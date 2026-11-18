@@ -26,6 +26,14 @@ extension Sample {
         _ = herbs
         _ = planters
         if let one, let two { board.link(from: one, to: two, text: "becomes") }
+        // 0.9: marks drawn on the "after" picture (`Board.addPictureStroke`): a ring round the table and a yellow highlighter
+        // stripe, in board points; they move, scale and crop with the picture.
+        if let two, let f = board.item(two)?.frame {
+            func at(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: Double(f.minX) + x, y: Double(f.minY) + y) }
+            let ring = stride(from: 0.0, through: 6.4, by: 0.4).map { a in at(180 + 46 * cos(a), 120 + 30 * sin(a)) }
+            board.addPictureStroke(ring, colour: "red", width: .medium, on: two)
+            board.addPictureStroke([at(30, 40), at(150, 38)], colour: "yellow", pen: Ink.highlighter, on: two)
+        }
         board.changed = now.addingTimeInterval(-7_200)
         return board
     }

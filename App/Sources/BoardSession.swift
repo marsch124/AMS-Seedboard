@@ -617,8 +617,10 @@ final class BoardSession: ObservableObject {
                 // In a mind map the colour belongs to the whole branch.
                 if board.items[i].kind == .idea {
                     if let branch = board.mainBranch(of: id), let b = board.index(of: branch) { board.items[b].colour = name }
-                } else if board.items[i].kind != .drawing && board.items[i].kind != .picture {
-                    // (A sketch's lines keep their own colours.)
+                } else if board.items[i].kind == .drawing {
+                    // 0.9: the colour of a chosen sketch (chosen by the lasso, say) is the colour of its lines.
+                    board.recolourSketch(id, to: name)
+                } else if board.items[i].kind != .picture {
                     board.items[i].colour = name
                 }
             }

@@ -163,6 +163,18 @@ struct SeedMenus: Commands {
             // A picture (letter P), then the Draw tool (letter S, for Sketch): on boards that have them.
             PictureInsertLine(enabled: canChange && session?.board.placesItself != true, letter: lettersAreTools)
             drawLine
+            // 0.9: the chosen picture takes drawing; the chosen sketch's handwriting becomes typed words.
+            Button("Draw on Picture") {
+                guard let session, let id = session.single?.id else { return }
+                session.drawOnPicture(id)
+                session.takeKeys()
+            }
+            .disabled(!canChange || session?.board.placesItself == true || session?.single?.kind != .picture)
+            Button("Make Sketch Typed") {
+                guard let session, let id = session.single?.id else { return }
+                session.makeTyped(id)
+            }
+            .disabled(!canChange || session?.board.placesItself == true || session?.single?.kind != .drawing)
         }
     }
 
