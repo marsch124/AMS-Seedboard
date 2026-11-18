@@ -16,6 +16,8 @@ enum Part: String, CaseIterable {
     case sequence
     /// Drawing by hand: the Draw tool and its plate.
     case drawing
+    /// Pictures on a board (0.3): the Picture tool and a picture's bar. A sea blue.
+    case pictures
 
     private typealias RGB = (Double, Double, Double)
 
@@ -32,6 +34,7 @@ enum Part: String, CaseIterable {
         case .kept: return (hex(0xB4492B), hex(0xF0A183))
         case .sequence: return (hex(0x5C7A12), hex(0xB5D95A))
         case .drawing: return (hex(0xBF2F52), hex(0xF2879C))
+        case .pictures: return (hex(0x0A7FA6), hex(0x62C6EC))
         case .text: return nil   // ink: the primary text colour
         }
     }

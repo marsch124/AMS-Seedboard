@@ -14,14 +14,15 @@ import UIKit
 struct DrawTool: View {
     @ObservedObject var session: BoardSession
     @ObservedObject var desk: InkDesk
+    @Environment(\.toolSide) private var side
 
     var body: some View {
         Button {
             session.toggleDraw()
             session.takeKeys()
         } label: {
-            GlyphView(glyph: .new(.draw), size: 24, colour: desk.on ? .white : Part.drawing.text)
-                .frame(width: 40, height: 40)
+            GlyphView(glyph: .new(.draw), size: ToolSize.mark(side), colour: desk.on ? .white : Part.drawing.text)
+                .frame(width: side, height: side)
                 .background(desk.on ? Part.drawing.fill : Part.drawing.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }

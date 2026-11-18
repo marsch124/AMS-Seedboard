@@ -85,6 +85,7 @@ struct BarActions {
         case .bar, .milestone, .phase: return .timeline
         case .who, .message, .band, .section: return .sequence
         case .drawing: return .drawing
+        case .picture: return .pictures
         default: return kind.isShape ? .shapes : .boards
         }
     }

@@ -19,6 +19,8 @@ enum NewMark: String, CaseIterable {
     case moveUp, moveDown, outLevel, ideaUnder, nextIdea, branch
     // Boards
     case bringBack, earlier, export, search, cut, paste, rename
+    // 0.3: a picture on a board; save a board as a starter
+    case picture, saveStarter
 
     /// The drawing in the shared icon library (AMS-Icons, the seed family).
     var standIn: AppMark {
@@ -60,6 +62,9 @@ enum NewMark: String, CaseIterable {
         case .cut: return .seedCut
         case .paste: return .seedPaste
         case .rename: return .seedRename
+        // Stand-ins until the two new drawings are in the icon library (the lead swaps them at the join).
+        case .picture: return .seedFrame
+        case .saveStarter: return .seedStarter
         }
     }
 }

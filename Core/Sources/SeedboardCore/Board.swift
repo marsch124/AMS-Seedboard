@@ -87,6 +87,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case who, message, band, section
     /// Lines drawn by hand (format 2): the strokes are in `Item.strokes` (Ink.swift).
     case drawing
+    /// A picture laid on the board (format 3): the picture itself is a file of its own, named in `Item.picture`.
+    case picture
 
     /// The flowchart shapes (`ItemKind.flowShapes`).
     public var isShape: Bool { ItemKind.flowShapes.contains(self) }
@@ -113,6 +115,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .band: return "Note"
         case .section: return "Section"
         case .drawing: return "Sketch"
+        case .picture: return "Picture"
         }
     }
 
@@ -133,6 +136,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .store: return CGSize(width: 130, height: 80)
         case .who, .message, .band, .section: return CGSize(width: 60, height: 17)
         case .drawing: return CGSize(width: 120, height: 80)
+        case .picture: return CGSize(width: 240, height: 180)
         }
     }
 }
@@ -178,6 +182,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var answer: Bool?
     /// A drawing's lines, measured from its corner (Ink.swift). nil for everything else.
     public var strokes: [Stroke]?
+    /// A picture only: the name of its file in the Pictures folder, e.g. "3F2A….jpg". The file is written once and never changed.
+    public var picture: String?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -204,6 +210,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case lanes
         case from, to, answer
         case strokes
+        case picture
     }
 
     public init(from decoder: Decoder) throws {
@@ -233,6 +240,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         to = try? c.decode(UUID.self, forKey: .to)
         answer = try? c.decode(Bool.self, forKey: .answer)
         strokes = (try? c.decode([Lenient<Stroke>].self, forKey: .strokes))?.compactMap(\.value)
+        picture = try? c.decode(String.self, forKey: .picture)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -260,6 +268,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(to, forKey: .to)
         try c.encodeIfPresent(answer, forKey: .answer)
         try c.encodeIfPresent(strokes, forKey: .strokes)
+        try c.encodeIfPresent(picture, forKey: .picture)
     }
 
     public var frame: CGRect {
@@ -381,7 +390,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// a new kind of item or arrow. A test (`StoredFieldsTests`) fails when a field is added without it.
     /// 2 (Seedboard 0.2): the timeline board — `kind` on the board; bars, milestones and phases with
     /// `start`, `end` and `row`; a main branch's `side`. An app that only knows 1 shows such a board without letting it be changed.
-    public static let currentFormat = 2
+    /// 3 (Seedboard 0.3): pictures on a board — the kind `picture` and the field `picture` on an item.
+    public static let currentFormat = 3
 
     public var id: UUID
     public var title: String

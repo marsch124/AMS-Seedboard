@@ -152,9 +152,12 @@ struct BoardView: View {
                             ZoomCluster(session: session)
                         }
                         if !session.readOnly {
+                            // Nine tools: on a narrow iPhone the tiles shrink a little (40 → 36 → 32) before the row would have to scroll.
                             ViewThatFits(in: .horizontal) {
                                 ToolPill(session: session)
-                                ScrollView(.horizontal, showsIndicators: false) { ToolPill(session: session) }
+                                ToolPill(session: session).environment(\.toolSide, 36)
+                                ToolPill(session: session).environment(\.toolSide, 32)
+                                ScrollView(.horizontal, showsIndicators: false) { ToolPill(session: session).environment(\.toolSide, 32) }
                             }
                         }
                     }
@@ -271,9 +274,27 @@ struct BoardView: View {
     }
 }
 
+/// The side of one tool tile: 40 points, smaller when the row of nine would not fit an iPhone's width.
+private struct ToolSideKey: EnvironmentKey { static let defaultValue: CGFloat = 40 }
+
+extension EnvironmentValues {
+    var toolSide: CGFloat {
+        get { self[ToolSideKey.self] }
+        set { self[ToolSideKey.self] = newValue }
+    }
+}
+
+enum ToolSize {
+    /// The mark inside a tile of this side.
+    static func mark(_ side: CGFloat) -> CGFloat { side >= 40 ? 24 : side >= 36 ? 22 : 20 }
+    /// The gap between two tiles of this side.
+    static func gap(_ side: CGFloat) -> CGFloat { side >= 40 ? 6 : side >= 36 ? 4 : 3 }
+}
+
 /// The tools: press one and the new thing appears in the middle of the view, ready to type in.
 struct ToolPill: View {
     @ObservedObject var session: BoardSession
+    @Environment(\.toolSide) private var side
 
     var body: some View {
         // A timeline board has its own tools (TimelineBars.swift).
@@ -283,7 +304,7 @@ struct ToolPill: View {
 
     private var ordinary: some View {
         Group {
-            HStack(spacing: 6) {
+            HStack(spacing: ToolSize.gap(side)) {
                 tool(.seedMindMap, .mindMap, "tool.mindmap", "Mind map (M)") { session.add(.idea) }
                 ShapeTool(session: session)
                 tool(.seedDiamond, .shapes, "tool.diamond", "Diamond (D)") { session.add(.diamond) }
@@ -296,9 +317,10 @@ struct ToolPill: View {
                 tool(.seedNote, .notes, "tool.note", "Sticky note (N)") { session.add(.note) }
                 tool(.seedText, .text, "tool.text", "Text (T)") { session.add(.text) }
                 tool(.seedFrame, .frames, "tool.frame", "Frame (F)") { session.add(.frame) }
+                PictureTool(session: session)
                 DrawTool(session: session, desk: session.ink)
             }
-            .padding(6)
+            .padding(side >= 40 ? 6 : 5)
         }
         .fixedSize()
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -315,8 +337,8 @@ struct ToolPill: View {
             action()
             session.takeKeys()
         } label: {
-            AppMarkView(mark, size: 24, colour: on ? .white : part.text)
-                .frame(width: 40, height: 40)
+            AppMarkView(mark, size: ToolSize.mark(side), colour: on ? .white : part.text)
+                .frame(width: side, height: side)
                 .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .pressRoom(3, 3)
         }

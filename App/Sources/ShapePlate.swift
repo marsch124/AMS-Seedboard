@@ -173,13 +173,14 @@ struct ShapeTool: View {
     @State private var shown = LaunchOptions.value(for: "-plate") == "shapes"
     /// The shape picked from the plate: it is added when the plate has gone, so the typing can begin.
     @State private var picked: ItemKind?
+    @Environment(\.toolSide) private var side
 
     var body: some View {
         let kind = choice.last
         let name = kind == .box ? "Box (B)" : kind.word
         ZStack(alignment: .bottomTrailing) {
-            GlyphView(glyph: kind.mark, size: 24, colour: Part.shapes.text)
-                .frame(width: 40, height: 40)
+            GlyphView(glyph: kind.mark, size: ToolSize.mark(side), colour: Part.shapes.text)
+                .frame(width: side, height: side)
                 .background(Part.shapes.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .contentShape(Rectangle())
                 .onTapGesture {

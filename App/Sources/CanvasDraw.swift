@@ -155,6 +155,9 @@ enum Lettering {
             case .drawing:
                 // As big as its lines (Ink.swift).
                 break
+            case .picture:
+                // As big as the owner made it; it has no words.
+                break
             }
         }
         board.layoutMaps()
@@ -350,6 +353,10 @@ struct BoardPainter {
         case .drawing:
             // Lines drawn by hand (InkDraw.swift): no words, no tick.
             drawInk(item, ctx)
+            return
+        case .picture:
+            // The picture itself (PictureViews.swift): no words, no tick.
+            drawPicture(item, ctx)
             return
         }
 
