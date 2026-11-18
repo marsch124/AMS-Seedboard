@@ -128,6 +128,8 @@ enum ChosenOutline {
             return ShapePaths.outline(item.kind, out).body
         case .note:
             return Path(roundedRect: out, cornerRadius: 4 + g)
+        case .door:
+            return Path(roundedRect: out, cornerRadius: 10 + g)
         case .frame:
             return Path(roundedRect: out, cornerRadius: 14 + g)
         case .idea where depth == 0:

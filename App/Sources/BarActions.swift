@@ -281,6 +281,13 @@ struct BarActions {
             all += chooseMore()
             all.append(remove(gap: true))
             return all
+        case .door:
+            // A door (0.5, Doors.swift): open its board; it has no words, no tick and no colour of its own.
+            all += doorLines(item)
+            all.append(duplicate(drop: 0))
+            all += chooseMore()
+            all.append(remove(gap: true))
+            return all
         case .bar, .milestone, .phase:
             // A timeline's rows have their own bar (TimelineBars.swift).
             return []
@@ -344,9 +351,12 @@ struct BarActions {
             if session.sizeCount >= 2 { tidy.append(act("sameSize", "Same size", .new(.sameSize)) { session.sameSize() }) }
             if !tidy.isEmpty { tidy[0].gap = true }
             all += tidy
+            all += moveOutLines()
             all.append(remove(gap: true))
             return all
         }
+        // A door has its own lines (0.5, Doors.swift).
+        if item.kind == .door { return doorMenu(item, [copy, cut, twin]) + [remove(gap: true)] }
         // (A sketch has no words and carries no tick.)
         if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
         if item.kind == .picture { all += [caption(item.id), crop(item)] }
@@ -382,6 +392,7 @@ struct BarActions {
         }
         if !more.isEmpty { more[0].gap = true }
         all += more
+        all += moveOutLines()
         all.append(remove(gap: true))
         return all
     }
@@ -424,6 +435,7 @@ struct BarActions {
             all.append(act("box", "New box here", .app(.seedBox)) { session.add(.box, at: spot) })
             all.append(act("idea", "New idea here", .app(.seedMindMap)) { session.add(.idea, at: spot) })
             all.append(act("picture", "Picture…", .new(.picture)) { PictureDesk.shared.ask.send(spot) })
+            all += doorMenuLines(at: spot)
         }
         all.append(act("selectAll", "Select all", .app(.seedSelectAll), enabled: !session.board.isEmpty, gap: !all.isEmpty) { session.selectAll() })
         all.append(act("fit", "Show the whole board", .app(.seedFit)) { withAnimation(.easeOut(duration: 0.2)) { session.fit() } })

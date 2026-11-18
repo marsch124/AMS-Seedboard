@@ -187,6 +187,10 @@ public extension Board {
         let loose = items.filter { $0.kind.isShape && !joined.contains($0.id) }.map { "- " + one($0.text) }
         if !loose.isEmpty { sections.append((["Shapes:"] + loose).joined(separator: "\n")) }
 
+        // 0.5: the boards this one has doors to, by name.
+        let doorNames = doors.map { "- " + one($0.text) }
+        if !doorNames.isEmpty { sections.append((["Doors:"] + doorNames).joined(separator: "\n")) }
+
         return sections.joined(separator: "\n\n")
     }
 

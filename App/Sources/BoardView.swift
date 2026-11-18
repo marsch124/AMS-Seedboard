@@ -176,6 +176,8 @@ struct BoardView: View {
         .focusedSceneObject(session)
         // File ▸ Rename… and Remove Board… open the same two questions as the More button (Menus.swift).
         .modifier(MenuAsks(rename: { newName = session.board.title; renaming = true }, remove: { removing = true }))
+        // Doors (0.5): "‹ name" to go back, the page "Door to a board…", the name of a new board (DoorPage.swift).
+        .modifier(DoorHost(session: session))
         // When the Send page closes, the board has the keys again.
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)

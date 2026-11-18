@@ -265,12 +265,14 @@ public extension Board {
         let notes = items.filter { $0.kind == .note }.count
         let sketches = items.filter { $0.kind == .drawing }.count
         let pictures = pictureCount
+        let doors = items.filter { $0.kind == .door }.count
         var parts: [String] = []
         if ideas > 0 { parts.append(ideas == 1 ? "1 idea" : "\(ideas) ideas") }
         if shapes > 0 { parts.append(shapes == 1 ? "1 shape" : "\(shapes) shapes") }
         if notes > 0 { parts.append(notes == 1 ? "1 note" : "\(notes) notes") }
         if sketches > 0 { parts.append(sketches == 1 ? "1 sketch" : "\(sketches) sketches") }
         if pictures > 0 { parts.append(pictures == 1 ? "1 picture" : "\(pictures) pictures") }
+        if doors > 0 { parts.append(doors == 1 ? "1 door" : "\(doors) doors") }
         return parts.isEmpty ? "Empty" : parts.joined(separator: " · ")
     }
 }

@@ -259,6 +259,8 @@ struct BoardList: View {
         }
         .buttonStyle(PressStyle())
         .accessibilityIdentifier("boards.row.\(board.title)")
+        // Mac and iPad: a board dragged from the list onto the open board leaves a door to it there (DoorPage.swift).
+        .modifier(DoorDrag(board: board, on: !phone))
         // A tiny dot at the row's end: this board's newest change, or one of its pictures, is on this device, not in iCloud yet.
         .overlay(alignment: .trailing) {
             if model.waitsForCloud(board) {

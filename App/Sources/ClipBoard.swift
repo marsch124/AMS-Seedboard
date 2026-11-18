@@ -242,7 +242,8 @@ enum ClipBoard {
             guard let words = words as? String else { return }
             Task { @MainActor in
                 session.commitEdit()
-                land(words, at: session.toBoard(location), in: session)
+                // A board dragged from the list is a door to it (Doors.swift); anything else is words.
+                if !session.dropDoor(words, at: session.toBoard(location)) { land(words, at: session.toBoard(location), in: session) }
                 session.takeKeys()
             }
         }

@@ -99,6 +99,8 @@ public enum ParagonExport {
         out += laneText(board)
 
         section("Notes", noteBullets(board, picture: picture != nil), into: &out)
+        // 0.5: a door is a line with a link that opens its board (Door.swift).
+        section("Doors", doorBullets(board), into: &out)
 
         let tasks = board.items.filter { $0.todo && !oneLine($0.text).isEmpty }.map { "- [ ] \(oneLine($0.text))" }
         section("Tasks", tasks, into: &out)
@@ -134,6 +136,8 @@ public enum ParagonExport {
         out += "## Notes\n\n"
         let notes = noteBullets(board, picture: picture != nil)
         if !notes.isEmpty { out += notes.joined(separator: "\n") + "\n\n" }
+        // 0.5: a door is a line with a link that opens its board (Door.swift).
+        section("Doors", doorBullets(board), into: &out)
 
         out += "## Log\n\n- \(stamp(now, "yyyy-MM-dd")): Project created from a Seedboard board\n"
         return out
