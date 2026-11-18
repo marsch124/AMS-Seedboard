@@ -50,6 +50,8 @@ struct SeedMenus: Commands {
     /// A board is open and may be changed.
     private var canChange: Bool { session.map { !$0.readOnly } ?? false }
     private var typing: Bool { session?.editing != nil }
+    /// 0.9: the marks (vote dots, pinning, tick lists) work on an ordinary board that may be changed.
+    private var marksOn: Bool { session?.marksOn ?? false }
 
     /// The letter keys are tools only while the drawing surface has the keys and nothing is chosen
     /// (with one thing chosen a letter starts typing in it; in a text field it is a letter). Only then
@@ -111,6 +113,15 @@ struct SeedMenus: Commands {
             Button("Duplicate") { session?.duplicateSelection() }
                 .keyboardShortcut("d", modifiers: .command)
                 .disabled(!canChange || typing || (session?.selection.isEmpty ?? true))
+            // 0.9 (Marks): a dot for each chosen thing, pin it, a tick list in a note.
+            Divider()
+            Button("Vote Dot") { session?.vote() }
+                .keyboardShortcut("v", modifiers: [.option, .command])
+                .disabled(!marksOn || typing || (session?.selection.isEmpty ?? true))
+            Button("Pin in Place") { session?.togglePinned() }
+                .disabled(!marksOn || typing || (session?.selection.isEmpty ?? true))
+            Button("Tick List") { session?.tickList() }
+                .disabled(!marksOn || typing || !(session?.selection.contains { session?.board.item($0)?.kind == .note } ?? false))
         }
 
         // View.

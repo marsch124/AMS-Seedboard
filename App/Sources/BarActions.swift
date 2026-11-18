@@ -148,6 +148,49 @@ struct BarActions {
         #endif
     }
 
+    // MARK: 0.9 marks — Vote, Pin in place, Tick list, Open link (MarksSession.swift)
+
+    /// The lines for what is chosen. `full`: a menu (also "Remove a dot" and "Clear dots"); the bar has the short ones.
+    private func marks(full: Bool) -> [BarAction] {
+        let session = session
+        guard session.marksOn, !session.selection.isEmpty else { return [] }
+        let chosen = session.selection.compactMap { session.board.item($0) }
+        var all: [BarAction] = []
+        var first = true
+        func put(_ action: BarAction) {
+            var one = action
+            if first { one.gap = true; first = false }
+            all.append(one)
+        }
+        put(act("vote.add", "Vote", .app(.dot), show: .wideWord, drop: 6) { session.vote() })
+        if full {
+            let hasDots = chosen.contains { ($0.votes ?? 0) > 0 }
+            put(act("vote.remove", "Remove a dot", .app(.minus), enabled: hasDots) { session.removeDot() })
+            put(act("vote.clear", "Clear dots", .app(.minus), enabled: hasDots) { session.clearDots() })
+        }
+        let pinned = session.board.allPinned(session.selection)
+        put(act("pin.toggle", pinned ? "Unpin" : "Pin in place", .app(.seedPin), show: .wideWord, on: pinned, drop: 6) { session.togglePinned() })
+        if chosen.allSatisfy({ $0.kind == .note }) {
+            let ticked = chosen.allSatisfy { TickList.hasTicks($0.text) }
+            put(act("tick.list", "Tick list", .control(.list), show: .wideWord, on: ticked, drop: 6) { session.tickList() })
+        }
+        if chosen.count == 1, let item = chosen.first, WebAddress.first(in: item.text) != nil {
+            let id = item.id
+            put(act("link.open", "Open link", .app(.openLink), show: .wideWord, drop: 6) { session.openLink(id) })
+        }
+        return all
+    }
+
+    /// The marks go in just before "Remove" (which stays last).
+    private func withMarks(_ list: [BarAction], full: Bool) -> [BarAction] {
+        let extra = marks(full: full)
+        guard !extra.isEmpty, !list.isEmpty else { return list }
+        var all = list
+        let at = all.lastIndex { $0.id == prefix + "remove" } ?? all.count
+        all.insert(contentsOf: extra, at: at)
+        return all
+    }
+
     /// The colours a thing or an arrow can take, the one in use switched on.
     func colourChoices(for item: Item?, link: SeedboardCore.Link?) -> [BarAction] {
         let session = session
@@ -208,7 +251,7 @@ struct BarActions {
         let session = session
         guard !session.readOnly, !session.board.placesItself else { return nil }
         if let item = session.single {
-            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: itemBar(item))
+            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(itemBar(item), full: false))
         }
         if let id = session.selectedLink, let link = session.board.links.first(where: { $0.id == id }) {
             return ChosenBarModel(part: .arrows, label: nil, actions: linkBar(link))
@@ -226,7 +269,7 @@ struct BarActions {
         actions += chooseMore(drop: 2)
         actions.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }))
         actions.append(remove())
-        return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: actions)
+        return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: withMarks(actions, full: false))
     }
 
     private func itemBar(_ item: Item) -> [BarAction] {
@@ -358,10 +401,10 @@ struct BarActions {
             all += severalMenu(first: tidy.isEmpty)
             all += moveOutLines()
             all.append(remove(gap: true))
-            return all
+            return withMarks(all, full: true)
         }
         // A door has its own lines (0.5, Doors.swift).
-        if item.kind == .door { return doorMenu(item, [copy, cut, twin]) + [remove(gap: true)] }
+        if item.kind == .door { return withMarks(doorMenu(item, [copy, cut, twin]) + [remove(gap: true)], full: true) }
         // (A sketch has no words and carries no tick.)
         if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
         if item.kind == .picture { all += [caption(item.id), crop(item)] }
@@ -401,7 +444,7 @@ struct BarActions {
         all += more
         all += moveOutLines()
         all.append(remove(gap: true))
-        return all
+        return withMarks(all, full: true)
     }
 
     private func laneChoices(_ item: Item) -> [BarAction] {

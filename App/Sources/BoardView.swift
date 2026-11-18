@@ -124,6 +124,8 @@ struct BoardView: View {
                 FlashLine()
                 // The Draw tool's plate: pen and rubber, thickness, colours (InkViews.swift).
                 DrawPlate(session: session, desk: session.ink)
+                // 0.9: what each sticky-note colour means (MarksViews.swift).
+                LegendCardRow(session: session)
                 // Wide enough: the tools in the middle, the zoom buttons at the right.
                 // Otherwise the zoom buttons sit in their own row above the tools.
                 ViewThatFits(in: .horizontal) {
@@ -181,6 +183,8 @@ struct BoardView: View {
         .modifier(DoorHost(session: session))
         // The Share plate (SharePlate.swift).
         .modifier(ShareHost(session: session))
+        // 0.9: the colour legend page, and the titles of web addresses (MarksSession.swift).
+        .modifier(MarksHost(session: session))
         // When the Send page closes, the board has the keys again.
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
@@ -268,6 +272,8 @@ struct BoardView: View {
                         .disabled(session.board.isEmpty)
                         .accessibilityIdentifier("more.makeTimeline")
                 }
+                // 0.9: Sort by dots, Clear all dots, Colour legend…, Background (MarksViews.swift).
+                if !session.board.placesItself && !session.starterDraft { MarksMoreLines(session: session) }
                 if !session.board.isEmpty {
                     // "Share…" (and "Print…" on iPhone and iPad): SharePlate.swift.
                     ShareLines(session: session)

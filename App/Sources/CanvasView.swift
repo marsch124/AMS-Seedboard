@@ -71,7 +71,7 @@ struct CanvasView: View {
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, size in
                     ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(paint.canvas))
-                    SnapShow.grid(ctx, size: size, offset: session.offset, scale: session.scale, paint: paint)
+                    BackdropShow.draw(ctx, kind: session.board.backdropKind, size: size, offset: session.offset, scale: session.scale, paint: paint)
                     var sheet = ctx
                     sheet.translateBy(x: session.offset.width, y: session.offset.height)
                     sheet.scaleBy(x: session.scale, y: session.scale)
@@ -339,6 +339,8 @@ struct CanvasView: View {
             }
         }
         if let id = board.hit(p, scale: Double(session.scale), least: byFinger ? Fingers.button : 0) { return .item(id) }
+        // 0.9: the line with a web page's title lies just under its thing.
+        if let id = LinkLine.owner(in: board, at: p) { return .item(id) }
         if let id = board.hitLink(p, within: Double(9 / session.scale)) { return .link(id) }
         return .empty
     }
@@ -554,6 +556,12 @@ struct CanvasView: View {
         case .size, .end:
             break
         case .item(let id):
+            if !session.linking, session.pressMark(id, at: p) {
+                // 0.9: a tick box was ticked, or the page of a web address was opened.
+                lastTapID = nil
+                lastTapAt = .distantPast
+                return
+            }
             if session.linking {
                 if session.board.item(id)?.kind == .frame {
                     // A frame takes no arrows: the press is passed over, the arrow tool stays on.

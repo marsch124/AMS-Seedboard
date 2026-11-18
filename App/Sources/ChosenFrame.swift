@@ -32,7 +32,9 @@ extension BoardSession {
             taken = board.sidesWithArrows(of: id, arrows: arrows)
             words = wordBoxes(near: item.frame, arrows)
         }
-        return Controls.round(item, side: facts.side[id] ?? .right, scale: scale, taken: taken, words: words)
+        let round = Controls.round(item, side: facts.side[id] ?? .right, scale: scale, taken: taken, words: words)
+        // 0.9: a pinned thing cannot be sized — it has no size knobs.
+        return item.locked == true ? round.filter { if case .size = $0.kind { return false } else { return true } } : round
     }
 
     /// The control under a point of the board view (screen points). `finger`: a finger pressed —

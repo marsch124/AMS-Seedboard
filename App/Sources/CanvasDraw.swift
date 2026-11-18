@@ -142,7 +142,8 @@ enum Lettering {
                 board.items[i].w = size.w
                 board.items[i].h = size.h
             case .note:
-                board.items[i].h = max(item.h, Double(t.height + 22))
+                // 0.9: a note with tick lines is as high as its lines (MarksDraw.swift).
+                board.items[i].h = max(item.h, Double((TickLayout.height(of: item) ?? t.height) + 22))
             case .frame:
                 break
             case .door:
@@ -265,6 +266,8 @@ struct BoardPainter {
             drawInMotion(item, &ctx)
         }
         drawArrowEnds(&ctx)
+        // 0.9: vote dots, the title of a web page, the pin mark (MarksDraw.swift).
+        drawMarks(&ctx)
 
         if let ghost, let item = byID[ghost.id] {
             var moved = item
@@ -373,7 +376,10 @@ struct BoardPainter {
             return
         }
 
-        if editing != item.id {
+        if editing != item.id, item.kind == .note, TickList.hasTicks(item.text) {
+            // 0.9: a tick list inside a sticky note: every line by itself, a small box before the tick lines.
+            drawTickWords(item, &ctx, ink: textColour, greyed: TodoMark.greysWords(todo))
+        } else if editing != item.id {
             let placeholder = item.text.isEmpty
             let words = placeholder ? (item.kind == .idea ? "Idea" : "") : item.text
             if !words.isEmpty {

@@ -282,7 +282,9 @@ public enum ParagonExport {
     /// The line of one such thing. A drawing has no words: one plain line stands in its place.
     static func noteBullet(_ item: Item, picture: Bool) -> String {
         item.kind == .drawing ? "- " + sketchLine(picture: picture)
-            : (item.kind == .picture ? "- " + pictureLine(for: item, picture: picture) : "- \(oneLine(item.text))")
+            : (item.kind == .picture ? "- " + pictureLine(for: item, picture: picture)
+               // 0.9: a note with tick lines goes line by line, "- [ ] words" / "- [x] words" (Marks09.swift).
+               : (item.kind == .note && TickList.hasTicks(item.text) ? TickList.bullets(item.text).joined(separator: "\n") : "- \(oneLine(item.text))"))
     }
 
     /// What a note or project says where a drawing is.
