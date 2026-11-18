@@ -93,6 +93,7 @@ final class AppModel: ObservableObject {
         var all = LaunchOptions.sampleData ? Sample.boards() : await store.loadAll()
         // For pictures: the sample boards of `-garden` and `-marks` (LooksLaunch.swift).
         LooksLaunch.addBoards(to: &all)
+        MapsLaunch.addBoards(to: &all)
         all.sort { $0.changed > $1.changed }
         boards = all
         loaded = true

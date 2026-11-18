@@ -191,10 +191,10 @@ struct CanvasView: View {
             if let item = session.board.item(id) {
                 itemField(item)
             } else if let spot = session.wordsField(for: id) {
-                // An arrow's words: typed where they stand, beside the line near its start.
+                // An arrow's words: typed where they stand, at the middle of the line.
                 field(isIdea: false)
                     .font(.system(size: 13 * session.scale, weight: .medium))
-                    .multilineTextAlignment(spot.leading ? .leading : .trailing)
+                    .multilineTextAlignment(.center)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .frame(width: 170)
@@ -546,6 +546,12 @@ struct CanvasView: View {
     }
 
     private func tap(_ t: Target, at p: CGPoint) {
+        // 0.9: a press on the "+5" badge of a folded idea opens the fold.
+        if !session.linking, let folded = session.foldBadge(at: p) {
+            session.unfold(folded)
+            lastTapAt = .distantPast
+            return
+        }
         let now = Date()
         let double: (UUID?) -> Bool = { id in lastTapID == id && now.timeIntervalSince(lastTapAt) < Finger.twoPressWindow }
         switch t {

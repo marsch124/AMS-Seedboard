@@ -615,6 +615,44 @@ final class BoardSession: ObservableObject {
         }
     }
 
+    /// 0.9: opens one folded idea (a press on its "+5" badge).
+    func unfold(_ id: UUID) {
+        guard board.item(id)?.folded == true else { return }
+        change { board in
+            if let i = board.index(of: id) { board.items[i].folded = false }
+        }
+    }
+
+    /// 0.9: opens every folded idea of the board.
+    func unfoldAll() {
+        guard !readOnly, !board.placesItself else { return }
+        change { $0.unfoldAll() }
+    }
+
+    /// 0.9: the folded idea whose "+N" badge lies under this board point (a press there opens it).
+    func foldBadge(at p: CGPoint) -> UUID? {
+        guard !readOnly, !board.placesItself, editing == nil else { return nil }
+        let slack = max(8, 14 / scale)
+        for item in board.items where item.kind == .idea && item.folded && !facts.hidden.contains(item.id) {
+            guard let count = facts.below[item.id], count > 0 else { continue }
+            let right = (facts.side[item.id] ?? .right) == .right || (facts.depth[item.id] ?? 0) == 0
+            if MindMap.badge(for: item.frame, right: right, count: count).insetBy(dx: -slack, dy: -slack).contains(p) { return item.id }
+        }
+        return nil
+    }
+
+    /// 0.9: "Balance" on a map's centre: both sides on, the main branches spread evenly by size.
+    func balanceMap() {
+        guard let item = single, item.kind == .idea, item.parent == nil else { return }
+        change { $0.balanceMap(item.id) }
+    }
+
+    /// 0.9: the board numbers the steps of its flowchart (More ▸ Number the steps).
+    func toggleNumberSteps() {
+        guard !board.placesItself else { return }
+        change { $0.numberSteps = $0.numberSteps == true ? nil : true }
+    }
+
     func toggleBothSides() {
         guard let item = single, item.kind == .idea else { return }
         let centre = board.centre(of: item.id)

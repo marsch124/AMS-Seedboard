@@ -47,8 +47,8 @@ enum SequenceLook {
     /// The colour a message is drawn in: its own, or the colour of the name it comes from.
     static func colourName(of message: Item, in board: Board) -> String {
         if !message.colour.isEmpty { return message.colour }
-        let sender = message.from.flatMap { board.item($0) }?.colour ?? ""
-        return sender.isEmpty ? "grey" : sender
+        guard let sender = message.from, board.item(sender)?.kind == .who else { return "grey" }
+        return board.whoColour(sender)
     }
 }
 
@@ -136,6 +136,7 @@ struct SequencePainter {
             var layer = ctx
             if lifted?.id == id { layer.opacity = 0.3 }
             drawName(who, box, &layer)
+            drawSends(who, box, &layer)
             if selection.contains(id) { ring(box.insetBy(dx: -4, dy: -4), radius: 12, &ctx) }
             if linkFrom == id || dropWho == id { ring(box.insetBy(dx: -4, dy: -4), radius: 12, dashed: true, &ctx) }
         }
@@ -163,7 +164,8 @@ struct SequencePainter {
         }
     }
 
-    private func colourName(_ who: Item) -> String { who.colour.isEmpty ? "blue" : who.colour }
+    /// The colour of a name: its own, else one by its place in the row (`Board.whoColour`).
+    private func colourName(_ who: Item) -> String { board.whoColour(who.id) }
 
     /// A name box: a soft plate in its colour with the name in the middle.
     private func drawName(_ who: Item, _ box: CGRect, _ ctx: inout GraphicsContext) {
@@ -182,6 +184,19 @@ struct SequencePainter {
             .font(SequenceLook.font(.who)).foregroundColor(empty ? paint.faint : paint.ink))
         let size = text.measure(in: CGSize(width: look.wrap, height: .greatestFiniteMagnitude))
         ctx.draw(text, in: CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width + 1, height: size.height + 1))
+    }
+
+    /// 0.9: a small "sends 4" under a name (the messages it sends; answers count too), on a patch of the board's
+    /// colour so the dashed line does not run through it. Nothing for a name that sends none.
+    private func drawSends(_ who: Item, _ box: CGRect, _ ctx: inout GraphicsContext) {
+        let count = board.sendCount(of: who.id)
+        guard count > 0, editing != who.id else { return }
+        let text = ctx.resolve(Text("sends \(count)").font(.system(size: 10, weight: .medium)).foregroundColor(paint.line(colourName(who))))
+        let size = text.measure(in: CGSize(width: 200, height: CGFloat.greatestFiniteMagnitude))
+        let at = CGPoint(x: box.midX, y: box.maxY + 8)
+        ctx.fill(Path(roundedRect: CGRect(x: at.x - size.width / 2 - 3, y: at.y - size.height / 2 - 1, width: size.width + 6, height: size.height + 2),
+                      cornerRadius: 4), with: .color(back))
+        ctx.draw(text, at: at, anchor: .center)
     }
 
     /// The line of a message: level from one dashed line to the other, or a small loop back to its own.

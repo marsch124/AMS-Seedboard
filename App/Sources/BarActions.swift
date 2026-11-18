@@ -244,6 +244,9 @@ struct BarActions {
             }
             if item.parent == nil {
                 all.append(act("sides", item.bothSides ? "One side" : "Both sides", .app(.seedMindMap), show: .wideWord, drop: 3) { session.toggleBothSides() })
+                if session.board.canBalance(item.id) {
+                    all.append(act("balance", "Balance", .new(.evenGaps), show: .wideWord, drop: 3) { session.balanceMap() })
+                }
             } else {
                 all.append(colour(for: item))
                 #if !os(macOS)
@@ -383,7 +386,13 @@ struct BarActions {
             more.append(act("child", "Idea under", .new(.ideaUnder)) { session.addChild(of: item.id) })
             if item.parent != nil { more.append(act("sister", "Next idea", .new(.nextIdea)) { session.addSister(of: item.id) }) }
             if (session.facts.children[item.id] ?? 0) > 0 {
-                more.append(act("fold", item.folded ? "Unfold" : "Fold", .control(.chevron)) { session.toggleFold() })
+                more.append(act("fold", item.folded ? "Unfold branch" : "Fold branch", .control(.chevron)) { session.toggleFold() })
+            }
+            if session.board.hasFolded {
+                more.append(act("unfoldAll", "Unfold all", .control(.chevron)) { session.unfoldAll() })
+            }
+            if item.parent == nil, session.board.canBalance(item.id) {
+                more.append(act("balance", "Balance", .new(.evenGaps)) { session.balanceMap() })
             }
         case .frame:
             more.append(list("lanes", "Lanes", .new(.lanes), on: item.lanes != nil, laneChoices(item)))
