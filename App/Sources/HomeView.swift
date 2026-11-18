@@ -20,7 +20,13 @@ struct HomeView: View {
 
     private let columns = [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 10, alignment: .top)]
 
+    /// 0.5, pictures first: with the launch word `-homeStrip` the new home page (HomeStrip.swift), else as in 0.4.
+    @ViewBuilder
     var body: some View {
+        if LooksLaunch.homeStrip { HomeStripPage(search: search, open: open) } else { today }
+    }
+
+    private var today: some View {
         let found = BoardSearch.find(search, in: model.boards)
         let pinned = found.filter(\.pinned)
         let recent = found.filter { !$0.pinned && $0.sent == nil }
@@ -138,7 +144,7 @@ struct HomeView: View {
 }
 
 /// The plate of a card: the small picture on top, words below, a thin edge all round.
-private struct CardPlate: ViewModifier {
+struct CardPlate: ViewModifier {
     @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {

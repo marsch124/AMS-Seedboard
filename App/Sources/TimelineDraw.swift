@@ -143,6 +143,7 @@ struct TimelinePainter {
         drawChosen(byID, &days)
 
         // The pinned column of names.
+        let todoMarks = TodoMark.marks(for: board)
         var column = ctx
         column.clip(to: Path(CGRect(x: 0, y: header, width: names, height: max(size.height - header, 0))))
         column.fill(Path(CGRect(x: 0, y: header, width: names, height: size.height)), with: .color(ground ?? paint.plate))
@@ -162,8 +163,10 @@ struct TimelinePainter {
             }
             let indent: CGFloat = grouped.contains(item.id) ? 20 : 10
             var right = names - 8
-            if item.todo, item.kind != .phase {
-                tick(at: CGPoint(x: names - 15, y: top + height / 2), &column)
+            // 0.5: the to-do mark by how it stands (TodoMark.swift).
+            let todo = item.kind == .phase ? nil : TodoMark.state(of: item, in: todoMarks)
+            if let todo {
+                tick(todo, at: CGPoint(x: names - 15, y: top + height / 2), &column)
                 right = names - 26
             }
             if item.kind == .milestone {
@@ -178,7 +181,7 @@ struct TimelinePainter {
             let left = TimelinePainter.nameLeft(item, grouped: grouped.contains(item.id))
             let empty = item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let words = empty ? item.kind.word : item.nameLine
-            let shade = empty ? paint.faint : (item.kind == .phase ? colour(of: item) : paint.ink)
+            let shade = empty || TodoMark.greysWords(todo) ? paint.faint : (item.kind == .phase ? colour(of: item) : paint.ink)
             let text = column.resolve(Text(words).font(.system(size: nameSize, weight: item.kind == .phase ? .semibold : .regular)).foregroundColor(shade))
             let line = text.measure(in: CGSize(width: 2000, height: 100)).height
             var clipped = column
@@ -255,14 +258,11 @@ struct TimelinePainter {
         }
     }
 
-    /// The small PARAGON ring with a tick: this goes to PARAGON as a task.
-    private func tick(at c: CGPoint, _ ctx: inout GraphicsContext) {
+    /// The small to-do mark: this goes to PARAGON as a task, and how it stands there.
+    private func tick(_ state: TodoState, at c: CGPoint, _ ctx: inout GraphicsContext) {
         let r: CGFloat = 7
         ctx.fill(Path(ellipseIn: CGRect(x: c.x - r - 1, y: c.y - r - 1, width: r * 2 + 2, height: r * 2 + 2)), with: .color(ground ?? paint.plate))
-        ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(Part.paragon.fill))
-        var mark = Path()
-        mark.move(to: CGPoint(x: c.x - 3.2, y: c.y + 0.2)); mark.addLine(to: CGPoint(x: c.x - 0.9, y: c.y + 2.6)); mark.addLine(to: CGPoint(x: c.x + 3.4, y: c.y - 2.4))
-        ctx.stroke(mark, with: .color(.white), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+        TodoMark.draw(state, at: c, radius: r, paint: paint, ground: ground ?? paint.plate, &ctx)
     }
 
     /// A thin line with softly rounded corners and a small head where it arrives.

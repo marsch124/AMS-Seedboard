@@ -89,6 +89,8 @@ final class AppModel: ObservableObject {
 
     private func load() async {
         var all = LaunchOptions.sampleData ? Sample.boards() : await store.loadAll()
+        // 0.5, pictures first: the sample boards of `-branches` and `-marks` (LooksLaunch.swift).
+        LooksLaunch.addBoards(to: &all)
         all.sort { $0.changed > $1.changed }
         boards = all
         loaded = true
@@ -119,6 +121,8 @@ final class AppModel: ObservableObject {
         // For pictures: `-draw` opens the board with the Draw tool on and its plate showing.
         if LaunchOptions.arguments.contains("-draw") { session?.ink.on = true }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
+        // For pictures: `-zoom <number>` and `-window <width>x<height>` (LooksLaunch.swift).
+        LooksLaunch.afterLoad(session)
         // For pictures: `-removed` opens "Removed and earlier versions", `-clash` shows the clash notice.
         bringBackLaunch()
         // A link that arrived before the boards were loaded is followed now.

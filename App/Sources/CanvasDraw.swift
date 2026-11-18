@@ -248,13 +248,11 @@ struct BoardPainter {
         // Mind-map branches.
         for item in board.items where item.kind == .idea && !facts.hidden.contains(item.id) {
             guard let parentID = item.parent, let parent = byID[parentID] else { continue }
-            let ends = Route.branch(from: parent.frame, to: item.frame, side: facts.side[item.id] ?? .right)
-            var path = Path()
-            path.move(to: ends.start)
-            let midX = (ends.start.x + ends.end.x) / 2
-            path.addCurve(to: ends.end, control1: CGPoint(x: midX, y: ends.start.y), control2: CGPoint(x: midX, y: ends.end.y))
+            // 0.5: thick to thin, and (look B) the words on the line — BranchLook.swift.
+            let look = BranchLook.current, depth = facts.depth[item.id] ?? 1
+            let path = look.path(from: parent.frame, parentDepth: depth - 1, to: item.frame, side: facts.side[item.id] ?? .right)
             ctx.stroke(path, with: .color(paint.line(facts.colour[item.id] ?? "pink")),
-                       style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
+                       style: StrokeStyle(lineWidth: look.weight(depth: depth), lineCap: .round, lineJoin: .round))
         }
 
         drawArrows(&ctx)
@@ -301,6 +299,8 @@ struct BoardPainter {
         let depth = facts.depth[item.id] ?? 0
         let look = Lettering.style(for: item, depth: depth)
         var textColour = paint.ink
+        // 0.5: how it stands as a to-do (TodoMark.swift); done or cancelled in PARAGON greys its words.
+        let todo = TodoMark.state(of: item, in: todoStates)
         var align: TextAlignment = .center
         var anchorLeading = false
         var textBox = f
@@ -373,7 +373,7 @@ struct BoardPainter {
             if !words.isEmpty {
                 let text = ctx.resolve(Text(words)
                     .font(Lettering.font(size: look.size, bold: look.bold))
-                    .foregroundColor(placeholder ? paint.faint : textColour))
+                    .foregroundColor(placeholder ? paint.faint : (TodoMark.greysWords(todo) ? (item.kind == .note ? textColour.opacity(0.45) : paint.faint) : textColour)))
                 let wrap = Lettering.wrapWidth(for: item)
                 let size = text.measure(in: CGSize(width: wrap, height: .greatestFiniteMagnitude))
                 var origin: CGPoint
@@ -391,17 +391,12 @@ struct BoardPainter {
             }
         }
 
-        if item.todo {
-            // A small ring with a tick at the top corner: this goes to PARAGON as a task.
-            let r: CGFloat = 7.5
+        if let todo {
+            // The small to-do mark at the top corner: a task for PARAGON, and how it stands there.
             let c = item.kind == .idea && depth > 0
                 ? CGPoint(x: (facts.side[item.id] ?? .right) == .right ? f.maxX + 12 : f.minX - 12, y: f.midY)
                 : ShapeOutline.tickSpot(item.kind, f)
-            let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
-            ctx.fill(ring, with: .color(Part.paragon.fill))
-            var tick = Path()
-            tick.move(to: CGPoint(x: c.x - 3.4, y: c.y + 0.2)); tick.addLine(to: CGPoint(x: c.x - 0.9, y: c.y + 2.8)); tick.addLine(to: CGPoint(x: c.x + 3.6, y: c.y - 2.6))
-            ctx.stroke(tick, with: .color(.white), style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+            TodoMark.draw(todo, at: c, paint: paint, ground: ground ?? paint.canvas, &ctx)
         }
 
         if item.kind == .idea, item.folded, let count = facts.children[item.id], count > 0 {
