@@ -1,8 +1,25 @@
 import SwiftUI
+import Combine
+import UniformTypeIdentifiers
 import SeedboardCore
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+import PhotosUI
+#endif
 
 // Pictures on a board (0.3). A picture is an item of kind `.picture`; the picture itself is a file of
-// its own in the Pictures folder, named in `Item.picture`, written once and never changed.
+// its own in the Pictures folder (PictureStore.swift), named in `Item.picture`, written once and never changed.
+// Ways in: the Picture tool, the letter P and Insert ▸ Picture… (a picker), Paste (ClipBoard.swift), and a drop.
+
+/// Asks for the picker from anywhere (the tool, the letter P, the Insert menu, the board's menu). The board's
+/// own `PictureHost` answers; `spot` (board points) is where it was asked for, nil: the middle of the view.
+@MainActor
+final class PictureDesk {
+    static let shared = PictureDesk()
+    let ask = PassthroughSubject<CGPoint?, Never>()
+}
 
 /// The Picture tile of the tool row: asks for a picture and lays it in the middle of the view.
 struct PictureTool: View {
@@ -11,8 +28,8 @@ struct PictureTool: View {
 
     var body: some View {
         Button {
-            // The pictures work fills this in: choose a picture, then lay it on the board.
-            session.takeKeys()
+            session.commitEdit()
+            PictureDesk.shared.ask.send(nil)
         } label: {
             GlyphView(glyph: .new(.picture), size: ToolSize.mark(side), colour: Part.pictures.text)
                 .frame(width: side, height: side)
@@ -26,11 +43,161 @@ struct PictureTool: View {
     }
 }
 
+/// Insert ▸ Picture… (the Mac menu bar, and the iPad's with a keyboard). The letter P only while letters are tools.
+struct PictureInsertLine: View {
+    let enabled: Bool
+    let letter: Bool
+
+    var body: some View {
+        let button = Button("Picture…") { PictureDesk.shared.ask.send(nil) }.disabled(!enabled)
+        if letter { button.keyboardShortcut("p", modifiers: []) } else { button }
+    }
+}
+
+/// On the drawing surface (`ClipKeys`): answers the picker, redraws when a picture arrives, and — for pictures
+/// of the launch words — chooses the first picture (`-pickPicture`).
+struct PictureHost: ViewModifier {
+    @ObservedObject var session: BoardSession
+    #if !os(macOS)
+    @State private var showing = false
+    @State private var chosen: [PhotosPickerItem] = []
+    @State private var spot: CGPoint?
+    #endif
+
+    func body(content: Content) -> some View {
+        let base = content
+            .onReceive(PictureStore.shared.arrived) { _ in session.objectWillChange.send() }
+            .onReceive(PictureDesk.shared.ask) { place in ask(at: place) }
+            .onAppear {
+                guard LaunchOptions.arguments.contains("-pickPicture"),
+                      let item = session.board.items.first(where: { $0.kind == .picture }) else { return }
+                session.select(item.id)
+            }
+        #if os(macOS)
+        base
+        #else
+        base
+            .photosPicker(isPresented: $showing, selection: $chosen, maxSelectionCount: 12, matching: .images)
+            .onChange(of: chosen) { _, items in
+                guard !items.isEmpty else { return }
+                chosen = []
+                let place = spot
+                Task { @MainActor in
+                    var all: [Data] = []
+                    for item in items { if let data = try? await item.loadTransferable(type: Data.self) { all.append(data) } }
+                    session.lay(pictures: all, at: place)
+                }
+            }
+        #endif
+    }
+
+    private func ask(at place: CGPoint?) {
+        guard !session.readOnly, !session.board.placesItself else {
+            AppModel.shared.say("A picture cannot be put on this board.")
+            return
+        }
+        #if os(macOS)
+        let panel = NSOpenPanel()
+        panel.title = "Choose a picture"
+        panel.prompt = "Choose"
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.begin { answer in
+            guard answer == .OK else { return }
+            let urls = panel.urls
+            Task { @MainActor in
+                session.lay(pictures: urls.compactMap { try? Data(contentsOf: $0) }, at: place)
+                session.takeKeys()
+            }
+        }
+        #else
+        spot = place
+        showing = true
+        #endif
+    }
+}
+
+extension BoardSession {
+    /// Lays pictures that came in (a picker, the clipboard, a drop) on the board, chosen. `point` (board points): where
+    /// the first one's middle goes, the next ones 28 further down and right; nil: a free place near the middle of the view.
+    /// A picture that cannot be read is said, never silently dropped.
+    func lay(pictures: [Data], at point: CGPoint? = nil) {
+        guard !readOnly, !board.placesItself else {
+            AppModel.shared.say("A picture cannot be put on this board.")
+            return
+        }
+        guard !pictures.isEmpty else { return }
+        commitEdit()
+        Task { @MainActor in
+            var made: Set<UUID> = []
+            var failed = 0
+            var spot = point
+            for data in pictures {
+                let taken = await Task.detached(priority: .userInitiated) { PictureStore.shared.take(data) }.value
+                guard let taken else { failed += 1; continue }
+                let size = Board.pictureSize(forPixels: taken.pixels)
+                let at = spot ?? freeSpot(near: visibleCentre, size: size)
+                var id: UUID?
+                change { id = $0.addPicture(name: taken.name, pixelSize: taken.pixels, centre: at) }
+                if let id { made.insert(id) }
+                if let s = spot { spot = CGPoint(x: s.x + 28, y: s.y + 28) }
+            }
+            if !made.isEmpty {
+                selectedLink = nil
+                selection = made
+                if let first = made.first { reveal(first) }
+            }
+            if failed > 0 { AppModel.shared.say(failed == 1 ? "That could not be read as a picture." : "\(failed) could not be read as pictures.") }
+        }
+    }
+}
+
+// MARK: Drawing
+
 extension BoardPainter {
-    /// Draws one picture in its frame. The pictures work fills this in; until then, a plain plate.
+    /// Draws one picture in its frame (corner radius 4), the picture filling it. A file that is not here yet
+    /// (missing, or iCloud is still bringing it) is a soft plate with the picture mark and "Picture not here yet".
+    /// The picture for PARAGON, Share, Export and the list's small pictures (`handles` off) is read at once.
     func drawPicture(_ item: Item, _ ctx: GraphicsContext) {
-        let box = Path(roundedRect: item.frame, cornerRadius: 4)
+        let f = item.frame
+        let box = Path(roundedRect: f, cornerRadius: 4)
+        let store = PictureStore.shared
+        if let name = item.picture, let image = handles ? store.image(name) : store.imageNow(name) {
+            var inside = ctx
+            inside.clip(to: box)
+            // It keeps its shape (resizing does); a little difference is cropped, never stretched.
+            let k = max(f.width / CGFloat(image.width), f.height / CGFloat(image.height))
+            let w = CGFloat(image.width) * k, h = CGFloat(image.height) * k
+            inside.draw(Image(decorative: image, scale: 1), in: CGRect(x: f.midX - w / 2, y: f.midY - h / 2, width: w, height: h))
+            ctx.stroke(box, with: .color(Part.pictures.text.opacity(0.28)), lineWidth: 0.75)
+            return
+        }
         ctx.fill(box, with: .color(Part.pictures.soft))
         ctx.stroke(box, with: .color(Part.pictures.text.opacity(0.5)), lineWidth: 1)
+        let side = max(14, min(40, min(f.width, f.height) * 0.42))
+        let words = f.height >= 70 && f.width >= 90
+        let mark = CGRect(x: f.midX - side / 2, y: f.midY - side / 2 - (words ? 9 : 0), width: side, height: side * 0.8)
+        Self.pictureMark(mark, in: ctx, colour: Part.pictures.text, line: max(1.2, side / 14))
+        if words {
+            let font: Font = f.width >= 150 ? Txt.label : Font.caption2
+            ctx.draw(Text("Picture not here yet").font(font).foregroundStyle(Part.pictures.text),
+                     at: CGPoint(x: f.midX, y: mark.maxY + 5), anchor: .top)
+        }
+    }
+
+    /// The picture mark drawn as shapes: a frame, a sun and two hills, one round line, no fill.
+    static func pictureMark(_ r: CGRect, in ctx: GraphicsContext, colour: Color, line: CGFloat) {
+        let style = StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round)
+        ctx.stroke(Path(roundedRect: r, cornerRadius: r.height * 0.14), with: .color(colour), style: style)
+        let sun = CGRect(x: r.minX + r.width * 0.2, y: r.minY + r.height * 0.18, width: r.width * 0.16, height: r.width * 0.16)
+        ctx.stroke(Path(ellipseIn: sun), with: .color(colour), style: style)
+        var hills = Path()
+        hills.move(to: CGPoint(x: r.minX + r.width * 0.08, y: r.maxY - r.height * 0.12))
+        hills.addLine(to: CGPoint(x: r.minX + r.width * 0.38, y: r.minY + r.height * 0.5))
+        hills.addLine(to: CGPoint(x: r.minX + r.width * 0.58, y: r.minY + r.height * 0.74))
+        hills.addLine(to: CGPoint(x: r.minX + r.width * 0.72, y: r.minY + r.height * 0.58))
+        hills.addLine(to: CGPoint(x: r.maxX - r.width * 0.08, y: r.maxY - r.height * 0.12))
+        ctx.stroke(hills, with: .color(colour), style: style)
     }
 }

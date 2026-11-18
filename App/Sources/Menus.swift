@@ -134,7 +134,8 @@ struct SeedMenus: Commands {
             // Two shapes that have a letter but no button of their own.
             ForEach(MenuRules.moreShapes, id: \.letter) { tool($0) }
             Divider()
-            // The Draw tool (letter S, for Sketch): on and off, on boards that have it.
+            // A picture (letter P), then the Draw tool (letter S, for Sketch): on boards that have them.
+            PictureInsertLine(enabled: canChange && session?.board.placesItself != true, letter: lettersAreTools)
             drawLine
         }
     }

@@ -260,6 +260,12 @@ struct BarActions {
             all += chooseMore()
             all.append(remove(gap: true))
             return all
+        case .picture:
+            // A picture has no words, no tick and no colour: copy it, line it up, remove it.
+            all.append(duplicate(drop: 0))
+            all += chooseMore()
+            all.append(remove(gap: true))
+            return all
         case .bar, .milestone, .phase:
             // A timeline's rows have their own bar (TimelineBars.swift).
             return []
@@ -327,10 +333,10 @@ struct BarActions {
             return all
         }
         // (A sketch has no words and carries no tick.)
-        if item.kind != .drawing { all.append(words(item.id)) }
+        if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
         let isBranch = item.kind == .idea && item.parent != nil
         if item.kind.isShape || item.kind == .note || item.kind == .frame || isBranch { all.append(colour(for: item)) }
-        if item.kind != .frame && item.kind != .drawing { all.append(todo(on: item.todo, gap: false)) }
+        if item.kind != .frame && item.kind != .drawing && item.kind != .picture { all.append(todo(on: item.todo, gap: false)) }
         copy.gap = true
         all += [copy, cut, twin]
         var more: [BarAction] = []
@@ -401,6 +407,7 @@ struct BarActions {
             all.append(act("note", "New note here", .app(.seedNote), gap: true) { session.add(.note, at: spot) })
             all.append(act("box", "New box here", .app(.seedBox)) { session.add(.box, at: spot) })
             all.append(act("idea", "New idea here", .app(.seedMindMap)) { session.add(.idea, at: spot) })
+            all.append(act("picture", "Picture…", .new(.picture)) { PictureDesk.shared.ask.send(spot) })
         }
         all.append(act("selectAll", "Select all", .app(.seedSelectAll), enabled: !session.board.isEmpty, gap: !all.isEmpty) { session.selectAll() })
         all.append(act("fit", "Show the whole board", .app(.seedFit)) { withAnimation(.easeOut(duration: 0.2)) { session.fit() } })

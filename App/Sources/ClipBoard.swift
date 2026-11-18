@@ -29,9 +29,9 @@ enum ClipBoard {
         guard !session.readOnly, session.editing == nil, !session.board.placesItself else { return false }
         #if os(macOS)
         let types = NSPasteboard.general.types ?? []
-        return types.contains(ownType) || types.contains(.string)
+        return types.contains(ownType) || types.contains(.string) || hasPicture
         #else
-        return UIPasteboard.general.contains(pasteboardTypes: [Clip.type]) || UIPasteboard.general.hasStrings
+        return UIPasteboard.general.contains(pasteboardTypes: [Clip.type]) || UIPasteboard.general.hasStrings || hasPicture
         #endif
     }
 
@@ -84,6 +84,47 @@ enum ClipBoard {
         return NSPasteboard.general.string(forType: .string)
         #else
         return UIPasteboard.general.hasStrings ? UIPasteboard.general.string : nil
+        #endif
+    }
+
+    // MARK: Pictures on the clipboard (0.3)
+
+    /// An image (a screenshot, a copied picture) or an image file copied in the Finder is on the clipboard.
+    private static var hasPicture: Bool {
+        #if os(macOS)
+        let types = NSPasteboard.general.types ?? []
+        if types.contains(.png) || types.contains(.tiff) || types.contains(NSPasteboard.PasteboardType("public.jpeg")) { return true }
+        return !readFilePictures().isEmpty
+        #else
+        return UIPasteboard.general.hasImages
+        #endif
+    }
+
+    /// Image files copied in the Finder (the Mac only).
+    private static func readFilePictures() -> [Data] {
+        #if os(macOS)
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingContentsConformToTypes: [UTType.image.identifier]]
+        let urls = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
+        return urls.prefix(12).compactMap { try? Data(contentsOf: $0) }
+        #else
+        return []
+        #endif
+    }
+
+    /// The image on the clipboard as its own bytes.
+    private static func readImage() -> Data? {
+        #if os(macOS)
+        let board = NSPasteboard.general
+        for type in [NSPasteboard.PasteboardType.png, NSPasteboard.PasteboardType("public.jpeg"), .tiff] {
+            if let data = board.data(forType: type) { return data }
+        }
+        return nil
+        #else
+        let board = UIPasteboard.general
+        for type in [UTType.png, .jpeg, .heic, .tiff] {
+            if let data = board.data(forPasteboardType: type.identifier) { return data }
+        }
+        return board.image?.pngData()
         #endif
     }
 
@@ -144,8 +185,19 @@ enum ClipBoard {
             return
         }
 
+        // Image files copied in the Finder; then words; then an image (a screenshot). Words first, because a
+        // copied table or page brings a picture of itself along.
+        let files = readFilePictures()
+        if !files.isEmpty {
+            session.lay(pictures: files, at: place(ItemKind.picture.defaultSize))
+            return
+        }
         guard let words = readWords(), !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            AppModel.shared.say("Nothing to paste.")
+            if let image = readImage() {
+                session.lay(pictures: [image], at: place(ItemKind.picture.defaultSize))
+            } else {
+                AppModel.shared.say("Nothing to paste.")
+            }
             return
         }
         if chosenIdea != nil {
@@ -169,8 +221,23 @@ enum ClipBoard {
 
     /// Words dragged in from another app (Safari, Notes …) land where they are dropped.
     static func drop(_ providers: [NSItemProvider], at location: CGPoint, into session: BoardSession) -> Bool {
-        guard !session.readOnly, !session.board.placesItself,
-              let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
+        guard !session.readOnly, !session.board.placesItself else { return false }
+        // Pictures first: an image file or an image from another app (a page brings its address along as words).
+        let pictures = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+        if !pictures.isEmpty {
+            Task { @MainActor in
+                var all: [Data] = []
+                for provider in pictures {
+                    if let data = await imageBytes(of: provider) { all.append(data) }
+                }
+                session.commitEdit()
+                if all.isEmpty { AppModel.shared.say("That could not be read as a picture.") }
+                session.lay(pictures: all, at: session.toBoard(location))
+                session.takeKeys()
+            }
+            return true
+        }
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
         _ = provider.loadObject(ofClass: NSString.self) { words, _ in
             guard let words = words as? String else { return }
             Task { @MainActor in
@@ -180,6 +247,13 @@ enum ClipBoard {
             }
         }
         return true
+    }
+
+    /// The bytes of a dropped image; a file's own bytes when it comes as a file.
+    private static func imageBytes(of provider: NSItemProvider) async -> Data? {
+        await withCheckedContinuation { (done: CheckedContinuation<Data?, Never>) in
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in done.resume(returning: data) }
+        }
     }
 
     // MARK: The keys
@@ -254,9 +328,11 @@ struct ClipKeys: ViewModifier {
             .onCommand(#selector(NSText.paste(_:)),
                        perform: !session.readOnly && session.editing == nil && !session.board.placesItself ? { ClipBoard.paste(session) } : nil)
             #endif
-            .onDrop(of: [UTType.plainText, UTType.utf8PlainText, UTType.text], isTargeted: nil) { providers, location in
+            .onDrop(of: [UTType.image, UTType.plainText, UTType.utf8PlainText, UTType.text], isTargeted: nil) { providers, location in
                 ClipBoard.drop(providers, at: location, into: session)
             }
+            // Pictures (PictureViews.swift): the picker, a redraw when one arrives.
+            .modifier(PictureHost(session: session))
     }
 }
 
