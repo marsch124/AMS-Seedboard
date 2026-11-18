@@ -144,7 +144,8 @@ struct SeedMenus: Commands {
             }
             session.takeKeys()
         }
-        .disabled(!canChange)
+        // (A timeline and a "Who does what" board have their own tools.)
+        .disabled(!canChange || session?.board.placesItself == true)
         if lettersAreTools {
             button.keyboardShortcut(KeyEquivalent(line.letter), modifiers: [])
         } else {

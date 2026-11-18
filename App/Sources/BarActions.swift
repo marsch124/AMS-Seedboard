@@ -164,10 +164,19 @@ struct BarActions {
         return list("colour", "Colour", .app(.palette), colourChoices(for: item, link: link))
     }
 
+    /// The small drawing of an arrow's line: with right angles, straight or curved.
+    static func mark(of style: LinkStyle) -> AppMark {
+        switch style {
+        case .elbow: return .seedLineElbow
+        case .straight: return .seedLineStraight
+        case .curve: return .seedLineCurved
+        }
+    }
+
     private func lineChoices(_ link: SeedboardCore.Link) -> [BarAction] {
         let session = session
         return LinkStyle.allCases.map { style in
-            act("style.\(style.rawValue)", style.word, .app(.seedArrow), on: link.style == style) { session.setLinkStyle(style) }
+            act("style.\(style.rawValue)", style.word, .app(Self.mark(of: style)), on: link.style == style) { session.setLinkStyle(style) }
         }
     }
 
@@ -280,7 +289,7 @@ struct BarActions {
         let session = session
         var all: [BarAction] = [
             words(link.id, show: .word, drop: 0),
-            list("line", "Line", .app(.seedArrow), show: .word, lineChoices(link)),
+            list("line", "Line", .app(Self.mark(of: link.style)), show: .word, lineChoices(link)),
             list("ends", "Ends", .new(link.ends.mark), show: .word, endChoices(link)),
             act("dashed", "Dashed", .new(.dashed), show: .wideWord, on: link.isDashed, drop: 3) { session.toggleLinkDashed() },
             act("turn", "Turn round", .app(.repeat), show: .wideWord, drop: 3) { session.turnLinkRound() },
@@ -298,7 +307,7 @@ struct BarActions {
         let session = session
         var all: [BarAction] = []
         let canChange = !session.readOnly
-        var copy = act("copy", "Copy", .app(.deckClipboard), enabled: ClipBoard.canCopy(session)) { ClipBoard.copy(session) }
+        var copy = act("copy", "Copy", .app(.seedCopy), enabled: ClipBoard.canCopy(session)) { ClipBoard.copy(session) }
         guard canChange else { return [copy] }
         let cut = act("cut", "Cut", .new(.cut), enabled: ClipBoard.canCut(session)) { ClipBoard.cut(session) }
         let twin = act("duplicate", "Duplicate", .app(.duplicate)) { session.duplicateSelection() }
@@ -373,7 +382,7 @@ struct BarActions {
         guard !session.readOnly else { return [] }
         return [
             words(link.id),
-            list("line", "Line", .app(.seedArrow), lineChoices(link)),
+            list("line", "Line", .app(Self.mark(of: link.style)), lineChoices(link)),
             list("ends", "Ends", .new(link.ends.mark), endChoices(link)),
             act("dashed", "Dashed", .new(.dashed), on: link.isDashed) { session.toggleLinkDashed() },
             act("turn", "Turn round", .app(.repeat)) { session.turnLinkRound() },
@@ -392,7 +401,7 @@ struct BarActions {
             all.append(act("box", "New box here", .app(.seedBox)) { session.add(.box, at: spot) })
             all.append(act("idea", "New idea here", .app(.seedMindMap)) { session.add(.idea, at: spot) })
         }
-        all.append(act("selectAll", "Select all", .control(.addCircle), enabled: !session.board.isEmpty, gap: !all.isEmpty) { session.selectAll() })
+        all.append(act("selectAll", "Select all", .app(.seedSelectAll), enabled: !session.board.isEmpty, gap: !all.isEmpty) { session.selectAll() })
         all.append(act("fit", "Show the whole board", .app(.seedFit)) { withAnimation(.easeOut(duration: 0.2)) { session.fit() } })
         return all
     }

@@ -135,7 +135,18 @@ struct IdeaOrderCommands: View {
             return
         }
         #endif
-        guard let session, let id = session.ideaToShift else { return }
+        guard let session else { return }
+        guard let id = session.ideaToShift else {
+            #if os(macOS)
+            // No idea to move: ⌘↑ and ⌘↓ on one chosen shape make the next shape above or below it,
+            // as ⌘← and ⌘→ do (the menu line takes the key before the board sees it).
+            if !session.readOnly, !session.board.placesItself, session.editing == nil,
+               let shape = session.single, shape.kind.isShape {
+                session.addNext(from: shape.id, direction: down ? .down : .up)
+            }
+            #endif
+            return
+        }
         session.shiftIdea(id, down: down)
     }
 }

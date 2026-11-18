@@ -64,7 +64,7 @@ struct BoardQuery: EntityStringQuery {
 
 /// The ways a new board can begin, as Shortcuts and Siri know them.
 enum StarterChoice: String, AppEnum {
-    case blank, mindMap, flow, prosCons, steps
+    case blank, mindMap, flow, prosCons, steps, timeline, sequence
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Starter"
     static let caseDisplayRepresentations: [StarterChoice: DisplayRepresentation] = [
@@ -73,6 +73,8 @@ enum StarterChoice: String, AppEnum {
         .flow: "Flow",
         .prosCons: "Pros and cons",
         .steps: "Plan in steps",
+        .timeline: "Timeline",
+        .sequence: "Who does what",
     ]
 
     var starter: Starter { Starter(rawValue: rawValue) ?? .blank }

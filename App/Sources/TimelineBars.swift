@@ -13,8 +13,8 @@ struct TimelineToolPill: View {
         HStack(spacing: 6) {
             tool("Bar", .new(.bar), .timeline, "tool.bar", "Bar: a new row, starting today (B)") { session.addTimeline(.bar) }
             tool("Milestone", .new(.milestone), .paragon, "tool.milestone", "Milestone: one day, drawn as a diamond (M)") { session.addTimeline(.milestone) }
-            tool("Phase", .app(.seedFrame), .frames, "tool.phase", "Phase: a heading for the rows under it (P)") { session.addTimeline(.phase) }
-            tool("Comes after", .app(.seedArrow), .arrows, "tool.after", "Comes after: press the bar that comes first, then the one after it (A)", on: session.linking) {
+            tool("Phase", .app(.seedPhase), .frames, "tool.phase", "Phase: a heading for the rows under it (P)") { session.addTimeline(.phase) }
+            tool("Comes after", .app(.seedComesAfter), .arrows, "tool.after", "Comes after: press the bar that comes first, then the one after it (A)", on: session.linking) {
                 session.commitEdit()
                 session.linking.toggle()
                 // With one bar chosen, the arrow starts there.

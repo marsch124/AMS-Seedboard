@@ -443,7 +443,7 @@ struct BoardCommands: Commands {
                 if let text { session?.paste(text) }
             }
             .keyboardShortcut("v", modifiers: [.command, .shift])
-            .disabled(session == nil || session?.readOnly == true || session?.editing != nil)
+            .disabled(session == nil || session?.readOnly == true || session?.editing != nil || session?.board.placesItself == true)
         }
     }
 }

@@ -25,8 +25,8 @@ struct SequenceToolPill: View {
                     session.startMessage(from: session.single.flatMap { $0.kind == .who ? $0.id : nil })
                 }
             }
-            tool("Note", .app(.seedNote), .notes, "tool.note", "Note: a soft band across the lines (N)") { session.addBand() }
-            tool("Section", .new(.lanes), .frames, "tool.section", "Section: a heading line across the diagram (S)") { session.addSection() }
+            tool("Note", .app(.seedNoteBand), .notes, "tool.note", "Note: a soft band across the lines (N)") { session.addBand() }
+            tool("Section", .app(.seedSection), .frames, "tool.section", "Section: a heading line across the diagram (S)") { session.addSection() }
         }
         .padding(6)
         .fixedSize()

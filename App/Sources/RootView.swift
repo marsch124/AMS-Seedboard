@@ -184,7 +184,7 @@ struct BoardList: View {
         let chosen = model.openID == nil
         return Button { model.open(nil) } label: {
             HStack(spacing: 8) {
-                AppMarkView(.seedSprout, size: 15, colour: Part.boards.text)
+                AppMarkView(.seedHome, size: 15, colour: Part.boards.text)
                     .frame(width: 9, alignment: .center)
                 Text("Home")
                     .font(.body.weight(chosen ? .bold : .regular))

@@ -357,7 +357,8 @@ final class BoardSession: ObservableObject {
 
     /// A tool was pressed: the new thing appears in the middle of the view, ready to type in.
     func add(_ kind: ItemKind, at point: CGPoint? = nil) {
-        guard !readOnly else { return }
+        // A timeline and a "Who does what" board take only their own things, by their own tools.
+        guard !readOnly, !board.placesItself else { return }
         if editing != nil { commitEdit() }
         linking = false
         var made: UUID?
@@ -522,8 +523,8 @@ final class BoardSession: ObservableObject {
 
     func toggleTodo() {
         if board.isSequence { sequenceToggleTodo(); return }
-        // A drawing carries no tick.
-        let ids = selection.filter { board.item($0)?.kind != .drawing }
+        // A drawing carries no tick, nor does a timeline's phase heading.
+        let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .phase }
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
         change { board in
@@ -544,7 +545,8 @@ final class BoardSession: ObservableObject {
                 // In a mind map the colour belongs to the whole branch.
                 if board.items[i].kind == .idea {
                     if let branch = board.mainBranch(of: id), let b = board.index(of: branch) { board.items[b].colour = name }
-                } else {
+                } else if board.items[i].kind != .drawing {
+                    // (A sketch's lines keep their own colours.)
                     board.items[i].colour = name
                 }
             }

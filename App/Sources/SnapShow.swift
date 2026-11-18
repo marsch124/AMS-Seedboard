@@ -113,9 +113,9 @@ extension BoardSession {
     // MARK: Tidying several chosen things
 
     /// How many of the chosen things can be lined up (ideas held by a mind map are left out).
-    var tidyCount: Int { selection.count > 1 ? board.tidyable(selection).count : 0 }
+    var tidyCount: Int { selection.count > 1 && !board.placesItself ? board.tidyable(selection).count : 0 }
     /// How many of the chosen things can take another size.
-    var sizeCount: Int { selection.count > 1 ? board.sizeable(selection).count : 0 }
+    var sizeCount: Int { selection.count > 1 && !board.placesItself ? board.sizeable(selection).count : 0 }
 
     func lineUp() {
         let ids = selection
