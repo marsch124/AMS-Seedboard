@@ -10,6 +10,8 @@ import AppKit
 struct TimelineView: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: BoardSession
+    /// What was read back from PARAGON: a bar ticked off there is drawn done.
+    @ObservedObject private var echo = ParagonEcho.shared
     @Environment(\.colorScheme) private var scheme
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var phase
@@ -64,6 +66,7 @@ struct TimelineView: View {
                     painter.dropTarget = dropTarget
                     painter.rubber = rubber.map { ($0.from, $0.to) }
                     painter.showDates = showDates
+                    painter.todoStates = echo.marks(for: session.board)
                     painter.draw(&ctx)
                 }
                 .contentShape(Rectangle())
@@ -83,6 +86,14 @@ struct TimelineView: View {
                     .frame(width: 1, height: 1)
                     .allowsHitTesting(false)
                     .accessibilityIdentifier("board.count")
+
+                // The line above the names ("3 of 8 done · 1 late · ends 20 Feb") as words of its own, for the screen tests.
+                Text(session.timelineProgressLine)
+                    .font(.system(size: 1))
+                    .foregroundStyle(.clear)
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                    .accessibilityIdentifier("timeline.progress")
 
                 if session.board.isEmpty {
                     VStack(spacing: 4) {
@@ -114,6 +125,10 @@ struct TimelineView: View {
         .focused($keys)
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in handleKey(press) }
+        #if os(macOS)
+        // Edit ▸ Paste on a timeline: a list becomes bars (TimelineOfIt.swift). While a name is typed, Paste belongs to the words.
+        .onCommand(#selector(NSText.paste(_:)), perform: !session.readOnly && session.editing == nil ? { session.timelinePasteClipboard() } : nil)
+        #endif
         // A press the system took away (an edge swipe, a call, leaving the app) never ends by itself.
         .onChange(of: phase) { _, _ in
             today = .today()
@@ -132,9 +147,17 @@ struct TimelineView: View {
         session.timeline.narrow = sizeClass == .compact
         session.resized(size)
         session.clampTimeline()
+        // The scale and place it was left at come back, once per opening (TimelineKeep.swift).
+        TimelineKeep.shared.opened(session)
         // For pictures: `-scale days|weeks|months` opens the timeline at that scale with today in view.
         guard !launchApplied, size.width > 10 else { return }
         launchApplied = true
+        // For pictures: `-doneBars 2` marks the first two bars done, `-catchUp` presses Catch up.
+        if let count = LaunchOptions.value(for: "-doneBars").flatMap({ Int($0) }), count > 0 {
+            let first = Set(session.board.timelineRows.filter { $0.kind == .bar }.prefix(count).map(\.id))
+            session.change { $0.setDone(first, true, on: .today()) }
+        }
+        if LaunchOptions.arguments.contains("-catchUp"), let words = session.timelineCatchUp() { model.say(words, seconds: 6) }
         if let word = LaunchOptions.value(for: "-scale"), let scale = TimeScale(rawValue: word) {
             session.setTimeScale(scale)
             session.timelineShowToday()
@@ -349,7 +372,8 @@ struct TimelineView: View {
             session.live { count = $0.stretch(id, edge, to: from + across) }
             pushed = count
         case .rowMove(let id, let row):
-            session.live { $0.moveRow(id, to: row + down) }
+            // A phase carries its rows (0.5); a bar or a milestone moves alone.
+            session.live { $0.carryRow(id, to: row + down) }
         case .joining(let id):
             if let from = session.timelineRect(of: id) {
                 rubber = Rubber(from: CGPoint(x: from.maxX, y: from.midY), to: value.location)
@@ -468,6 +492,8 @@ struct TimelineView: View {
         let item = session.single
         if press.modifiers.contains(.command) {
             if press.characters == "a" { session.selectAll(); return .handled }
+            // ⌘V when no menu line took it: a list on the clipboard becomes bars.
+            if press.characters == "v", !session.readOnly { session.timelinePasteClipboard(); return .handled }
             return .ignored
         }
         let week = press.modifiers.contains(.shift)

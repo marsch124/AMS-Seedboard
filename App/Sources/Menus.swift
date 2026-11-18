@@ -84,6 +84,11 @@ struct SeedMenus: Commands {
                 }
             }
             .disabled(session?.board.isEmpty ?? true)
+            // 0.5: a new timeline board from this board's ideas and shapes (TimelineOfIt.swift).
+            Button("Make a Timeline of It…") {
+                if let session { model.makeTimeline(of: session) }
+            }
+            .disabled(session == nil || session?.board.isEmpty == true || session?.board.placesItself == true || session?.starterDraft == true)
             Divider()
             Button("Save as a Starter…") {
                 if let session { session.commitEdit(); model.ask(.save(session.board)) }

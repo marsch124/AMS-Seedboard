@@ -119,6 +119,8 @@ final class AppModel: ObservableObject {
         // For pictures: `-draw` opens the board with the Draw tool on and its plate showing.
         if LaunchOptions.arguments.contains("-draw") { session?.ink.on = true }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
+        // For pictures: `-makeTimeline` makes the timeline of the opened board (TimelineOfIt.swift).
+        makeTimelineAtLaunch()
         // For pictures: `-removed` opens "Removed and earlier versions", `-clash` shows the clash notice.
         bringBackLaunch()
         // A link that arrived before the boards were loaded is followed now.
