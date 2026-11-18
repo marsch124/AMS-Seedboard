@@ -64,6 +64,8 @@ struct BoardView: View {
             }
 
             VStack(spacing: 6) {
+                // A starter is being changed: this board is its working copy (StartersPage.swift).
+                if session.starterDraft { StarterChangeBanner() }
                 if session.readOnly {
                     banner("This board was made by a newer Seedboard. Update the app to change it.", part: .notes)
                 } else if session.linking {
@@ -166,7 +168,7 @@ struct BoardView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .navigationTitle(session.board.title)
+        .navigationTitle(session.starterDraft ? (model.changing?.name ?? session.board.title) : session.board.title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -183,7 +185,8 @@ struct BoardView: View {
                 .accessibilityIdentifier("rename.field")
             Button("Cancel", role: .cancel) { session.takeKeys() }
             Button("Save") {
-                session.rename(newName)
+                // On a starter's working copy the name is the starter's.
+                if session.starterDraft { model.renameChange(newName) } else { session.rename(newName) }
                 session.takeKeys()
             }
         }
@@ -222,13 +225,21 @@ struct BoardView: View {
             }
             Menu {
                 Button("Rename…") {
-                    newName = session.board.title
+                    newName = session.starterDraft ? (model.changing?.name ?? session.board.title) : session.board.title
                     renaming = true
                 }
                 // After each choice in the menu the board has the keys again.
-                Button(session.board.pinned ? "Unpin" : "Pin to the top") {
-                    model.togglePin(session.board.id)
-                    session.takeKeys()
+                if !session.starterDraft {
+                    Button(session.board.pinned ? "Unpin" : "Pin to the top") {
+                        model.togglePin(session.board.id)
+                        session.takeKeys()
+                    }
+                    if !session.readOnly {
+                        Button("Save as a starter…") {
+                            session.commitEdit()
+                            model.ask(.save(session.board))
+                        }
+                    }
                 }
                 Divider()
                 Button("Paste a list as a mind map") {
@@ -246,8 +257,10 @@ struct BoardView: View {
                         Text("Share a picture…")
                     }
                 }
-                Divider()
-                Button("Remove the board…", role: .destructive) { removing = true }
+                if !session.starterDraft {
+                    Divider()
+                    Button("Remove the board…", role: .destructive) { removing = true }
+                }
             } label: {
                 Text("More")
             }
@@ -255,6 +268,7 @@ struct BoardView: View {
             .accessibilityLabel("More")
             .accessibilityIdentifier("board.more")
 
+            if !session.starterDraft {
             Button { model.showSend = true } label: {
                 #if os(macOS)
                 HStack(spacing: 5) {
@@ -270,6 +284,7 @@ struct BoardView: View {
             .buttonStyle(ParagonButton())
             .help("Send this board to PARAGON")
             .accessibilityIdentifier("board.send")
+            }
         }
     }
 }

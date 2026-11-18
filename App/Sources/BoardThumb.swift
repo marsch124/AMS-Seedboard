@@ -113,6 +113,20 @@ struct BoardThumb: View {
         self.name = "starter." + starter.rawValue
     }
 
+    /// A starter of the shelf: an untouched built-in is drawn once, an own or changed one from its stored board.
+    init(starter: ShelfStarter) {
+        if let stored = starter.board {
+            self.board = stored
+            self.name = "shelf." + starter.id
+        } else if let built = starter.builtin {
+            self.board = Thumbs.board(of: built)
+            self.name = "starter." + built.rawValue
+        } else {
+            self.board = Board(title: "")
+            self.name = "shelf." + starter.id
+        }
+    }
+
     private struct Version: Equatable {
         let name: String
         let stamp: Date

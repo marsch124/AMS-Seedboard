@@ -39,6 +39,13 @@ final class AppModel: ObservableObject {
     }
 
     let store: BoardStore
+    /// The starter boards (StarterModel.swift): the shelf, its files, and the questions about it.
+    @Published var shelf = StarterShelf()
+    @Published var starterAsk: StarterAsk?
+    @Published var showStarterPage = false
+    @Published var changing: StarterChange?
+    var launchWordsDone = false
+    let starterStore = StarterStore(sample: LaunchOptions.sampleData)
     private(set) var place: ParagonPlace?
     private var saveWork: DispatchWorkItem?
     private var pendingSave: Board?
@@ -64,6 +71,7 @@ final class AppModel: ObservableObject {
         }
         #endif
         Task { await load() }
+        Task { await loadStarters() }
     }
 
     // MARK: Loading and keeping
@@ -220,6 +228,7 @@ final class AppModel: ObservableObject {
     func leaving(closing: Bool = false) {
         session?.commitEdit()
         saveNow()
+        starterStore.flush()
         #if os(macOS)
         store.flush(cloudToo: closing)
         #else
@@ -267,6 +276,8 @@ final class AppModel: ObservableObject {
 
     func open(_ id: UUID?) {
         guard id != openID || session == nil else { return }
+        // Going to another board while a starter is being changed leaves that change unsaved.
+        if changing != nil { endChange() }
         session?.commitEdit()
         saveNow()
         // Leaving a board ends its typing: news that was held for it is offered now.
@@ -282,6 +293,18 @@ final class AppModel: ObservableObject {
         let new = BoardSession(board: board)
         new.onChange = { [weak self] board in self?.keep(board) }
         session = new
+    }
+
+    /// A working copy that is not one of the boards (changing a starter): shown like a board, never kept as one.
+    func present(draft new: BoardSession) {
+        heldWatch = nil
+        openID = new.board.id
+        session = new
+    }
+
+    func closeDraft() {
+        session = nil
+        openID = nil
     }
 
     @discardableResult

@@ -28,13 +28,32 @@ struct HomeView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 4) {
                 header
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                    ForEach(Starter.allCases) { starter in
-                        StarterCard(starter: starter) { open(model.newBoard(starter)) }
-                            .accessibilityIdentifier("home.starter.\(starter.rawValue)")
+                HStack {
+                    Text("STARTERS")
+                        .font(.caption.weight(.bold))
+                        .kerning(0.5)
+                        .foregroundStyle(Part.boards.text)
+                    Spacer()
+                    Button { model.ask(.page) } label: {
+                        Text("Edit")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Part.boards.text)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .help("Rename, move, change and remove starters")
+                    .accessibilityLabel("Edit the starters")
+                    .accessibilityIdentifier("home.startersEdit")
                 }
                 .padding(.top, 6)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                    ForEach(model.shelf.shown) { starter in
+                        StarterCard(starter: starter, pick: { open(model.newBoard(from: starter)) }, ask: { model.ask($0) })
+                            .accessibilityIdentifier("home.starter.\(starter.id)")
+                    }
+                }
 
                 section("Pinned", pinned)
                 section("Recent", recent)
@@ -83,17 +102,17 @@ struct HomeView: View {
             .buttonStyle(FilledButton(.boards))
             .accessibilityIdentifier("empty.newBoard")
             .popover(isPresented: $showStarters, arrowEdge: .top) {
-                StarterPicker { starter in
+                StarterPicker(pick: { starter in
                     showStarters = false
-                    open(model.newBoard(starter))
-                }
+                    open(model.newBoard(from: starter))
+                }, close: { showStarters = false })
                 .presentationCompactAdaptation(.popover)
             }
             .sheet(isPresented: $showStarterSheet) {
-                StarterPicker(wide: true) { starter in
+                StarterPicker(wide: true, pick: { starter in
                     showStarterSheet = false
-                    open(model.newBoard(starter))
-                }
+                    open(model.newBoard(from: starter))
+                }, close: { showStarterSheet = false })
                 .presentationDetents(StarterPicker.sheetDetents)
             }
         }
@@ -137,8 +156,10 @@ private struct CardPlate: ViewModifier {
 
 /// One way to begin: a real small drawing of the starter, its name and one line about it.
 struct StarterCard: View {
-    let starter: Starter
+    let starter: ShelfStarter
     let pick: () -> Void
+    /// A question from the card's press-and-hold menu (Rename…, Change…, Remove, Edit starters…).
+    let ask: (StarterAsk) -> Void
     @Environment(\.colorScheme) private var scheme
 
     /// The room the name and the two lines of the hint take, for sizing the chooser.
@@ -153,7 +174,7 @@ struct StarterCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
                     BoardThumb(starter: starter)
-                    if Thumbs.board(of: starter).isEmpty {
+                    if (starter.board ?? starter.builtin.map { Thumbs.board(of: $0) } ?? Board()).isEmpty {
                         // An empty sheet: a quiet plus in the middle says "start from nothing".
                         ControlMarkView(.add, size: 26, colour: Part.boards.text.opacity(0.75))
                     }
@@ -176,6 +197,7 @@ struct StarterCard: View {
             .modifier(CardPlate())
         }
         .buttonStyle(.plain)
+        .starterMenu(starter, ask: ask)
         .accessibilityLabel("\(starter.name). \(starter.hint)")
     }
 }
@@ -228,8 +250,11 @@ struct BoardCard: View {
 /// The ways to begin a board, as the same cards with drawings as on the home page.
 /// A small pop-up on the Mac and the iPad (three cards in a row), a page from the bottom on the iPhone (two in a row).
 struct StarterPicker: View {
+    @EnvironmentObject private var model: AppModel
     var wide = false
-    let pick: (Starter) -> Void
+    let pick: (ShelfStarter) -> Void
+    /// Closes the pop-up or page the picker is in (a question from a card's menu first closes it).
+    var close: () -> Void = {}
 
     #if os(macOS)
     private static let cardWidth: CGFloat = 150
@@ -240,8 +265,8 @@ struct StarterPicker: View {
     private static let gap: CGFloat = 8
 
     /// The pop-up's size: every card in sight without sliding, whatever the number of starters.
-    private static var popSize: CGSize {
-        let rows = CGFloat((Starter.allCases.count + perRow - 1) / perRow)
+    private static func popSize(count: Int) -> CGSize {
+        let rows = CGFloat((max(count, 1) + perRow - 1) / perRow)
         let card = (cardWidth / Thumbs.shape).rounded(.up) + 1 + StarterCard.wordsRoom
         return CGSize(width: CGFloat(perRow) * cardWidth + CGFloat(perRow - 1) * gap + 20,
                       height: rows * card + (rows - 1) * gap + 46)
@@ -255,16 +280,36 @@ struct StarterPicker: View {
             ? [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: StarterPicker.gap, alignment: .top)]
             : Array(repeating: GridItem(.fixed(StarterPicker.cardWidth), spacing: StarterPicker.gap, alignment: .top), count: StarterPicker.perRow)
         return VStack(alignment: .leading, spacing: 6) {
-            Text("Start with")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Part.boards.text)
-                .padding(.horizontal, 2)
-                .padding(.top, wide ? 8 : 0)
+            HStack {
+                Text("Start with")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Part.boards.text)
+                Spacer()
+                Button {
+                    close()
+                    model.ask(.page)
+                } label: {
+                    Text("Edit")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Part.boards.text)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit the starters")
+                .accessibilityIdentifier("starters.edit")
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, wide ? 8 : 0)
             ScrollView {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: StarterPicker.gap) {
-                    ForEach(Starter.allCases) { starter in
-                        StarterCard(starter: starter) { pick(starter) }
-                            .accessibilityIdentifier("starter.\(starter.rawValue)")
+                    ForEach(model.shelf.shown) { starter in
+                        StarterCard(starter: starter, pick: { pick(starter) }, ask: { question in
+                            close()
+                            model.ask(question)
+                        })
+                        .accessibilityIdentifier("starter.\(starter.id)")
                     }
                 }
                 // Room for the cards' faint shadow and edge.
@@ -274,7 +319,8 @@ struct StarterPicker: View {
         }
         .padding(10)
         // A fixed size: on the iPhone a pop-up without one comes out empty.
-        .frame(width: wide ? nil : StarterPicker.popSize.width, height: wide ? nil : StarterPicker.popSize.height, alignment: .top)
+        .frame(width: wide ? nil : StarterPicker.popSize(count: model.shelf.shown.count).width,
+               height: wide ? nil : StarterPicker.popSize(count: model.shelf.shown.count).height, alignment: .top)
         .frame(maxWidth: wide ? .infinity : nil, maxHeight: wide ? .infinity : nil, alignment: .top)
     }
 }

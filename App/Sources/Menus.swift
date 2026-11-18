@@ -76,7 +76,7 @@ struct SeedMenus: Commands {
                 model.showSend = true
             }
             .keyboardShortcut(.return, modifiers: .command)
-            .disabled(session == nil)
+            .disabled(session == nil || session?.starterDraft == true)
             Button("Share a Picture…") {
                 if let session {
                     session.commitEdit()
@@ -85,8 +85,14 @@ struct SeedMenus: Commands {
             }
             .disabled(session?.board.isEmpty ?? true)
             Divider()
+            Button("Save as a Starter…") {
+                if let session { session.commitEdit(); model.ask(.save(session.board)) }
+            }
+            .disabled(!canChange || session?.starterDraft == true)
+            Button("Starters…") { model.ask(.page) }
+            Divider()
             Button("Remove Board…") { desk.remove.send() }
-                .disabled(session == nil)
+                .disabled(session == nil || session?.starterDraft == true)
         }
 
         // Edit. On the Mac, Delete and Select All are the system's own lines: the board answers them
@@ -203,8 +209,9 @@ struct OutsideDoors: ViewModifier {
             .sheet(isPresented: $desk.choosingStarter, onDismiss: { model.session?.takeKeys() }) {
                 StarterSheet { starter in
                     desk.choosingStarter = false
-                    if let starter { model.newBoard(starter) }
+                    if let starter { model.newBoard(from: starter) }
                 }
+                .environmentObject(model)
             }
             // A board picked in the device's search (Spotlight) opens like a link to it.
             .onContinueUserActivity(CSSearchableItemActionType) { activity in
@@ -223,14 +230,15 @@ struct OutsideDoors: ViewModifier {
 
 /// The starter choice as a page of its own, with Cancel (Escape on the Mac).
 private struct StarterSheet: View {
-    let done: (Starter?) -> Void
+    let done: (ShelfStarter?) -> Void
+    @EnvironmentObject private var model: AppModel
 
     var body: some View {
         VStack(spacing: 0) {
             #if os(macOS)
-            StarterPicker { done($0) }
+            StarterPicker(pick: { done($0) }, close: { done(nil) })
             #else
-            StarterPicker(wide: true) { done($0) }
+            StarterPicker(wide: true, pick: { done($0) }, close: { done(nil) })
             #endif
             HStack {
                 Spacer()
@@ -242,7 +250,7 @@ private struct StarterSheet: View {
             .padding(.bottom, 10)
         }
         #if !os(macOS)
-        .presentationDetents([.height(CGFloat(Starter.allCases.count) * 46 + 104)])
+        .presentationDetents([.height(CGFloat(model.shelf.shown.count) * 46 + 104)])
         #endif
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)

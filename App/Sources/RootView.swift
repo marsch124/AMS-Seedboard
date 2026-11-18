@@ -91,17 +91,17 @@ struct BoardList: View {
             .padding(.bottom, 6)
             .accessibilityIdentifier("boards.new")
             .popover(isPresented: $showStarters, arrowEdge: .bottom) {
-                StarterPicker { starter in
+                StarterPicker(pick: { starter in
                     showStarters = false
-                    open(model.newBoard(starter))
-                }
+                    open(model.newBoard(from: starter))
+                }, close: { showStarters = false })
                 .presentationCompactAdaptation(.popover)
             }
             .sheet(isPresented: $showStarterSheet) {
-                StarterPicker(wide: true) { starter in
+                StarterPicker(wide: true, pick: { starter in
                     showStarterSheet = false
-                    open(model.newBoard(starter))
-                }
+                    open(model.newBoard(from: starter))
+                }, close: { showStarterSheet = false })
                 .presentationDetents(StarterPicker.sheetDetents)
             }
 
@@ -279,6 +279,9 @@ struct BoardList: View {
             }
             Button(board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(board.id) }
             Button("Make a copy") { model.duplicate(board.id) }
+            if board.canBeChanged {
+                Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
+            }
             Menu("Colour") {
                 ForEach(Palette.boards, id: \.self) { name in
                     Button(name.capitalized) { model.setColour(board.id, name) }
