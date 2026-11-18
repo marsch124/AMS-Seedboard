@@ -1,0 +1,776 @@
+<title>Seedboard Tour</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Seedboard Tour: chapter rail on the left, coach card + a pretend iPhone on the right. Same engine as the other AMS tours.
+   Based on AMS Seedboard 0.6. Update this tour in the release that changes a taught screen. */
+:root {
+  --bg: #F2F7F6; --panel: #FFFFFF; --fg: #14292A; --muted: #587070; --line: #D9E5E3;
+  --accent: #17797A; --accent-soft: #DDF0EE; --good: #2F7D32; --good-soft: #E6F3E6; --warn: #A8431A;
+  --shadow: 0 18px 40px rgba(20,41,42,.2);
+  --teal: #1F8A8A; --para: #7C5CD6; --paraD: #6A49C4; --green: #2FA35A; --red: #D4493E; --amber: #E0A030;
+  --b1: #E0578B; --b2: #E8812F; --b3: #1F8A8A; --b4: #3B7DDD; --b5: #7C5CD6; --b6: #2FA35A;
+  --pbg: #F2F2F7; --pcard: #FFFFFF; --pink: #1C1C1E; --pmuted: #6C6C70; --pline: #E0E0E5; --pglass: rgba(255,255,255,.9); --pfield: rgba(120,120,128,.14);
+  --f-display: "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
+  --f-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --f-phone: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#0F1B1B; --panel:#192727; --fg:#EAF4F2; --muted:#9DB5B2; --line:#2A3D3C;
+  --accent:#4FC3C0; --accent-soft:#1B3433; --good:#8FD18F; --good-soft:#1D3320; --warn:#F2A47F;
+  --shadow: 0 18px 40px rgba(0,0,0,.55);
+  --teal:#3FBFBF; --para:#A58BF0; --paraD:#7C5CD6; --green:#4CC27D; --red:#F2766C; --amber:#F0B85A;
+  --b1:#F277A4; --b2:#F29A55; --b3:#3FBFBF; --b4:#6CA0F2; --b5:#A58BF0; --b6:#4CC27D;
+  --pbg:#0E0E10; --pcard:#1C1C1F; --pink:#F2F2F7; --pmuted:#9A9AA0; --pline:#333338; --pglass:rgba(40,40,44,.9); --pfield:rgba(120,120,128,.3);
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg:#0F1B1B; --panel:#192727; --fg:#EAF4F2; --muted:#9DB5B2; --line:#2A3D3C;
+  --accent:#4FC3C0; --accent-soft:#1B3433; --good:#8FD18F; --good-soft:#1D3320; --warn:#F2A47F;
+  --shadow: 0 18px 40px rgba(0,0,0,.55);
+  --teal:#3FBFBF; --para:#A58BF0; --paraD:#7C5CD6; --green:#4CC27D; --red:#F2766C; --amber:#F0B85A;
+  --b1:#F277A4; --b2:#F29A55; --b3:#3FBFBF; --b4:#6CA0F2; --b5:#A58BF0; --b6:#4CC27D;
+  --pbg:#0E0E10; --pcard:#1C1C1F; --pink:#F2F2F7; --pmuted:#9A9AA0; --pline:#333338; --pglass:rgba(40,40,44,.9); --pfield:rgba(120,120,128,.3);
+  color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.45; margin: 0 }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 230px minmax(0,1fr); gap: 22px; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none }
+svg.g { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none }
+
+/* Rail */
+.rail { display: flex; flex-direction: column; gap: 4px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); align-self: start; }
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.brand h1 { font-family: var(--f-display); font-size: 19px; line-height: 1.1; margin: 0; text-wrap: balance }
+.brand small { color: var(--muted); font-size: 12px }
+.logo { width: 40px; height: 40px; border-radius: 10px; background: var(--teal); color: #fff; display: grid; place-items: center; flex: none }
+.chap { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.chap:hover { background: var(--accent-soft) }
+.chap:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.chap .n { color: var(--muted); font-size: 12px; margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap }
+.chap.cur { background: var(--accent-soft); color: var(--accent); font-weight: 600 }
+.chap.done .n { color: var(--good) }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 10px 2px 2px }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s }
+.railnote { color: var(--muted); font-size: 12px; margin: 4px 2px }
+
+/* Coach */
+.main { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; min-width: 0; align-content: start }
+.topnote { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 13.5px }
+.coach { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 16px; align-items: center; }
+.coach .eyebrow { grid-column: 1 / -1; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 600; display: flex; gap: 8px; align-items: center }
+.coach .eyebrow .kind { color: var(--muted); font-weight: 500 }
+.coach h2 { font-family: var(--f-display); font-size: 23px; line-height: 1.2; margin: 0; text-wrap: balance }
+.coach p { margin: 4px 0 0; color: var(--fg); max-width: 62ch }
+.coach .btns { display: flex; gap: 8px; align-items: center }
+.btn { font: inherit; font-weight: 600; border-radius: 9px; padding: 8px 16px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer }
+.btn.main-b { background: #17797A; border-color: #17797A; color: #fff }
+.btn.main-b:disabled { opacity: .45; cursor: default }
+.btn.ghost { border-color: transparent; color: var(--muted) }
+.answers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px }
+.ans { font: inherit; padding: 8px 14px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; text-align: left }
+.ans:hover { border-color: var(--accent) }
+.ans.right { border-color: var(--good); background: var(--good-soft); color: var(--good); font-weight: 600 }
+.ans.wrong { border-color: var(--warn); color: var(--warn); text-decoration: line-through }
+.feedback { grid-column: 1 / -1; font-weight: 600; color: var(--good); min-height: 1.4em; margin: 0 }
+.feedback.no { color: var(--warn) }
+
+/* Stage = pretend iPhone, 390 x 760, scaled to fit */
+.stagebox { position: relative; width: min(100%, 390px); aspect-ratio: 390 / 760; border-radius: 40px; overflow: hidden; box-shadow: 0 0 0 6px #1f1f23, var(--shadow); justify-self: center; background: var(--pbg) }
+.stage { position: absolute; left: 0; top: 0; width: 390px; height: 760px; transform-origin: 0 0; font-family: var(--f-phone); font-size: 15px; line-height: 1.3; color: var(--pink); background: var(--pbg); overflow: hidden; -webkit-user-select: none; user-select: none }
+.stage button { font: inherit; color: inherit }
+.stage input { font: inherit; color: var(--pink); -webkit-user-select: text; user-select: text }
+.sbar { position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 6px 34px; font-weight: 600; font-size: 15px; z-index: 40; pointer-events: none; background: linear-gradient(var(--pbg) 70%, transparent) }
+.sbar .bat { width: 25px; height: 12px; border: 1.5px solid var(--pink); border-radius: 4px; position: relative; opacity: .8 }
+.sbar .bat::after { content: ""; position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; width: 70%; background: var(--pink); border-radius: 2px }
+.scr { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 46px 16px 150px; scrollbar-width: none }
+.scr::-webkit-scrollbar { display: none }
+.hind { position: absolute; bottom: 8px; left: 50%; width: 130px; height: 5px; border-radius: 3px; background: var(--pink); opacity: .45; transform: translateX(-50%); z-index: 5 }
+.dock { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; background: var(--pglass); border: 1px solid var(--pline); border-radius: 18px; padding: 3px 12px; z-index: 80; box-shadow: 0 4px 14px rgba(0,0,0,.2) }
+.dkS, .dkP { width: 36px; height: 36px; border-radius: 9px; border: 0; display: grid; place-items: center; color: #fff; cursor: pointer }
+.dkS { background: var(--teal) } .dkP { background: var(--para) }
+.dkS svg, .dkP svg { width: 22px; height: 22px }
+
+/* List (iPhone home of Seedboard) */
+.hd { display: flex; align-items: center; min-height: 44px }
+.hd h1 { margin: 0; font-size: 31px; line-height: 1.1; font-weight: 700; flex: 1; color: var(--teal) }
+.grp { margin: 14px 0 4px; font-weight: 700; font-size: 13px; color: var(--pmuted) }
+.card { background: var(--pcard); border: 1px solid var(--pline); border-radius: 12px; overflow: hidden }
+.brow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 6px 12px; border: 0; background: none; text-align: left; cursor: pointer }
+.brow + .brow { border-top: 1px solid var(--pline) }
+.dotc { width: 12px; height: 12px; border-radius: 50%; flex: none }
+.bn { font-weight: 600; font-size: 16px; display: block }
+.bi { color: var(--pmuted); font-size: 12px; display: block }
+.thumb { width: 44px; height: 32px; border-radius: 6px; border: 1px solid var(--pline); background: var(--pbg); flex: none; display: grid; place-items: center; color: var(--pmuted) }
+.thumb svg { width: 20px; height: 20px }
+.none { color: var(--pmuted); text-align: center; margin: 24px 0 }
+.lbar { position: absolute; left: 12px; right: 12px; bottom: 66px; display: flex; gap: 8px; align-items: center; z-index: 20 }
+.sfield { flex: 1; display: flex; align-items: center; gap: 8px; min-height: 46px; border-radius: 23px; background: var(--pglass); border: 1px solid var(--pline); padding: 0 14px; color: var(--pmuted) }
+.sfield svg { width: 18px; height: 18px }
+.sfield input { flex: 1; border: 0; background: none; outline: none; font-size: 16px; min-width: 0 }
+.plusb { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--green); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.25) }
+.plusb svg { width: 24px; height: 24px; stroke-width: 2.4 }
+.setl { position: absolute; left: 0; right: 0; bottom: 44px; display: flex; justify-content: center; gap: 10px; border: 0; background: none; color: var(--pmuted); font-size: 12px; cursor: pointer; width: 100%; z-index: 19 }
+
+/* Sheets */
+.dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 50 }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 34px; border-radius: 22px 22px 0 0; background: var(--pbg); z-index: 55; overflow: hidden; box-shadow: 0 -8px 30px rgba(0,0,0,.3) }
+.sheet .scr { padding-top: 12px; padding-bottom: 40px }
+.top { display: flex; align-items: center; gap: 8px; min-height: 44px }
+.top .t { flex: 1; text-align: center; font-weight: 700; font-size: 17px }
+.hb { border: 0; background: none; font-weight: 600; font-size: 16px; cursor: pointer; padding: 6px 4px; border-radius: 8px; color: var(--teal) }
+.hb.fill { color: #fff; padding: 6px 14px; border-radius: 16px; background: var(--teal) }
+.hd2 { font-weight: 700; font-size: 14px; margin: 12px 0 5px; color: var(--pmuted) }
+.stgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.stc { border: 1px solid var(--pline); background: var(--pcard); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; text-align: left }
+.stc .pic { height: 62px; border-radius: 8px; background: var(--pbg); display: grid; place-items: center; color: var(--teal) }
+.stc .pic svg { width: 34px; height: 34px }
+.stc b { font-size: 14px }
+.pills { display: flex; gap: 6px; flex-wrap: wrap }
+.note { color: var(--pmuted); font-size: 12.5px; margin: 4px 0 }
+.shrow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; border: 0; background: none; padding: 0 12px; cursor: pointer; text-align: left }
+.shrow + .shrow { border-top: 1px solid var(--pline) }
+.ring { width: 22px; height: 22px; border-radius: 50%; border: 1.8px solid var(--pmuted); display: grid; place-items: center; flex: none; color: #fff }
+.ring svg { width: 14px; height: 14px; stroke-width: 2.6 }
+.ring.on { background: var(--teal); border-color: var(--teal) }
+.bigb { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 48px; border: 0; border-radius: 12px; color: #fff; font-weight: 600; font-size: 16px; cursor: pointer; background: var(--green) }
+.sq { width: 44px; height: 44px; border-radius: 8px; background: var(--pcard); border: 1px solid var(--pline); display: grid; place-items: center; color: var(--pmuted) }
+.apps { display: flex; gap: 14px; padding: 4px 2px }
+.app { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; font-size: 11px; cursor: pointer; width: 62px }
+.app .ai { width: 54px; height: 54px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: #8E8E93 }
+.app .ai svg { width: 26px; height: 26px }
+
+/* Board */
+.tb { position: absolute; left: 0; right: 0; top: 44px; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 12px; z-index: 10 }
+.tbn { flex: 1; text-align: center; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.link { border: 0; background: none; color: var(--teal); font-weight: 600; font-size: 15px; display: flex; align-items: center; cursor: pointer; padding: 6px 0 }
+.link svg { width: 20px; height: 20px }
+.ib { border: 0; background: none; color: var(--teal); padding: 6px; display: grid; cursor: pointer }
+.ib svg { width: 22px; height: 22px }
+.sendb { border: 0; border-radius: 16px; background: var(--paraD); color: #fff; font-weight: 600; font-size: 14px; min-height: 32px; padding: 0 14px; cursor: pointer; display: flex; align-items: center; gap: 4px }
+.ctx { position: absolute; left: 12px; right: 12px; top: 92px; min-height: 40px; border-radius: 12px; background: var(--pcard); border: 1px solid var(--pline); display: flex; align-items: center; gap: 2px; padding: 3px 6px; z-index: 12; box-shadow: 0 4px 14px rgba(0,0,0,.12); overflow: hidden }
+.ctx .cd { flex: 1; font-size: 12px; font-weight: 600; color: var(--pmuted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px }
+.cb { border: 0; background: none; font-weight: 600; font-size: 13px; padding: 6px 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px; color: var(--cc, var(--teal)); white-space: nowrap }
+.cb svg { width: 16px; height: 16px }
+.cb.fillb { background: var(--cc, var(--teal)); color: #fff }
+.cv { position: absolute; left: 16px; top: 136px; width: 358px; height: 470px; transform-origin: 0 0 }
+.cvw { position: absolute; inset: 0; pointer-events: none }
+.idea { position: absolute; height: 22px; line-height: 22px; font-size: 14px; font-weight: 600; white-space: nowrap; border: 0; background: none; padding: 0 2px; text-align: left; cursor: pointer; color: var(--pink); border-radius: 4px }
+.idea.sel { outline: 2px solid var(--green) }
+.idea.grey { color: var(--pmuted) }
+.idea input { width: 100%; border: 0; border-bottom: 2px solid var(--green); background: none; outline: none; font-size: 14px; font-weight: 600; height: 22px }
+.mmc { position: absolute; left: 0; width: 100px; height: 40px; border-radius: 12px; background: var(--teal); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; border: 0 }
+.mk { position: absolute; right: -9px; top: -7px; width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; color: #fff }
+.mk svg { width: 9px; height: 9px; stroke-width: 3 }
+.mk-ring { border: 2px solid var(--para); background: var(--pbg) }
+.mk-sent { background: var(--para) }
+.mk-done { background: var(--green) }
+.mk-cancel { background: #8E8E93 }
+.stk { position: absolute; width: 112px; min-height: 52px; padding: 6px 8px; border-radius: 4px; background: #F7E27A; color: #3A3200; font-size: 12px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,.2) }
+.stk.sel, .pict.sel { outline: 2px solid var(--green) }
+.pict { position: absolute; width: 112px; height: 80px; border-radius: 6px; background: var(--pcard); border: 1px solid var(--pline); display: grid; place-items: center; color: var(--pmuted) }
+.pict svg { width: 28px; height: 28px }
+.urdo { position: absolute; left: 12px; bottom: 124px; display: flex; gap: 2px; z-index: 10 }
+.tools { position: absolute; left: 12px; right: 12px; bottom: 52px; height: 52px; display: flex; justify-content: space-between; align-items: center; background: var(--pglass); border: 1px solid var(--pline); border-radius: 16px; padding: 0 6px; z-index: 10 }
+.tools button { border: 0; background: none; width: 36px; height: 44px; display: grid; place-items: center; color: var(--teal); cursor: pointer; padding: 0 }
+.tools button svg { width: 22px; height: 22px }
+.tools.tlt button { width: auto; flex: 1; display: flex; flex-direction: column; gap: 1px; font-size: 11px; font-weight: 600; justify-content: center }
+.tools.tlt button svg { width: 20px; height: 20px }
+.menu { position: absolute; z-index: 70; right: 12px; top: 90px; background: var(--pcard); border: 1px solid var(--pline); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.3); min-width: 220px; overflow: hidden }
+.menu button { display: block; width: 100%; border: 0; background: none; text-align: left; padding: 10px 14px; font-size: 15px; cursor: pointer }
+.menu button + button { border-top: 1px solid var(--pline) }
+
+/* Timeline */
+.tlWrap { position: absolute; left: 16px; top: 136px; width: 358px }
+.tlLine { font-size: 11.5px; font-weight: 600; min-height: 20px }
+.tlLine .lt { color: var(--red) }
+.tlHead { position: relative; height: 22px; margin-left: 92px; border-bottom: 1px solid var(--pline); font-size: 11px; color: var(--pmuted) }
+.tlHead span { position: absolute; top: 3px }
+.tlBody { position: relative }
+.tlRow { display: flex; align-items: center; width: 100%; height: 34px; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; border-bottom: 1px solid var(--pline) }
+.tlRow.isSel { background: rgba(31,138,138,.14) }
+.tlName { width: 92px; flex: none; font-size: 12px; font-weight: 600; overflow: hidden; white-space: nowrap; padding-right: 4px; display: flex; align-items: center; gap: 4px }
+.tlName.isLate { color: var(--red) }
+.tlName.isGrey { color: var(--pmuted) }
+.tlName .mk { position: static; width: 10px; height: 10px; flex: none }
+.tlTrack { position: relative; flex: 1; height: 100% }
+.tlBar { position: absolute; top: 8px; height: 18px; color: var(--c) }
+.tlPale { position: absolute; inset: 0; border-radius: 5px; background: var(--c); opacity: .35 }
+.tlDark { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--c) }
+.tlEnd { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; border-radius: 0 5px 5px 0; background: var(--red) }
+.tlTick { position: absolute; right: -15px; top: 1px; color: var(--c); display: grid }
+.tlTick svg { width: 14px; height: 14px; stroke-width: 3 }
+.tlToday { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); pointer-events: none; z-index: 2 }
+.tlBtns { position: absolute; left: 12px; right: 12px; bottom: 112px; display: flex; align-items: center; gap: 6px; z-index: 10 }
+.pill { border: 1.4px solid var(--teal); color: var(--teal); background: none; border-radius: 16px; min-height: 32px; padding: 0 14px; font-weight: 600; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 4px }
+.pill.red { border-color: var(--red); color: #fff; background: var(--red); padding: 0 10px }
+.pill svg { width: 16px; height: 16px }
+
+/* Send page and PARAGON */
+.ch { display: flex; gap: 10px; align-items: flex-start; width: 100%; background: var(--pcard); padding: 9px 12px; text-align: left; cursor: pointer; border-radius: 12px; margin-bottom: 6px; border: 1.5px solid var(--pline) }
+.ch.on { border-color: var(--para) }
+.rd { width: 20px; height: 20px; border-radius: 50%; border: 1.8px solid var(--pmuted); flex: none; margin-top: 1px; display: grid; place-items: center }
+.ch.on .rd { border-color: var(--para) }
+.ch.on .rd::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--para) }
+.ch b { display: block; font-size: 15px }
+.ch small { color: var(--pmuted); font-size: 12px }
+.fld { width: 100%; min-height: 40px; border-radius: 10px; border: 1px solid var(--pline); background: var(--pcard); padding: 0 12px; font-size: 16px; display: flex; align-items: center }
+.wbox { height: 168px; overflow: auto; border: 1px solid var(--pline); border-radius: 10px; background: var(--pcard); padding: 8px 10px; font-size: 13px }
+.wl { display: flex; gap: 8px; align-items: center; padding: 3px 0 }
+.tkb { width: 15px; height: 15px; border: 1.6px solid var(--para); border-radius: 4px; flex: none; display: grid; place-items: center; color: #fff }
+.tkb svg { width: 11px; height: 11px; stroke-width: 3.2 }
+.wl.isTicked .tkb { background: var(--para) }
+.wl.isTicked .wn { text-decoration: line-through; color: var(--pmuted) }
+.wd { margin-left: auto; color: var(--pmuted); font-size: 12px; white-space: nowrap }
+.wh { font-weight: 700; margin: 4px 0 }
+.wg { color: var(--pmuted) }
+.wp { height: 50px; border-radius: 8px; border: 1px solid var(--pline); background: var(--pbg); margin-bottom: 4px; display: grid; place-items: center; color: var(--pmuted); font-size: 11px }
+.wcount { font-weight: 600; font-size: 13px; margin: 6px 0 0; min-height: 18px; color: var(--paraD) }
+.sw { position: relative; width: 44px; height: 26px; border-radius: 13px; border: 0; background: var(--para); flex: none }
+.sw::after { content: ""; position: absolute; left: 20px; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff }
+.pgh { color: var(--para); font-size: 28px; font-weight: 700; margin: 4px 0 2px }
+.pgl { display: flex; gap: 10px; align-items: center; min-height: 40px; border-bottom: 1px solid var(--pline); font-size: 15px }
+.pgl .tkb { width: 20px; height: 20px; border-radius: 6px }
+.pgl .tkb svg { width: 14px; height: 14px }
+.pgl.isTicked .tkb { background: var(--para) }
+.pgl.isTicked .wn { text-decoration: line-through; color: var(--pmuted) }
+.pgl.isNew .wn::after { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--para); margin-left: 6px }
+.toast { position: absolute; left: 12px; right: 12px; bottom: 54px; border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 600; z-index: 90; color: #fff; display: flex; gap: 8px; align-items: center; animation: pop .3s; background: #2F6F4C }
+.toast.purple { background: var(--paraD) }
+.toast.red { background: #A8431A }
+.toast span { flex: 1 }
+.toast button { border: 1px solid rgba(255,255,255,.75); background: none; color: #fff; border-radius: 10px; padding: 3px 10px; font-weight: 700; cursor: pointer; flex: none }
+
+/* Web page, share sheet, home screen */
+.web { position: absolute; inset: 0; padding: 50px 16px 150px; background: var(--pcard) }
+.addr { height: 36px; border-radius: 10px; background: var(--pfield); display: grid; place-items: center; font-size: 14px; color: var(--pmuted); margin-bottom: 14px }
+.web h3 { margin: 0 0 8px; font-size: 22px }
+.gl { height: 9px; border-radius: 5px; background: var(--pline); margin: 8px 0 }
+.webimg { height: 110px; border-radius: 10px; background: var(--pbg); border: 1px solid var(--pline); margin: 12px 0; display: grid; place-items: center; color: var(--pmuted) }
+.webtb { position: absolute; left: 0; right: 0; bottom: 48px; height: 52px; border-top: 1px solid var(--pline); display: flex; justify-content: center; align-items: center; background: var(--pcard); z-index: 5 }
+.spr { position: absolute; inset: 0; padding: 66px 22px 0; background: linear-gradient(160deg, #cfe6e4, #dcd3f2); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .spr { background: linear-gradient(160deg, #123232, #251c3f) } }
+:root[data-theme="dark"] .spr { background: linear-gradient(160deg, #123232, #251c3f) }
+.sprg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 8px }
+.apt { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; font-size: 11px; color: var(--pink); cursor: pointer; height: 82px }
+.apt .sqi { width: 60px; height: 60px; border-radius: 14px; display: grid; place-items: center; color: #fff }
+.apt .sqi svg { width: 30px; height: 30px }
+.qadim { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.35) }
+.qam { position: absolute; z-index: 70; left: 20px; top: 258px; min-width: 250px; background: var(--pcard); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.35); overflow: hidden }
+.qam button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; text-align: left; padding: 0 14px; min-height: 44px; font-size: 15px; cursor: pointer }
+.qam button + button { border-top: 1px solid var(--pline) }
+.qam svg { width: 20px; height: 20px; color: var(--teal) }
+.spr .apt.up { position: relative; z-index: 65 }
+
+/* Highlight */
+.target { z-index: 2; animation: ring 1.6s ease-in-out infinite; border-radius: 9px }
+@keyframes ring { 0%,100% { box-shadow: 0 0 0 2px #E6B53F, 0 0 0 6px rgba(230,181,63,.35) } 50% { box-shadow: 0 0 0 2px #E6B53F, 0 0 0 11px rgba(230,181,63,0) } }
+@keyframes pop { from { transform: translateY(8px); opacity: .3 } to { transform: translateY(0); opacity: 1 } }
+
+/* Finish */
+.finish { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px }
+.finish h3 { font-family: var(--f-display); margin: 0 0 8px; font-size: 19px }
+.finish label { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); cursor: pointer }
+.finish input { width: 18px; height: 18px; accent-color: #17797A; margin-top: 2px; flex: none }
+
+@media (min-width: 1020px) {
+  .main { grid-template-columns: minmax(0,1fr) 402px; align-items: start }
+  .topnote, .finish { grid-column: 1 / -1 }
+  .coach { grid-column: 1; grid-template-columns: minmax(0,1fr); position: sticky; top: 16px }
+  .stagebox { grid-column: 2; grid-row: 2 }
+  .coach { grid-row: 2 }
+}
+@media (max-width: 820px) {
+  .wrap { grid-template-columns: minmax(0,1fr) }
+  .rail { position: static; flex-direction: row; flex-wrap: wrap; gap: 4px }
+  .brand { width: 100% }
+  .chap .n { display: none }
+  .railnote, .bar { width: 100% }
+  .coach { grid-template-columns: minmax(0,1fr) }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+</style>
+
+<div class="wrap">
+  <nav class="rail" id="rail" aria-label="Chapters"></nav>
+  <main class="main">
+    <p class="topnote">Practice copy, nothing changes on your phone.</p>
+    <section class="coach" id="coach" aria-live="polite"></section>
+    <div class="stagebox" id="stagebox"><div class="stage" id="stage"></div></div>
+    <section class="finish" id="finish" hidden></section>
+  </main>
+</div>
+
+<script>
+/* ---------- Icons: simple hand-drawn line shapes, 24-pt grid, stroke 1.9, round ends, no fill. ---------- */
+const ICON = {
+  home: 'M4 11 12 4l8 7 M6 10v9.5h12V10 M10 19.5v-5h4v5',
+  sprout: 'M12 20v-7 M12 13C12 9.5 9.5 7 5.5 7c0 3.5 2.5 6 6.5 6Z M12 15c0-3 2.2-5.5 6.5-5.5 0 3.3-2.5 5.5-6.5 5.5Z',
+  mind: 'M9 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0 M9 12h3 M12 12c2 0 2-5 5-5h3 M12 12c2 0 2 5 5 5h3',
+  timeline: 'M4 5.5h8v3H4Z M8 10.5h11v3H8Z M6 15.5h8v3H6Z',
+  send: 'M20.5 4 3.5 11l6 2.5L12 20Z M9.5 13.5 20.5 4',
+  share: 'M12 15V4 M8 8l4-4 4 4 M5 12v7h14v-7',
+  phone: 'M8 3.5h8a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19V5A1.5 1.5 0 0 1 8 3.5Z M11 17.8h2',
+  plus: 'M12 5v14M5 12h14', check: 'M5 12.5l5 5 9-10.5', dash: 'M7 12h10', cross: 'M7 7l10 10M17 7 7 17',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM20 20l-4-4',
+  chevL: 'M15 6l-6 6 6 6', chevR: 'M9 6l6 6-6 6',
+  more: 'M6 12h.01 M12 12h.01 M18 12h.01',
+  undo: 'M8 7 4 11l4 4 M4 11h9a5 5 0 0 1 0 10h-3',
+  redo: 'M16 7l4 4-4 4 M20 11h-9a5 5 0 0 0 0 10h3',
+  todo: 'M5 5h14v14H5Z M8.5 12l2.5 2.5 4.5-5',
+  catchup: 'M6 6l6 6-6 6 M13 6l6 6-6 6',
+  doc: 'M7 3.5h7l4 4v13H7Z M14 3.5v4h4 M9.5 12h6 M9.5 15.5h6',
+  box: 'M5 7h14v10H5Z', diamond: 'M12 4l8 8-8 8-8-8Z', arrow: 'M5 19 19 5 M10 5h9v9',
+  note: 'M5 5h14v10l-4 4H5Z M15 19v-4h4', text: 'M6 6h12 M12 6v12 M9 18h6', frame: 'M5 5h14v14H5Z M5 9h6',
+  picture: 'M4 5h16v14H4Z M4 16l5-5 4 4 3-3 4 4 M15 9.5h.01', pen: 'M4 20l4-1 10-10-3-3L5 16Z M13.5 6.5l3 3',
+  flag: 'M6 20V4 M6 5h11l-2 3.5L17 12H6', phase: 'M4 6h16 M4 6v4 M4 14h10 M4 18h6',
+  link: 'M9 15 15 9 M7 12l-1.5 1.5a3 3 0 0 0 4.2 4.2L11 16.5 M17 12l1.5-1.5a3 3 0 0 0-4.2-4.2L13 7.5',
+  compass: 'M3.5 12a8.5 8.5 0 1 0 17.0 0a8.5 8.5 0 1 0 -17.0 0 M15.2 8.8l-1.9 4.5-4.5 1.9 1.9-4.5Z',
+  list: 'M5 6h14 M5 12h14 M5 18h9', who: 'M5 6h4v4H5Z M15 6h4v4h-4Z M7 10v9 M17 10v9 M7 14h10',
+  flow: 'M4 5h6v4H4Z M14 15h6v4h-6Z M7 9v3h10v3', pros: 'M12 4v16 M5 8h4 M15 8h4 M17 6v4', plan: 'M4 7h6 M4 12h10 M4 17h14',
+};
+const icon = (n, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICON[n]}"/></svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => n <= 31 ? `${n} Jan` : `${n - 31} Feb`;
+
+/* ---------- The pretend app: made-up boards only ---------- */
+const BOARDS = [
+  { id: 'cabin', n: 'Summer cabin', col: '--b3', group: 'Pinned', info: 'Changed 2 days ago · 5 of 13 done', words: 'timber roof permit walls paint form fee', bt: 'mind' },
+  { id: 'garden', n: 'Garden plan', col: '--b6', group: 'Recent', info: 'Changed today · 6 ideas · 2 notes', words: 'tomatoes compost fence beds', bt: 'mind' },
+  { id: 'weekend', n: 'Weekend ideas', col: '--b2', group: 'Recent', info: 'Changed 3 days ago · 4 notes', words: 'hike picnic market', bt: 'mind' },
+  { id: 'tline', n: 'Summer cabin timeline', col: '--b4', group: 'Sent to PARAGON', info: 'Changed 1 week ago · 3 of 8 done · 8 bars', words: 'plans survey clearing walls roof paint', bt: 'tl' },
+];
+const STARTERS = [['st-blank', 'Blank board', 'plus'], ['st-mind', 'Mind map', 'mind'], ['st-flow', 'Flow', 'flow'], ['st-pros', 'Pros and cons', 'pros'],
+  ['st-plan', 'Plan in steps', 'plan'], ['st-timeline', 'Timeline', 'timeline'], ['st-who', 'Who does what', 'who']];
+const TOOLS = ['mind', 'box', 'diamond', 'arrow', 'note', 'text', 'frame', 'picture', 'pen'];
+
+const mkMM = o => Object.assign({ items: [
+    { n: 'Permit', y: 170, col: '--b1', kids: ['Form', 'Fee'] }, { n: 'Walls', y: 260, col: '--b2', kids: ['Timber'] },
+    { n: 'Roof', y: 350, col: '--b3', kids: [] }, { n: 'Paint', y: 430, col: '--b4', kids: [] }],
+  sel: null, todo: {}, adding: null, newText: '' }, o || {});
+const mkTL = o => Object.assign({ today: 15, sel: null, undo: null, bars: [
+  { id: 1, name: 'Permit', s: 1, e: 6, done: true, todo: true, col: '--b3', after: 0 },
+  { id: 2, name: 'Survey', s: 2, e: 8, done: true, todo: false, col: '--b4', after: 0 },
+  { id: 3, name: 'Clearing', s: 5, e: 10, done: true, todo: false, col: '--b2', after: 0 },
+  { id: 4, name: 'Plans', s: 4, e: 12, done: false, todo: true, col: '--b5', after: 0 },
+  { id: 5, name: 'Walls', s: 14, e: 24, done: false, todo: true, col: '--b1', after: 4 },
+  { id: 6, name: 'Roof', s: 25, e: 32, done: false, todo: true, col: '--b3', after: 5 },
+  { id: 7, name: 'Paint', s: 33, e: 42, done: false, todo: false, col: '--b6', after: 6 },
+  { id: 8, name: 'Move in', s: 43, e: 51, done: false, todo: false, col: '--b4', after: 7 }] }, o || {});
+const START = () => ({ screen: 'list', bt: 'mind', bname: 'Summer cabin', sheet: null, menu: false, q: '', mm: mkMM(), tl: mkTL(), send: { mode: 'note' }, sent: null,
+  dock: false, sh: { dest: 'new', sent: false }, plate: { as: 'Picture' }, arrived: false, qa: { open: false, pinned: ['Summer cabin', 'Garden plan'] }, toast: null });
+let S = START();
+const set = o => { S = Object.assign(START(), o); };
+const toastT = {};
+function toast(text, kind, btn, ms) {
+  S.toast = { text, kind: kind || '', btn: btn || '' }; renderStage(); clearTimeout(toastT.h);
+  toastT.h = setTimeout(() => { S.toast = null; renderStage(); }, ms || 2600);
+}
+const soon = () => toast('Practice copy: not drawn here.');
+
+/* ---------- Helpers ---------- */
+const markHTML = k => !k ? '' : `<span class="mk mk-${k}">${k === 'cancel' ? icon('dash', 'g') : k === 'ring' ? '' : icon('check', 'g')}</span>`;
+const isLate = b => !b.done && b.e < S.tl.today;
+function matches(b) {
+  const toks = S.q.toLowerCase().split(/\s+/).filter(Boolean); if (!toks.length) return true;
+  const w = (b.n + ' ' + b.words).toLowerCase().split(/\W+/); return toks.every(t => w.some(x => x.startsWith(t)));
+}
+function mkSent(m) { const T = S.tl; return { mode: m, tasks: m === 'inbox' ? T.bars.filter(b => b.todo && !b.done) : T.bars.slice() }; }
+const taskLine = b => `<div class="wl${b.done ? ' isTicked' : ''}"><span class="tkb">${b.done ? icon('check', 'g') : ''}</span><span class="wn">${esc(b.name)} (starts ${fmt(b.s)})</span><span class="wd">${fmt(b.e)}</span></div>`;
+const inboxLine = b => `<div class="wl"><span class="tkb"></span><span class="wn">${esc(b.name)} (starts ${fmt(b.s)}), due ${fmt(b.e)}</span></div>`;
+const rowLine = b => `<div class="wl wg">${esc(b.name)}: ${fmt(b.s)} – ${fmt(b.e)} 2027 · ${b.e - b.s + 1} days</div>`;
+const pic = '<div class="wp">picture of the timeline</div>';
+function boxHTML(m) {
+  const T = S.tl.bars;
+  if (m === 'note') return pic + T.map(rowLine).join('');
+  if (m === 'project') return pic + '<div class="wh">Tasks</div>' + T.map(taskLine).join('');
+  return T.filter(b => b.todo && !b.done).map(inboxLine).join('');
+}
+function countText(m) {
+  const T = S.tl.bars;
+  if (m === 'project') { const d = T.filter(b => b.done).length; return `${T.length} tasks${d ? ` (${d} done)` : ''}`; }
+  if (m === 'inbox') return `${T.filter(b => b.todo && !b.done).length} tasks`;
+  return '';
+}
+
+/* ---------- Screens ---------- */
+function listHTML() {
+  const shown = BOARDS.filter(matches);
+  const grp = g => { const l = shown.filter(b => b.group === g); return l.length ? `<div class="grp">${g}</div><div class="card">${l.map(b => `<button class="brow" data-act="open-board" data-id="${b.id}" data-t="row-${b.id}"><span class="dotc" style="background:var(${b.col})"></span><span style="flex:1;min-width:0"><span class="bn">${esc(b.n)}</span><span class="bi">${esc(b.info)}</span></span><span class="thumb">${icon(b.bt === 'tl' ? 'timeline' : 'mind', 'g')}</span></button>`).join('')}</div>` : ''; };
+  return `<div class="scr" data-keep="list"><div class="hd"><h1>Seedboard</h1></div>
+    ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON')}
+    ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}</div>
+    <button class="setl" data-act="soon">Settings <span>0.6</span></button>
+    <div class="lbar"><label class="sfield" data-t="search-field">${icon('search', 'g')}<input data-in="q" placeholder="Search boards" value="${esc(S.q)}" autocomplete="off" aria-label="Search boards"></label>
+      <button class="plusb" data-act="plus" data-t="plus" aria-label="New board">${icon('plus', 'g')}</button></div>`;
+}
+function startersHTML() {
+  return `<div class="dim"></div><div class="sheet" data-t="starters-sheet"><div class="scr"><div class="top"><button class="hb" data-act="sheet-cancel" data-t="sheet-cancel">Cancel</button><span class="t">New board</span><button class="hb" data-act="soon">Edit</button></div>
+    <div class="stgrid">${STARTERS.map(([id, nm, ic]) => `<button class="stc" data-act="st-pick" data-id="${id}" data-t="${id}"><span class="pic">${icon(ic, 'g')}</span><b>${nm}</b></button>`).join('')}</div></div></div>`;
+}
+function topBar(sendTxt) {
+  return `<div class="tb"><button class="link" data-act="back" data-t="back-btn">${icon('chevL', 'g')}Boards</button><span class="tbn">${esc(S.bname)}</span>
+    <button class="ib" data-act="more" data-t="more-btn" aria-label="More">${icon('more', 'g')}</button><button class="sendb" data-act="send-open" data-t="send">${icon('send', 'g')}Send</button></div>`;
+}
+function mmHTML() {
+  const M = S.mm; let svg = '', els = '';
+  const sel = n => M.sel === n ? ' sel' : '';
+  M.items.forEach(it => {
+    const kids = it.kids.slice(), add = M.adding === it.n, cnt = kids.length + (add ? 1 : 0);
+    svg += `<path d="M100 260C125 260 125 ${it.y} 150 ${it.y}H226" fill="none" stroke="var(${it.col})" stroke-width="3.4" stroke-linecap="round"/>`;
+    els += `<button class="idea${sel(it.n)}${M.todo[it.n] === 'done' || M.todo[it.n] === 'cancel' ? ' grey' : ''}" style="left:150px;top:${it.y - 23}px;width:76px" data-act="mm-sel" data-id="${esc(it.n)}" data-t="mm-${it.n}">${esc(it.n)}${markHTML(M.todo[it.n])}</button>`;
+    for (let i = 0; i < cnt; i++) {
+      const cy = it.y + (i - (cnt - 1) / 2) * 26;
+      svg += `<path d="M226 ${it.y}C244 ${it.y} 244 ${cy} 262 ${cy}H342" fill="none" stroke="var(${it.col})" stroke-width="2.4" stroke-linecap="round"/>`;
+      if (i < kids.length) els += `<button class="idea${sel(kids[i])}${M.todo[kids[i]] === 'done' ? ' grey' : ''}" style="left:262px;top:${cy - 23}px;width:80px;font-weight:500" data-act="mm-sel" data-id="${esc(kids[i])}" data-t="mm-${kids[i].replace(/\W/g, '')}">${esc(kids[i])}${markHTML(M.todo[kids[i]])}</button>`;
+      else els += `<div class="idea" style="left:262px;top:${cy - 23}px;width:80px"><input data-in="idea" data-t="idea-field" value="${esc(M.newText)}" placeholder="Idea" autocomplete="off" aria-label="New idea"></div>`;
+    }
+  });
+  const arr = S.arrived ? `<div class="stk sel" style="left:372px;top:150px">Roof ideas<br><span style="font-weight:400">cabin-ideas.example</span></div><div class="stk sel" style="left:372px;top:222px">Use cedar shingles</div><div class="pict sel" style="left:372px;top:296px">${icon('picture', 'g')}</div>` : '';
+  const style = S.arrived ? 'width:497px;transform:scale(.72)' : '';
+  const sd = M.sel ? ctxMM() : '';
+  return `${topBar()}${sd}<div class="cv" style="${style}"><svg class="cvw" width="497" height="470" viewBox="0 0 497 470">${svg}</svg><div class="mmc" style="top:240px" data-t="mm-center">${esc(S.bname)}</div>${els}${arr}</div>
+    <div class="urdo"><button class="ib" data-act="soon" aria-label="Undo">${icon('undo', 'g')}</button><button class="ib" data-act="soon" aria-label="Redo">${icon('redo', 'g')}</button></div>
+    <div class="tools" data-t="tools">${TOOLS.map(t => `<button data-act="soon" aria-label="${t}">${icon(t, 'g')}</button>`).join('')}</div>`;
+}
+function ctxMM() {
+  const n = S.mm.sel, has = S.mm.todo[n];
+  return `<div class="ctx" data-t="mm-bar"><span class="cd">${esc(n)}</span><button class="cb" style="--cc:var(--b1)" data-act="mm-under" data-t="bar-under">${icon('plus', 'g')}Idea under</button>
+    <button class="cb${has === 'ring' ? ' fillb' : ''}" style="--cc:var(--para)" data-act="mm-todo" data-t="bar-todo">${icon('todo', 'g')}To do</button><button class="cb" data-act="soon" aria-label="More">${icon('more', 'g')}</button></div>`;
+}
+function tlHTML() {
+  const T = S.tl, PX = 5, B = T.bars, d = B.filter(b => b.done).length, lt = B.filter(isLate).length, end = Math.max(...B.map(b => b.e));
+  const line = `${d} of ${B.length} done${lt ? ` · <span class="lt">${lt} late</span>` : ''} · ends ${fmt(end)}`;
+  const rows = B.map(b => {
+    const late = isLate(b), dark = b.done ? 0 : Math.max(0, Math.min(b.e, T.today) - b.s + 1) * PX;
+    return `<button class="tlRow${T.sel === b.id ? ' isSel' : ''}" data-act="tl-sel" data-id="${b.id}" data-t="tl-row-${b.id}"><span class="tlName${late ? ' isLate' : ''}${b.done ? ' isGrey' : ''}">${esc(b.name)}${b.todo ? `<span class="mk mk-${b.done ? 'sent' : 'ring'}" style="position:static;display:inline-grid">${b.done ? icon('check', 'g') : ''}</span>` : ''}</span>
+      <span class="tlTrack"><span class="tlBar" data-t="tl-bar-${b.id}" style="--c:var(${b.col});left:${(b.s - 1) * PX}px;width:${(b.e - b.s + 1) * PX}px"><i class="tlPale"></i>${dark ? `<i class="tlDark" style="width:${dark}px"></i>` : ''}${late ? '<i class="tlEnd"></i>' : ''}${b.done ? `<span class="tlTick">${icon('check', 'g')}</span>` : ''}</span></span></button>`;
+  }).join('');
+  const sel = B.find(b => b.id === T.sel);
+  const ctx = sel ? `<div class="ctx" data-t="tl-bar"><span class="cd">${esc(sel.name)}: ${fmt(sel.s)} – ${fmt(sel.e)}</span>
+    <button class="cb${sel.done ? ' fillb' : ''}" style="--cc:var(--teal)" data-act="tl-done" data-t="tl-done">${icon('check', 'g')}Done</button>
+    <button class="cb${sel.todo ? ' fillb' : ''}" style="--cc:var(--para)" data-act="tl-todo" data-t="tl-todo">${icon('todo', 'g')}To do</button><button class="cb" data-act="soon" aria-label="More">${icon('more', 'g')}</button></div>` : '';
+  return `${topBar()}${ctx}<div class="tlWrap"><div class="tlLine" data-t="tl-line">${line}</div>
+    <div class="tlHead"><span style="left:0">Jan</span><span style="left:${31 * PX}px">Feb</span></div>
+    <div class="tlBody">${rows}<i class="tlToday" data-t="tl-today" style="left:${92 + (T.today - 1) * PX + 2}px"></i></div></div>
+    <div class="urdo" style="bottom:166px"><button class="ib" data-act="tl-undo" data-t="tl-undo" aria-label="Undo">${icon('undo', 'g')}</button><button class="ib" data-act="soon" aria-label="Redo">${icon('redo', 'g')}</button></div>
+    <div class="tlBtns"><span style="flex:1"></span><button class="pill" data-act="soon">Today</button>${B.some(isLate) ? `<button class="pill red" data-act="catchup" data-t="catchup" aria-label="Catch up">${icon('catchup', 'g')}Catch up</button>` : ''}</div>
+    <div class="tools tlt"><button data-act="soon">${icon('timeline', 'g')}Bar</button><button data-act="soon">${icon('diamond', 'g')}Milestone</button><button data-act="soon">${icon('phase', 'g')}Phase</button><button data-act="soon">${icon('link', 'g')}Comes after</button></div>`;
+}
+function menuHTML() {
+  return `<div class="menu" data-t="more-menu">${['Rename', 'Pin to the top', 'Save as a starter', 'Paste a list as a mind map', 'Copy the board as text', 'Make a timeline of it…'].map(x => `<button data-act="soon">${x}</button>`).join('')}
+    <button data-act="m-share" data-t="m-share">Share…</button><button data-act="soon" data-t="m-print">Print…</button><button data-act="soon" style="color:var(--red)">Remove the board</button></div>`;
+}
+function sendHTML() {
+  const m = S.send.mode, C = (id, nm, sub) => `<button class="ch${m === id ? ' on' : ''}" data-act="ch" data-id="${id}" data-t="ch-${id}"><span class="rd"></span><span><b>${nm}</b><small>${sub}</small></span></button>`;
+  return `<div class="dim"></div><div class="sheet" data-t="send-sheet"><div class="scr" data-keep="send">
+    <div class="top"><button class="hb" style="color:var(--paraD)" data-act="sheet-cancel" data-t="sheet-cancel">Cancel</button><span class="t">Send to PARAGON</span><button class="sendb" data-act="send-go" data-t="send-go">${icon('send', 'g')}Send</button></div>
+    ${C('note', 'As a note', 'The picture and the words, in PARAGON’s Resources')}${C('project', 'As a project', 'Goes into PARAGON’s Projects')}${C('inbox', 'Only the to-do boxes', 'Each box marked To do goes to your Inbox as one task')}
+    ${m !== 'inbox' ? `<div class="hd2">Name</div><div class="fld">${esc(S.bname)}</div>` : ''}
+    <div class="hd2">What PARAGON gets</div><div class="wbox" data-t="wbox">${boxHTML(m)}</div><div class="wcount" data-t="wcount">${countText(m)}</div></div></div>`;
+}
+function paragonHTML() {
+  const s = S.sent || mkSent('project');
+  let body;
+  if (s.mode === 'inbox') body = `<div class="pgh">Inbox</div><div class="pgl"><span class="tkb"></span><span class="wn">Water the plants</span></div>${s.tasks.map(b => `<div class="pgl isNew"><span class="tkb"></span><span class="wn">${esc(b.name)} (starts ${fmt(b.s)}), due ${fmt(b.e)}</span></div>`).join('')}`;
+  else if (s.mode === 'note') body = `<div class="pgh" style="font-size:22px">${esc(S.bname)}</div><div class="note">Resources</div>${pic}${s.tasks.map(rowLine).join('')}`;
+  else body = `<div class="note">Projects</div><div class="pgh" style="font-size:22px">${esc(S.bname)}</div>${s.tasks.map(b => `<div class="pgl${b.done ? ' isTicked' : ''}" data-t="pg-${b.id}"><span class="tkb">${b.done ? icon('check', 'g') : ''}</span><span class="wn">${esc(b.name)} (starts ${fmt(b.s)})</span><span class="wd">${fmt(b.e)}</span></div>`).join('')}`;
+  return `<div class="scr" data-keep="pg" style="background:var(--pbg)">${body}</div>`;
+}
+function webHTML() {
+  return `<div class="web"><div class="addr">cabin-ideas.example</div><h3>Roof ideas for a small cabin</h3><div class="gl"></div><div class="gl" style="width:80%"></div><div class="webimg">${icon('picture', 'g')}</div><div class="gl"></div><div class="gl" style="width:60%"></div></div>
+    <div class="webtb"><button class="ib" data-act="web-share" data-t="web-share" aria-label="Share" style="padding:10px">${icon('share', 'g')}</button></div>`;
+}
+function shsheetHTML() {
+  const tile = (id, nm, ic, bg) => `<button class="app" data-act="sh-pick" data-id="${id}" data-t="sh-${id}"><span class="ai" style="background:${bg}">${icon(ic, 'g')}</span>${nm}</button>`;
+  return `<div class="dim"></div><div class="sheet" style="top:420px"><div class="scr"><div style="font-weight:700">Roof ideas for a small cabin</div><div class="note">cabin-ideas.example</div>
+    <div class="apps">${tile('mail', 'Mail', 'doc', '#8E8E93')}${tile('notes', 'Notes', 'list', '#8E8E93')}${tile('files', 'Files', 'box', '#8E8E93')}${tile('seedboard', 'Seedboard', 'sprout', 'var(--teal)')}</div></div></div>`;
+}
+function sharetoHTML() {
+  const D = S.sh.dest, r = (id, t, dot, i) => `<button class="shrow" data-act="sh-dest" data-id="${id}" data-t="sh-ring-${i}"><span class="ring${D === id ? ' on' : ''}">${D === id ? icon('check', 'g') : ''}</span><span class="dotc" style="background:var(${dot})"></span><b style="font-weight:600">${esc(t)}</b></button>`;
+  return `<div class="dim"></div><div class="sheet" data-t="shareto"><div class="scr"><div class="top"><button class="hb" data-act="sheet-cancel" data-t="sheet-cancel">Cancel</button><span class="t">Send to Seedboard</span><button class="hb fill" data-act="sh-send" data-t="sh-send">Send</button></div>
+    <div class="card" style="padding:10px;margin-bottom:10px"><b>A link, words and 1 picture</b><div class="note">Roof ideas for a small cabin</div><div style="display:flex;gap:6px;margin-top:6px"><span class="sq">${icon('picture', 'g')}</span></div></div>
+    <button class="bigb" style="${D === 'new' ? '' : 'opacity:.55'}" data-act="sh-dest" data-id="new" data-t="sh-new">${icon('plus', 'g')}New board</button>
+    <div class="grp">Pinned</div><div class="card">${r('Summer cabin', 'Summer cabin', '--b3', 0)}</div>
+    <div class="grp">Recent</div><div class="card">${r('Garden plan', 'Garden plan', '--b6', 1)}${r('Weekend ideas', 'Weekend ideas', '--b2', 2)}</div></div></div>`;
+}
+function plateHTML() {
+  const A = S.plate.as, seg = (id) => `<button class="pill${A === id ? ' red' : ''}" style="${A === id ? 'background:var(--teal);border-color:var(--teal)' : ''}" data-act="plate-as" data-id="${id}" data-t="as-${id.toLowerCase()}">${id}</button>`;
+  const says = { Picture: 'The board’s picture, in the day look on white.', PDF: 'The whole board on one page, sharp at any size.', Words: 'The board’s words, as a small text file.' }[A];
+  return `<div class="dim"></div><div class="sheet" style="top:330px" data-t="plate"><div class="scr"><div class="top"><button class="hb" data-act="sheet-cancel" data-t="sheet-cancel">Cancel</button><span class="t">Share</span><span style="width:50px"></span></div>
+    <div class="hd2">What</div><div class="pills"><button class="pill" style="background:var(--teal);color:#fff">Whole board</button></div>
+    <div class="hd2">As</div><div style="display:flex;gap:6px">${['Picture', 'PDF', 'Words'].map(seg).join('')}</div>
+    <p class="note" data-t="plate-says">${says}</p><button class="bigb" data-act="plate-share" data-t="plate-share">Share</button></div></div>`;
+}
+function springHTML() {
+  const filler = [['doc', '#6B8FD6'], ['compass', '#D68A6B'], ['list', '#6BB59A'], ['box', '#B58AD6'], null, null, ['doc', '#D6B46B'], ['compass', '#6BA8D6'], ['list', '#D66B8A'], ['box', '#7AAE6B'], ['doc', '#8E8E93'], ['list', '#6B8FD6']];
+  const q = S.qa, lines = [['qa-new', 'New board', 'plus']]; if (q.pinned.length < 2) lines.push(['qa-mind', 'New mind map', 'mind']);
+  lines.push(['qa-clip', 'New board from the clipboard', 'doc']); q.pinned.slice(0, 2).forEach((p, i) => lines.push(['qa-p' + i, p, 'sprout']));
+  const tiles = filler.map((f, i) => i === 4 ? `<button class="apt${q.open ? ' up' : ''}" data-hold="1" data-act="app-tap" data-t="app-seed"><span class="sqi" style="background:var(--teal)">${icon('sprout', 'g')}</span>Seedboard</button>`
+    : i === 5 ? `<button class="apt" data-act="app-tap"><span class="sqi" style="background:var(--para)">${icon('todo', 'g')}</span>PARAGON</button>`
+    : `<button class="apt" data-act="app-tap"><span class="sqi" style="background:${f[1]}">${icon(f[0], 'g')}</span></button>`).join('');
+  return `<div class="spr"><div class="sprg">${tiles}</div></div>${q.open ? `<div class="qadim"></div><div class="qam" data-t="qa-menu">${lines.map(([id, t, ic]) => `<button data-act="qa-pick" data-id="${esc(t)}" data-t="${id}">${icon(ic, 'g')}${esc(t)}</button>`).join('')}</div>` : ''}`;
+}
+function dockHTML() {
+  return S.dock ? `<div class="dock"><button class="dkS" data-act="dock-sb" data-t="dock-sb" aria-label="Seedboard">${icon('sprout', 'g')}</button><button class="dkP" data-act="switch-pg" data-t="dock-pg" aria-label="PARAGON">${icon('todo', 'g')}</button></div>` : '<div class="hind"></div>';
+}
+function renderStage() {
+  const st = document.getElementById('stage'), scrolls = renderStage.sc = renderStage.sc || {};
+  st.querySelectorAll('[data-keep]').forEach(e => { scrolls[e.dataset.keep] = e.scrollTop; });
+  const ae = document.activeElement, inId = ae && st.contains(ae) ? ae.dataset.in : null, sel = inId && ae.selectionStart != null ? [ae.selectionStart, ae.selectionEnd] : null;
+  let body = '', over = '';
+  if (S.screen === 'list') body = listHTML(); else if (S.screen === 'board') body = S.bt === 'tl' ? tlHTML() : mmHTML();
+  else if (S.screen === 'paragon') body = paragonHTML(); else if (S.screen === 'web') body = webHTML(); else if (S.screen === 'spring') body = springHTML();
+  if (S.sheet === 'starters') over = startersHTML(); else if (S.sheet === 'send') over = sendHTML(); else if (S.sheet === 'shsheet') over = shsheetHTML();
+  else if (S.sheet === 'shareto') over = sharetoHTML(); else if (S.sheet === 'plate') over = plateHTML();
+  const tb = S.toast ? `<div class="toast ${S.toast.kind}" data-t="toast"><span>${esc(S.toast.text)}</span>${S.toast.btn ? `<button data-act="switch-pg" data-t="toast-btn">${S.toast.btn}</button>` : ''}</div>` : '';
+  st.innerHTML = `<div class="sbar"><span>9:41</span><span class="bat"></span></div>${body}${S.menu ? menuHTML() : ''}${over}${tb}${S.screen === 'spring' ? '' : dockHTML()}`;
+  st.querySelectorAll('[data-keep]').forEach(e => { e.scrollTop = scrolls[e.dataset.keep] || 0; });
+  if (inId) { const nf = st.querySelector(`[data-in="${inId}"]`); if (nf) { nf.focus(); try { nf.setSelectionRange(sel[0], sel[1]); } catch (e) {} } }
+  markTarget();
+}
+
+/* ---------- Actions inside the pretend iPhone ---------- */
+const stage = document.getElementById('stage');
+let holdT = null, held = false;
+stage.addEventListener('pointerdown', ev => {
+  held = false; if (ev.button !== 0) return; const el = ev.target.closest('[data-hold]'); if (!el) return;
+  holdT = setTimeout(() => { held = true; openQA(); }, 520);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(n => stage.addEventListener(n, () => clearTimeout(holdT)));
+stage.addEventListener('contextmenu', ev => { if (!ev.target.closest('[data-hold]')) return; ev.preventDefault(); clearTimeout(holdT); if (!held) openQA(); });
+function openQA() { S.qa.open = true; renderStage(); emit('qa-open'); }
+stage.addEventListener('input', ev => {
+  const k = ev.target.dataset.in; if (!k) return; const v = ev.target.value;
+  if (k === 'q') { S.q = v; renderStage(); emit('search', { q: v.trim(), n: BOARDS.filter(matches).length }); }
+  else if (k === 'idea') S.mm.newText = v;
+});
+stage.addEventListener('keydown', ev => {
+  if (!ev.target.dataset || ev.target.dataset.in !== 'idea') return;
+  if (ev.key === 'Enter') { const t = S.mm.newText.trim(), it = S.mm.items.find(x => x.n === S.mm.adding); if (!t || !it) return; ev.preventDefault();
+    it.kids.push(t); S.mm.adding = null; S.mm.newText = ''; S.mm.sel = t; renderStage(); emit('idea-added', t); }
+  else if (ev.key === 'Escape') { S.mm.adding = null; S.mm.newText = ''; ev.stopPropagation(); renderStage(); }
+});
+stage.addEventListener('click', ev => {
+  if (held) { held = false; return; }
+  const el = ev.target.closest('[data-act]');
+  if (!el) { let ch = false; if (S.menu) { S.menu = false; ch = true; } if (S.qa.open) { S.qa.open = false; ch = true; } if (ch) renderStage(); return; }
+  act(el.dataset.act, el.dataset.id, el);
+});
+function openBoard(id) {
+  const b = BOARDS.find(x => x.id === id); S.bname = b.n; S.bt = b.bt; S.screen = 'board'; S.mm = mkMM(); S.tl = mkTL(); renderStage(); emit('board-open', id);
+}
+function catchUp() {
+  const T = S.tl, old = Math.max(...T.bars.map(b => b.e)); T.undo = JSON.parse(JSON.stringify(T.bars)); const moved = new Set();
+  T.bars.forEach(b => { if (isLate(b)) { b.e = T.today; moved.add(b.id); } });
+  T.bars.forEach(b => { const p = T.bars.find(x => x.id === b.after); if (p && !b.done && b.s <= p.e) { const d = p.e + 1 - b.s; b.s += d; b.e += d; moved.add(b.id); } });
+  const end = Math.max(...T.bars.map(b => b.e));
+  toast(`${moved.size} bars moved. The plan now ends ${fmt(end)} (was ${fmt(old)}).`, '', '', 5000); emit('catchup', moved.size);
+}
+function act(a, id, el) {
+  switch (a) {
+    case 'soon': case 'app-tap': soon(); break;
+    case 'open-board': openBoard(id); break;
+    case 'back': S.screen = 'list'; S.menu = false; renderStage(); break;
+    case 'plus': S.sheet = 'starters'; renderStage(); emit('starters'); break;
+    case 'sheet-cancel': S.sheet = null; renderStage(); break;
+    case 'st-pick': if (id === 'st-mind') { S.sheet = null; S.screen = 'board'; S.bt = 'mind'; S.bname = 'Mind map'; S.mm = mkMM({ items: [] }); renderStage(); emit('starter', id); }
+      else if (id === 'st-timeline') { S.sheet = null; S.screen = 'board'; S.bt = 'tl'; S.bname = 'Timeline'; S.tl = mkTL(); renderStage(); emit('starter', id); }
+      else toast('Practice copy: this starter is not drawn here. Mind map and Timeline are.'); break;
+    case 'more': S.menu = !S.menu; renderStage(); emit('more'); break;
+    case 'm-share': S.menu = false; S.sheet = 'plate'; S.plate = { as: 'Picture' }; renderStage(); emit('plate'); break;
+    case 'plate-as': S.plate.as = id; renderStage(); emit('as', id); break;
+    case 'plate-share': toast('The device’s own share choice opens here: AirDrop, Mail, Messages, Save to Files and the rest.', '', '', 3600); emit('shared-out', S.plate.as); break;
+    case 'send-open': S.sheet = 'send'; S.menu = false; renderStage(); emit('send-open'); break;
+    case 'ch': S.send.mode = id; renderStage(); emit('mode', id); break;
+    case 'send-go': { const m = S.send.mode; S.sent = mkSent(m); S.sheet = null; S.dock = true;
+      const nm = S.bname, n = S.sent.tasks.length;
+      toast(m === 'inbox' ? `${n} tasks are on the way to the PARAGON Inbox. They appear there when you switch to PARAGON.` : `“${nm}” is in PARAGON under ${m === 'project' ? 'Projects' : 'Resources'}.`, 'purple', m === 'inbox' ? '' : 'Open', 6000);
+      emit('sent', m); break; }
+    case 'switch-pg': S.screen = 'paragon'; S.toast = null; S.sheet = null; S.dock = true; if (!S.sent) S.sent = mkSent('project'); renderStage(); emit('paragon', S.sent.mode); break;
+    case 'dock-sb': if (S.screen === 'web' && S.sh.sent) { S.screen = 'board'; S.bt = 'mind'; S.bname = 'Summer cabin'; S.mm = mkMM(); S.arrived = true; S.dock = false; toast('3 things came in from Share.', '', '', 5000); emit('arrived'); }
+      else if (S.screen === 'paragon') { S.screen = 'board'; S.bt = 'tl'; S.bname = 'Summer cabin timeline'; renderStage(); } break;
+    case 'mm-sel': S.mm.sel = id; renderStage(); emit('select', id); break;
+    case 'mm-under': { const it = S.mm.items.find(x => x.n === S.mm.sel); if (!it) { soon(); break; } S.mm.adding = it.n; S.mm.newText = ''; renderStage(); { const f = document.querySelector('#stage [data-in="idea"]'); if (f) f.focus(); } emit('idea-under'); break; }
+    case 'mm-todo': { const n = S.mm.sel; if (!n) break; if (S.mm.todo[n]) { delete S.mm.todo[n]; renderStage(); } else { S.mm.todo[n] = 'ring'; renderStage(); emit('todo', n); } break; }
+    case 'tl-sel': S.tl.sel = +id; renderStage(); emit('tl-sel', S.tl.bars.find(b => b.id === +id).name); break;
+    case 'tl-done': { const b = S.tl.bars.find(x => x.id === S.tl.sel); if (!b) break; b.done = !b.done; renderStage(); if (b.done) emit('tl-done', b.name); break; }
+    case 'tl-todo': { const b = S.tl.bars.find(x => x.id === S.tl.sel); if (b) { b.todo = !b.todo; renderStage(); } break; }
+    case 'catchup': catchUp(); break;
+    case 'tl-undo': if (S.tl.undo) { S.tl.bars = S.tl.undo; S.tl.undo = null; S.toast = null; renderStage(); } else soon(); break;
+    case 'web-share': S.sheet = 'shsheet'; renderStage(); emit('web-share'); break;
+    case 'sh-pick': if (id === 'seedboard') { S.sheet = 'shareto'; renderStage(); emit('sh-open'); } else toast('Practice copy: only Seedboard is drawn here.'); break;
+    case 'sh-dest': S.sh.dest = id; renderStage(); emit('sh-pick', id); break;
+    case 'sh-send': S.sheet = null; S.sh.sent = true; S.dock = true; toast('It is on the board the next time you open Seedboard.', '', '', 4000); emit('sh-sent'); break;
+    case 'qa-pick': { S.qa.open = false; const b = BOARDS.find(x => x.n === id);
+      if (b && S.qa.pinned.includes(id)) { openBoard(b.id); emit('qa-pick', id); } else { renderStage(); toast('Practice copy: this would open Seedboard.'); emit('qa-pick', id); } break; }
+    default: break;
+  }
+}
+
+/* ---------- Lessons (see, try, check). Every step's setup does a full reset of what that step needs. ---------- */
+const board = o => set(Object.assign({ screen: 'board', bt: 'mind', bname: 'Summer cabin' }, o || {}));
+const tlb = o => set(Object.assign({ screen: 'board', bt: 'tl', bname: 'Summer cabin timeline' }, o || {}));
+const withSent = (m, o) => { tlb(Object.assign({ dock: true }, o || {})); S.sent = mkSent(m); };
+const LESSONS = [
+  { title: 'Home and starters', icon: 'home', steps: [
+    { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the title they stand in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and when you last changed it. A board that went to PARAGON also says how far it is there, for example 5 of 13 done.', target: 'row-cabin', setup: () => set({}) },
+    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.6, is in the last line.', target: 'plus', setup: () => set({}) },
+    { kind: 'try', head: 'Find a board by a word', text: 'Tap the search field and type "timber". It is not in any board’s name. It is written on a board.', target: 'search-field', setup: () => set({}), wait: 'search', when: d => d.q.length >= 5 && d.n === 1, ok: 'Only "Summer cabin" is left. Search finds a board by its name and by every word written on it. Type two words and only boards with both are shown.' },
+    { kind: 'try', head: 'Start a new board', text: 'Tap the round green +.', target: 'plus', setup: () => set({}), wait: 'starters', ok: 'The starters come up from the bottom, two in a row.' },
+    { kind: 'try', head: 'Pick a starter', text: 'Seven starters come with Seedboard: Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timeline and Who does what. Tap "Mind map".', hint: 'On the iPad and the Mac the same starters stand in one strip that slides sideways, under the small heading STARTERS on the home page. Your boards are right below it.', target: 'st-mind', setup: () => set({ sheet: 'starters' }), wait: 'starter', when: d => d === 'st-mind', ok: 'A new board takes the name of its start: "Mind map". It opens at once.' },
+    { kind: 'check', head: 'Quick check', text: 'What does the round green + at the bottom of the list do?', answers: ['It opens the starters, to make a new board', 'It sends the board to PARAGON', 'It opens Settings'], right: 0, ok: 'Right. On the iPad and the Mac the green New board at the top of the list does the same.' },
+  ]},
+  { title: 'Mind map', icon: 'mind', steps: [
+    { kind: 'look', head: 'The words sit on the line', text: 'A board is an endless sheet. This one is a mind map. Each line comes to the foot of an idea and runs on under its words, in the branch’s colour. The lines get thinner as the map goes deeper. At the top right is the purple Send button: everything that leads to PARAGON is purple.', target: 'mm-Permit', setup: () => board() },
+    { kind: 'try', head: 'Choose an idea', text: 'Tap "Permit".', target: 'mm-Permit', setup: () => board(), wait: 'select', when: d => d === 'Permit', ok: 'A green line goes round it, and a bar shows what you can do with it.' },
+    { kind: 'try', head: 'An idea under it', text: 'Press "Idea under" in the bar. Type a few words and press Return.', target: 'bar-under', setup: () => board({ mm: mkMM({ sel: 'Permit' }) }), wait: 'idea-added', on: { 'idea-under': 'idea-field' }, ok: 'The new idea hangs under Permit. With a keyboard, Tab makes an idea under the one you are typing, and Return makes the next one beside it.' },
+    { kind: 'try', head: 'Mark it To do', text: 'Tap "Walls", then press "To do" in the bar.', target: 'mm-Walls', setup: () => board(), wait: 'todo', on: { select: 'bar-todo' }, ok: 'A small hollow purple ring appears at its corner: a to-do that is still only here. Press To do again to take it away.' },
+    { kind: 'look', head: 'Four marks', text: 'Hollow purple ring: to do, not sent yet. Purple with a white tick: it is in PARAGON. Green with a white tick: it is done in PARAGON, and its words turn grey. Grey with a white dash: it was cancelled in PARAGON. Here Permit is in PARAGON, Walls is done, Roof is hollow and Paint was cancelled. Seedboard learns this by reading the note in PARAGON.', target: 'mm-Walls', setup: () => board({ mm: mkMM({ todo: { Permit: 'sent', Walls: 'done', Roof: 'ring', Paint: 'cancel' } }) }) },
+    { kind: 'check', head: 'Quick check', text: 'A hollow purple ring on an idea means what?', answers: ['To do, and not sent to PARAGON yet', 'Done in PARAGON', 'Cancelled in PARAGON'], right: 0, ok: 'Right. Hollow means still only here. Full means PARAGON has it, and the colour says how it stands.' },
+  ]},
+  { title: 'Timeline board', icon: 'timeline', steps: [
+    { kind: 'look', head: 'A plan over time', text: 'A timeline has one row for each thing to do, and a bar from its first day to its last. The names stand at the left, the dates at the top, and a red line marks Today. A bar that is done is paler, with a tick at its end. "Plans" is late: its last day is before today and it is not done. So it has a red end and a red name.', target: 'tl-bar-4', setup: () => tlb() },
+    { kind: 'look', head: 'The progress line', text: 'One line counts the plan: "3 of 8 done · 1 late · ends 20 Feb". Bars and milestones are counted. "1 late" shows only when something is late. The end is the last day of the latest bar.', target: 'tl-line', setup: () => tlb() },
+    { kind: 'try', head: 'Choose a bar', text: 'Tap the bar "Walls".', target: 'tl-bar-5', setup: () => tlb(), wait: 'tl-sel', when: d => d === 'Walls', ok: 'The bar for the chosen row shows its dates in words. It offers Name, Colour, Dates, Done, To do, Duplicate and Remove. On the iPhone it is one row, so some buttons show only a mark or wait behind the … button.' },
+    { kind: 'try', head: 'Mark a bar Done', text: 'Tap the late bar "Plans", then press "Done" in the bar.', target: 'tl-bar-4', setup: () => tlb(), wait: 'tl-done', when: d => d === 'Plans', on: { 'tl-sel': 'tl-done' }, ok: 'The bar turns paler, a tick stands at its end, and its name turns grey. The line now says "4 of 8 done · ends 20 Feb": the late bar is gone from the count. Press Done again to take the mark off.' },
+    { kind: 'try', head: 'Catch up', text: 'While something is late, a red button stands right after Today (on the iPhone only its mark). Press the red Catch up.', target: 'catchup', setup: () => tlb(), wait: 'catchup', ok: 'It stretches the late bar to end today and pushes along what comes after it. A line says "5 bars moved. The plan now ends 22 Feb (was 20 Feb)." Done bars are not touched. One Undo takes it all back.' },
+    { kind: 'look', head: 'Done in PARAGON counts too', text: 'A bar whose task is ticked off in PARAGON is drawn done here too. It counts as done in the line, it is never late, and Catch up leaves it alone.', target: 'tl-line', setup: () => tlb() },
+    { kind: 'check', head: 'Quick check', text: 'A bar’s last day was last week and it is not done. How does it look?', answers: ['A red end and a red name', 'Paler, with a tick at its end', 'A grey name and nothing else'], right: 0, ok: 'Right. Done turns a bar paler with a tick. Late is red.' },
+  ]},
+  { title: 'Send to PARAGON', icon: 'send', steps: [
+    { kind: 'try', head: 'Press Send', text: 'This timeline is called "Summer cabin timeline". Press the purple Send button at the top right.', target: 'send', setup: () => tlb(), wait: 'send-open', ok: 'The Send page opens. Cancel closes it and changes nothing.' },
+    { kind: 'look', head: 'Three ways to send', text: 'You choose one of three. As a note: the board’s picture and its words as a tidy outline, in PARAGON’s Resources. As a project: it goes into PARAGON’s Projects. Only the to-do boxes: each box marked To do goes to your PARAGON Inbox as one task.', target: 'ch-note', setup: () => tlb({ sheet: 'send' }) },
+    { kind: 'try', head: 'As a project', text: 'Tap "As a project".', target: 'ch-project', setup: () => tlb({ sheet: 'send' }), wait: 'mode', when: d => d === 'project', ok: 'On a timeline each bar becomes a task, in date order. PARAGON has no start day, so a bar goes with its last day as the due date and its first day in words, for example "Walls (starts 14 Jan)".' },
+    { kind: 'look', head: 'New in 0.6: done bars arrive ticked', text: 'The box "What PARAGON gets" shows the very words Send will write. A bar you marked Done goes to PARAGON already ticked: a filled ticked box, its words struck through. Permit, Survey and Clearing are done here. The line under the box counts them: "8 tasks (3 done)".', target: 'wbox', setup: () => tlb({ sheet: 'send', send: { mode: 'project' } }) },
+    { kind: 'try', head: 'Only the to-do boxes', text: 'Tap "Only the to-do boxes".', target: 'ch-inbox', setup: () => tlb({ sheet: 'send', send: { mode: 'project' } }), wait: 'mode', when: d => d === 'inbox', ok: 'The box shows only what would go to the Inbox: Plans, Walls and Roof, each with its days. Permit is marked To do too, but it is done. New in 0.6: a done bar is never sent to the Inbox.' },
+    { kind: 'try', head: 'Send it as a project', text: 'As a project is picked. Press Send.', target: 'send-go', setup: () => tlb({ sheet: 'send', send: { mode: 'project' } }), wait: 'sent', when: d => d === 'project', ok: 'The page closes, and a purple line says where it went, with a small Open button. It stays 6 seconds.' },
+    { kind: 'try', head: 'Switch to PARAGON', text: 'Press "Open" in the purple line, or tap the PARAGON icon at the bottom.', target: 'dock-pg', setup: () => { withSent('project'); S.toast = { text: '“Summer cabin timeline” is in PARAGON under Projects.', kind: 'purple', btn: 'Open' }; }, wait: 'paragon', when: d => d === 'project', ok: 'The project is there. Permit, Survey and Clearing arrived already ticked, with their words struck through. Nothing had to be ticked by hand.' },
+    { kind: 'try', head: 'Only the to-do boxes, sent', text: 'Only the to-do boxes is picked. Press Send.', target: 'send-go', setup: () => tlb({ sheet: 'send', send: { mode: 'inbox' } }), wait: 'sent', when: d => d === 'inbox', ok: 'The purple line says "3 tasks are on the way to the PARAGON Inbox." It has no Open button. They appear there when you switch to PARAGON (PARAGON 340 or newer).' },
+    { kind: 'try', head: 'Switch to PARAGON again', text: 'Tap the PARAGON icon at the bottom.', target: 'dock-pg', setup: () => { withSent('inbox'); S.toast = { text: '3 tasks are on the way to the PARAGON Inbox. They appear there when you switch to PARAGON.', kind: 'purple', btn: '' }; }, wait: 'paragon', when: d => d === 'inbox', ok: 'The three to-dos are in the Inbox, with their days: Plans, Walls and Roof. Permit did not go, because it was done.' },
+    { kind: 'check', head: 'Quick check', text: 'Permit is marked To do and it is also Done. You send only the to-do boxes. What reaches the Inbox?', answers: ['Nothing for Permit: a done bar is never sent to the Inbox', 'Permit, already ticked', 'Permit, with a dash'], right: 0, ok: 'Right. If you send the board as a project instead, Permit goes over already ticked.' },
+  ]},
+  { title: 'Share in and out', icon: 'share', steps: [
+    { kind: 'try', head: 'From another app', text: 'Here is a web page in another app. Seedboard is in the Share button of every app on the iPhone, the iPad and the Mac. Press the Share button at the bottom.', target: 'web-share', setup: () => set({ screen: 'web' }), wait: 'web-share', ok: 'The device’s own share choice comes up.' },
+    { kind: 'try', head: 'Choose Seedboard', text: 'Tap "Seedboard".', target: 'sh-seedboard', setup: () => set({ screen: 'web', sheet: 'shsheet' }), wait: 'sh-open', ok: 'A page called Send to Seedboard opens.' },
+    { kind: 'look', head: 'Send to Seedboard', text: 'The page shows what came, for example "A link, words and 1 picture". It takes words, a link and up to 10 pictures. Below stands New board, in full green and picked at first, and then your Pinned and Recent boards, each with a ring.', target: 'sh-new', setup: () => set({ screen: 'web', sheet: 'shareto' }) },
+    { kind: 'try', head: 'Choose a board', text: 'Tap the ring of "Summer cabin", then press Send.', target: 'sh-ring-0', setup: () => set({ screen: 'web', sheet: 'shareto' }), wait: 'sh-sent', on: { 'sh-pick': 'sh-send' }, ok: 'A grey line says it is on the board the next time you open Seedboard. Nothing is lost on the way.' },
+    { kind: 'try', head: 'Open Seedboard', text: 'Tap the Seedboard icon at the bottom.', target: 'dock-sb', setup: () => set({ screen: 'web', dock: true, sh: { dest: 'Summer cabin', sent: true } }), wait: 'arrived', ok: 'The words became a sticky note, the link a sticky note with the page’s title and address, and the picture a picture. They lie in a free column to the right of what is on the board, so nothing is covered. They are chosen, and one Undo takes them away.' },
+    { kind: 'try', head: 'Share a board out', text: 'Press the … button at the top, then choose "Share…".', target: 'more-btn', setup: () => board(), wait: 'plate', on: { more: 'm-share' }, ok: 'A plate comes up from the bottom. Under What, "Whole board" is picked. Under As you choose Picture, PDF or Words.' },
+    { kind: 'try', head: 'Make it a PDF', text: 'Under As, tap "PDF".', target: 'as-pdf', setup: () => board({ sheet: 'plate' }), wait: 'as', when: d => d === 'PDF', ok: 'The grey line says what you get. A PDF is one file named after the board, drawn as lines and real letters, so it stays sharp and its words can be found. Print… is in More too: it prints the whole board on one page.' },
+    { kind: 'try', head: 'Share it', text: 'Press the green "Share" button.', target: 'plate-share', setup: () => board({ sheet: 'plate', plate: { as: 'PDF' } }), wait: 'shared-out', ok: 'The device’s own share choice opens: AirDrop, Mail, Messages, Save to Files and the rest. If you leave it without sharing, the plate stays, so you can try another form.' },
+  ]},
+  { title: 'New in 0.6: the app icon', icon: 'phone', steps: [
+    { kind: 'try', head: 'Press and hold the icon', text: 'This is a Home Screen. Press and hold the Seedboard icon. With a mouse, right-click it.', target: 'app-seed', setup: () => set({ screen: 'spring' }), wait: 'qa-open', ok: 'Four lines come up: New board, New board from the clipboard, and your two pinned boards.' },
+    { kind: 'look', head: 'New board from the clipboard', text: 'It follows the same rule as New board from text: a real list becomes a mind map, paragraphs become one text, and a single line becomes one sticky note. With no words on the clipboard you get a blank board and the line "There were no words to paste. This is a blank board."', target: 'qa-clip', setup: () => set({ screen: 'spring', qa: { open: true, pinned: ['Summer cabin', 'Garden plan'] } }) },
+    { kind: 'try', head: 'Open a pinned board', text: 'Tap "Summer cabin" in the list.', target: 'qa-p0', setup: () => set({ screen: 'spring', qa: { open: true, pinned: ['Summer cabin', 'Garden plan'] } }), wait: 'qa-pick', when: d => d === 'Summer cabin', ok: 'The board opens at once, without the list.' },
+    { kind: 'look', head: 'With fewer than two pinned', text: 'Pin only one board and a line comes back: New mind map. It shows only when fewer than two boards are pinned. It takes your own version of the Mind map starter.', target: 'qa-mind', setup: () => set({ screen: 'spring', qa: { open: true, pinned: ['Summer cabin'] } }) },
+    { kind: 'check', head: 'Quick check', text: 'Two boards are pinned. Which four lines does the icon show?', answers: ['New board, New board from the clipboard and the two pinned boards', 'New board, New mind map, New board from the clipboard and one pinned board', 'Only the two pinned boards and Settings'], right: 0, ok: 'Right. New mind map comes back when fewer than two boards are pinned.' },
+  ]},
+];
+
+/* ---------- Tour engine (reusable) ---------- */
+let ci = 0, si = 0, solved = false, targetOff = false;
+const store = { get(k) { try { return localStorage.getItem(k) } catch { return null } }, set(k, v) { try { localStorage.setItem(k, v) } catch {} } };
+let doneChapters = new Set(JSON.parse(store.get('seedboardtour-done') || '[]'));
+
+function emit(name, data) {
+  const st = LESSONS[ci]?.steps[si]; if (!st || solved || st.kind !== 'try') return;
+  if (st.on && st.on[name]) { markTarget(st.on[name]); }
+  if ((st.wait === name || st.alt === name) && (!st.when || st.when(data))) succeed(st.ok);
+}
+function succeed(msg) {
+  solved = true; targetOff = true; const fb = document.getElementById('fb'); if (fb) { fb.textContent = '✓ ' + msg; fb.className = 'feedback'; }
+  const nx = document.getElementById('next'); if (nx) { nx.disabled = false; nx.focus({ preventScroll: true }); }
+  markTarget();
+}
+let curTarget = null;
+function markTarget(t) {
+  if (t !== undefined) curTarget = t;
+  document.querySelectorAll('.target').forEach(e => e.classList.remove('target'));
+  if (!curTarget || targetOff) return;
+  const q = n => document.querySelector(`#stage [data-t="${CSS.escape(n)}"]`);
+  // If the thing to tap is out of sight (a stray tap closed a page), point at the way back to it.
+  const first = LESSONS[ci] && LESSONS[ci].steps[si] && LESSONS[ci].steps[si].target;
+  const el = q(curTarget) || (first && first !== curTarget ? q(first) : null) || (S.sheet ? q('sheet-cancel') : S.screen === 'board' ? q('back-btn') : null);
+  if (el) {
+    el.classList.add('target');
+    const sc = el.closest('.scr');
+    if (sc) { const r = el.getBoundingClientRect(), s = sc.getBoundingClientRect(), k = document.getElementById('stagebox').clientWidth / 390;
+      if (r.top < s.top + 40 * k || r.bottom > s.bottom - 110 * k) sc.scrollTop += (r.top - s.top - 120 * k) / k; }
+  }
+}
+function renderRail() {
+  const total = LESSONS.reduce((n, l) => n + l.steps.length, 0);
+  const before = LESSONS.slice(0, ci).reduce((n, l) => n + l.steps.length, 0) + si;
+  document.getElementById('rail').innerHTML = `<div class="brand"><span class="logo">${icon('sprout')}</span><div><h1>Seedboard Tour</h1><small>Learn the app in about 15 minutes</small></div></div>
+    ${LESSONS.map((l, i) => `<button class="chap ${i === ci ? 'cur' : ''} ${doneChapters.has(i) ? 'done' : ''}" data-ch="${i}">${icon(l.icon)}<span>${l.title}</span><span class="n">${doneChapters.has(i) ? '✓' : l.steps.length + ' steps'}</span></button>`).join('')}
+    <button class="chap ${ci === LESSONS.length ? 'cur' : ''}" data-ch="${LESSONS.length}">${icon('todo')}<span>Now on your iPhone</span></button>
+    <div class="bar"><i style="width:${Math.round(100 * Math.min(before, total) / total)}%"></i></div>
+    <p class="railnote">Practice copy, nothing changes on your phone. Based on AMS Seedboard 0.6.</p>`;
+}
+document.getElementById('rail').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) goChapter(+b.dataset.ch); });
+
+function goChapter(i) { ci = i; si = 0; S = START(); renderStep(); }
+function renderStep() {
+  renderRail();
+  const coach = document.getElementById('coach'), fin = document.getElementById('finish');
+  if (ci >= LESSONS.length) { renderFinish(); coach.hidden = true; return; }
+  coach.hidden = false; fin.hidden = true;
+  const L = LESSONS[ci], st = L.steps[si];
+  solved = st.kind === 'look'; targetOff = false;
+  clearTimeout(toastT.h); held = false;
+  S = START(); if (st.setup) st.setup();
+  const kindName = { look: 'Look', try: 'Try it', check: 'Check' }[st.kind];
+  coach.innerHTML = `<div class="eyebrow">${icon(L.icon)} ${esc(L.title)} <span class="kind">· ${kindName} · step ${si + 1} of ${L.steps.length}</span></div>
+    <div><h2>${esc(st.head)}</h2><p>${esc(st.text)}</p>${st.hint ? `<p style="color:var(--muted);font-size:13px">${esc(st.hint)}</p>` : ''}</div>
+    <div class="btns">${ci + si > 0 ? '<button class="btn ghost" id="back">Back</button>' : ''}<button class="btn main-b" id="next" ${solved ? '' : 'disabled'}>${si === L.steps.length - 1 ? 'Finish chapter' : 'Next'}</button></div>
+    ${st.kind === 'check' ? `<div class="answers">${st.answers.map((a, i) => `<button class="ans" data-a="${i}">${esc(a)}</button>`).join('')}</div>` : ''}
+    <p class="feedback" id="fb"></p>`;
+  curTarget = st.target || null;
+  renderStage();
+  if (st.kind === 'check') coach.querySelectorAll('.ans').forEach(b => b.onclick = () => {
+    const fb = document.getElementById('fb');
+    if (+b.dataset.a === st.right) { coach.querySelectorAll('.ans').forEach(x => x.disabled = true); b.classList.add('right'); succeed(st.ok); }
+    else { b.classList.add('wrong'); fb.textContent = 'Not quite. Try another answer.'; fb.className = 'feedback no'; }
+  });
+  document.getElementById('next').onclick = next;
+  const bk = document.getElementById('back'); if (bk) bk.onclick = back;
+}
+function next() {
+  const L = LESSONS[ci];
+  if (si < L.steps.length - 1) { si++; renderStep(); return; }
+  doneChapters.add(ci); store.set('seedboardtour-done', JSON.stringify([...doneChapters]));
+  goChapter(ci + 1);
+}
+function back() { if (si > 0) { si--; renderStep(); } else if (ci > 0) { ci--; si = LESSONS[ci].steps.length - 1; renderStep(); } }
+
+function renderFinish() {
+  const fin = document.getElementById('finish'); fin.hidden = false;
+  S = START(); curTarget = null; renderStage();
+  const items = ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and the version 0.6 in the last line.',
+    'Press the green +, pick Mind map, type a middle idea, press Return for a branch and Tab for an idea under it. Look at where the words sit on the line.',
+    'Choose an idea and press To do. The hollow purple ring appears at its corner.',
+    'Press the green +, pick Timeline. Choose a bar and press Done. Check the line at the top, for example "3 of 8 done · 1 late · ends 20 Feb". If a bar is late, press the red Catch up.',
+    'Send the timeline to PARAGON as a project. Switch to PARAGON and check that the bar you marked Done is already ticked, with its words struck through. The box "What PARAGON gets" counts it, for example "5 tasks (1 done)".',
+    'Send only the to-do boxes and switch to PARAGON. The to-dos are in the Inbox. A bar that is done is not there.',
+    'In another app press Share, choose Seedboard, pick a board and press Send. Open Seedboard: the words, the link or the picture are on that board.',
+    'In a board press the … button, then Share…. Choose PDF and press Share.',
+    'Press and hold the Seedboard icon on your Home Screen. Check the four lines: New board, New board from the clipboard and your two pinned boards.'];
+  let ticks = JSON.parse(store.get('seedboardtour-real') || '[]');
+  fin.innerHTML = `<h3>Now on your iPhone</h3>${items.map((t, i) => `<label><input type="checkbox" id="real-${i}" ${ticks.includes(i) ? 'checked' : ''}><span>${esc(t)}</span></label>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn main-b" id="again">Start the tour again</button></div>`;
+  fin.querySelectorAll('input').forEach((c, i) => c.onchange = () => { ticks = ticks.filter(x => x !== i); if (c.checked) ticks.push(i); store.set('seedboardtour-real', JSON.stringify(ticks)); });
+  document.getElementById('again').onclick = () => goChapter(0);
+}
+
+/* Fit the 390 x 760 pretend iPhone into its box */
+function fit() { const box = document.getElementById('stagebox'); document.getElementById('stage').style.transform = `scale(${box.clientWidth / 390})`; }
+new ResizeObserver(fit).observe(document.getElementById('stagebox'));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && (S.sheet || S.menu || S.qa.open)) { S.sheet = null; S.menu = false; S.qa.open = false; renderStage(); return; }
+  if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') { const n = document.getElementById('next'); if (n && !n.disabled && document.activeElement !== n) n.click(); }
+});
+goChapter(0); fit();
+</script>
