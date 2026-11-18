@@ -11,6 +11,8 @@ public struct Viewport: Equatable, Sendable {
     public var size: CGSize = .zero
     /// The owner slid, scrolled or zoomed the board.
     public private(set) var movedByOwner = false
+    /// A reopened board holds the spot it was left at while its room settles (pick 26, Remember.swift).
+    public internal(set) var pin: ViewPin?
 
     public init() {}
 
@@ -57,6 +59,7 @@ public struct Viewport: Equatable, Sendable {
     /// The board is shown whole again only while the owner has not moved it.
     public mutating func resized(to newSize: CGSize, showing all: CGRect?) {
         size = newSize
+        if holdPin() { return }
         guard !movedByOwner, newSize.width > 10 else { return }
         fit(all)
     }

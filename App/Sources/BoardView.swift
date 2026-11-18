@@ -158,6 +158,8 @@ struct BoardView: View {
         #endif
         .toolbar { toolbar }
         .focusedSceneObject(session)
+        // File ▸ Rename… and Remove Board… open the same two questions as the More button (Menus.swift).
+        .modifier(MenuAsks(rename: { newName = session.board.title; renaming = true }, remove: { removing = true }))
         // When the Send page closes, the board has the keys again.
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
@@ -555,7 +557,8 @@ extension UIResponder {
 }
 #endif
 
-/// The Board menu on the Mac and with a keyboard on the iPad or iPhone.
+/// The Board menu on the Mac and with a keyboard on the iPad or iPhone. (File, Edit ▸ Duplicate,
+/// View ▸ zoom and Insert are `SeedMenus` in Menus.swift.)
 struct BoardCommands: Commands {
     @FocusedObject private var session: BoardSession?
 
@@ -574,10 +577,9 @@ struct BoardCommands: Commands {
             .disabled(session == nil || (session?.redoCount == 0 && session?.editing == nil))
         }
         CommandMenu("Board") {
-            Button("Copy the Chosen Things") { session?.duplicateSelection() }
-                .keyboardShortcut("d", modifiers: .command)
             Button("To Do") { session?.toggleTodo() }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(session?.selection.isEmpty ?? true)
             Button("Line Up") { session?.lineUp() }.disabled((session?.tidyCount ?? 0) < 2)
             Button("Even Gaps") { session?.evenGaps() }.disabled((session?.tidyCount ?? 0) < 3)
             Button("Same Size") { session?.sameSize() }.disabled((session?.sizeCount ?? 0) < 2)
@@ -590,13 +592,7 @@ struct BoardCommands: Commands {
                 if let text { session?.paste(text) }
             }
             .keyboardShortcut("v", modifiers: [.command, .shift])
-            Divider()
-            Button("Bigger") { if let session { session.zoom(to: session.scale * 1.25) } }
-                .keyboardShortcut("+", modifiers: .command)
-            Button("Smaller") { if let session { session.zoom(to: session.scale / 1.25) } }
-                .keyboardShortcut("-", modifiers: .command)
-            Button("Show the Whole Board") { session?.fit() }
-                .keyboardShortcut("0", modifiers: .command)
+            .disabled(session == nil || session?.readOnly == true || session?.editing != nil)
         }
     }
 }

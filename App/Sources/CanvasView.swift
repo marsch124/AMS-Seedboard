@@ -128,6 +128,8 @@ struct CanvasView: View {
         .focused($keys)
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in handleKey(press) }
+        // The menus' side of the keys: Delete, Select All, Space with a drag (Menus.swift).
+        .modifier(BoardKeys(session: session, has: keys))
         // A press the system took away (an edge swipe, a call, leaving the app) never ends by itself.
         .onChange(of: phase) { _, _ in resetPress() }
         .onDisappear { resetPress() }

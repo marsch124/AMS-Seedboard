@@ -270,7 +270,7 @@ struct BoardList: View {
 }
 
 /// The ways to begin a board.
-private struct StarterPicker: View {
+struct StarterPicker: View {
     var wide = false
     let pick: (Starter) -> Void
 
