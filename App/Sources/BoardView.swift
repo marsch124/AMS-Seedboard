@@ -187,6 +187,8 @@ struct BoardView: View {
         .modifier(MenuAsks(rename: { newName = session.board.title; renaming = true }, remove: { removing = true }))
         // Doors (0.5): "‹ name" to go back, the page "Door to a board…", the name of a new board (DoorPage.swift).
         .modifier(DoorHost(session: session))
+        // The Share plate (SharePlate.swift).
+        .modifier(ShareHost(session: session))
         // When the Send page closes, the board has the keys again.
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
@@ -275,9 +277,8 @@ struct BoardView: View {
                         .accessibilityIdentifier("more.makeTimeline")
                 }
                 if !session.board.isEmpty {
-                    ShareLink(item: BoardPNG(board: session.board), preview: SharePreview(session.board.title)) {
-                        Text("Share a picture…")
-                    }
+                    // "Share…" (and "Print…" on iPhone and iPad): SharePlate.swift.
+                    ShareLines(session: session)
                 }
                 if !session.starterDraft {
                     Divider()

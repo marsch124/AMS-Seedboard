@@ -77,13 +77,8 @@ struct SeedMenus: Commands {
             }
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(session == nil || session?.starterDraft == true)
-            Button("Share a Picture…") {
-                if let session {
-                    session.commitEdit()
-                    if !SharePicture.show(session.board) { model.say("The picture could not be made.") }
-                }
-            }
-            .disabled(session?.board.isEmpty ?? true)
+            Button("Share…") { if let session { ShareDesk.shared.ask(session) } }
+                .disabled(session?.board.isEmpty ?? true)
             // 0.5: a new timeline board from this board's ideas and shapes (TimelineOfIt.swift).
             Button("Make a Timeline of It…") {
                 if let session { model.makeTimeline(of: session) }
@@ -99,6 +94,9 @@ struct SeedMenus: Commands {
             Button("Remove Board…") { desk.remove.send() }
                 .disabled(session == nil || session?.starterDraft == true)
         }
+
+        // File ▸ Print… ⌘P (BoardPaper.swift).
+        CommandGroup(replacing: .printItem) { PrintLine(session: session) }
 
         // Edit. On the Mac, Delete and Select All are the system's own lines: the board answers them
         // while it has the keys (`BoardKeys`), a text field answers them while words are typed.

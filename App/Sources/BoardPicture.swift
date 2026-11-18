@@ -10,7 +10,9 @@ import UIKit
 /// The board as a picture (always the day look, on white), for PARAGON and for sharing.
 @MainActor
 enum BoardPicture {
-    static func png(of board: Board) -> Data? {
+    /// `fromFiles` (Share): the pictures on the board are read from their stored files for this one drawing
+    /// and are not kept in memory afterwards (BoardPaper.swift).
+    static func png(of board: Board, fromFiles: Bool = false) -> Data? {
         var fitted = board
         Lettering.fit(&fitted, facts: MapFacts(board))
         let facts = MapFacts(fitted)
@@ -29,6 +31,8 @@ enum BoardPicture {
         .frame(width: box.width, height: box.height)
         .environment(\.colorScheme, .light)
 
+        if fromFiles { PaperPictures.begin() }
+        defer { if fromFiles { PaperPictures.end() } }
         let renderer = ImageRenderer(content: view)
         // Twice the size for sharp words; a very large board is kept at its plain size.
         renderer.scale = max(box.width, box.height) > 3000 ? 1 : 2

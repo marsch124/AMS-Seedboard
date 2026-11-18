@@ -170,7 +170,7 @@ struct SequencePainter {
         let name = colourName(who)
         let shape = Path(roundedRect: box, cornerRadius: 9)
         var body = ctx
-        if !paint.night { body.addFilter(.shadow(color: .black.opacity(0.07), radius: 2, x: 0, y: 1)) }
+        if !paint.night && !PaperPictures.onPaper { body.addFilter(.shadow(color: .black.opacity(0.07), radius: 2, x: 0, y: 1)) }
         // The board's colour first, so the dashed line never shows through the soft plate.
         body.fill(shape, with: .color(back))
         ctx.fill(shape, with: .color(paint.soft(name)))

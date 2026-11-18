@@ -335,7 +335,7 @@ struct BoardPainter {
             }
             // By day a shape lies a little above the board: a faint shadow, one point down.
             var body = ctx
-            if !paint.night { body.addFilter(liftShadow(of: item, rest: Motion.rest)) }
+            if !paint.night && !PaperPictures.onPaper { body.addFilter(liftShadow(of: item, rest: Motion.rest)) }
             if item.colour.isEmpty {
                 body.fill(shape, with: .color(paint.plate))
                 ctx.stroke(shape, with: .color(paint.edge), lineWidth: 1.4)
@@ -349,7 +349,7 @@ struct BoardPainter {
         case .note:
             let paper = Path(roundedRect: f, cornerRadius: 4)
             var shade = ctx
-            shade.addFilter(liftShadow(of: item, rest: Motion.Shadow(dark: paint.night ? 0.35 : 0.14, radius: 3, down: 1.5)))
+            if !PaperPictures.onPaper { shade.addFilter(liftShadow(of: item, rest: Motion.Shadow(dark: paint.night ? 0.35 : 0.14, radius: 3, down: 1.5))) }
             shade.fill(paper, with: .color(paint.note(item.colour)))
             align = .leading
             anchorLeading = true
