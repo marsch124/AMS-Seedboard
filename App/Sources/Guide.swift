@@ -547,7 +547,7 @@ enum Guide {
             "Settings, Your boards: a second line while pictures wait, 1 picture is not in iCloud yet. It is safe on this device. or, for several, for example, 3 pictures are not in iCloud yet. They are safe on this device. It is checked every 3 seconds while something waits. At the start of the app, a picture that never reached iCloud's folder (a write that failed) is put there again. Not seen with real iCloud yet.",
             "New board, the choice of starters: its heading. Before: it read Start with, in small letters at the left. Now: it reads Starters, large, in the middle. Edit stays small at the right.",
             // Names
-            "Who does what: the example person in the starter, and in the sample boards, is now called Alex. Before: Anna. Nothing else about the starter changed.",
+            "Who does what: the example person in the starter, and in the sample boards, has a new, neutral name: Alex. Nothing else about the starter changed.",
             // Never losing a board
             "Never losing a board: a board changed in 0.4 is stored in a fourth format, because of the crop. A device still on 0.3 or older can look at such a board but not change it, until that device is updated. This is the same rule as before.",
             "Limits: the room kept for a caption is a careful guess. On a very narrow picture with long words the real words can take one line more, and the last line can reach a little past the edge that Show the whole board measures. Line up and Even gaps look at the picture only, not at its caption.",
