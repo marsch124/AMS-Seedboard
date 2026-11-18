@@ -227,11 +227,27 @@ public extension Board {
             .map(\.element)
     }
 
-    /// The number of every message: 1, 2, 3 … from the top. Notes and sections are not counted.
+    /// True when a message stands between two names that are on this board. A message from a file
+    /// made elsewhere may name someone who is not there: it is not drawn, so it is not counted or
+    /// written out either (it stays in the file).
+    func isDrawnMessage(_ step: Item) -> Bool {
+        guard step.kind == .message, let from = step.from, let to = step.to else { return false }
+        return item(from)?.kind == .who && item(to)?.kind == .who
+    }
+
+    /// The number of every message: 1, 2, 3 … from the top. Notes, sections and messages that cannot be
+    /// drawn are not counted.
     var messageNumbers: [UUID: Int] {
         var numbers: [UUID: Int] = [:]
-        for step in steps where step.kind == .message { numbers[step.id] = numbers.count + 1 }
+        for step in steps where isDrawnMessage(step) { numbers[step.id] = numbers.count + 1 }
         return numbers
+    }
+
+    /// The box a small screen opens a "Who does what" board on: the first name, where the layout puts it
+    /// (the items' own places mean nothing here). nil when there is no name.
+    var sequenceMainFrame: CGRect? {
+        guard let first = whos.first else { return nil }
+        return sequenceLayout().boxes[first.id]
     }
 
     /// The place a name has in the row, 0 at the left.
@@ -522,7 +538,7 @@ public extension Board {
     /// Short words for the list: "3 people · 3 messages · 1 note".
     var sequenceCountLine: String {
         func count(_ kind: ItemKind, _ one: String, _ many: String) -> String? {
-            let n = items.filter { $0.kind == kind }.count
+            let n = items.filter { $0.kind == kind && (kind != .message || isDrawnMessage($0)) }.count
             return n == 0 ? nil : (n == 1 ? "1 \(one)" : "\(n) \(many)")
         }
         let parts = [count(.who, "person", "people"), count(.message, "message", "messages"),
@@ -607,7 +623,7 @@ public extension ParagonExport {
 
     /// True when at least one message carries the To do tick: then only the ticked ones become tasks.
     static func sequenceTicksDecide(_ board: Board) -> Bool {
-        board.items.contains { $0.kind == .message && $0.todo }
+        board.items.contains { board.isDrawnMessage($0) && $0.todo }
     }
 
     /// The steps for a project: every message a line in its order, a section a `###` heading.

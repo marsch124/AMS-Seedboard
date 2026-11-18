@@ -216,9 +216,9 @@ extension BoardSession {
 
     /// Up and down arrow keys: the step above or below is chosen (from a name: the first step).
     func selectStep(by step: Int) {
-        let steps = board.steps
+        let steps = board.steps.filter { $0.kind != .message || board.isDrawnMessage($0) }
         guard !steps.isEmpty else { return }
-        let here = single.flatMap { board.stepIndex(of: $0.id) }
+        let here = single.flatMap { one in steps.firstIndex { $0.id == one.id } }
         let next = min(max((here ?? (step > 0 ? -1 : steps.count)) + step, 0), steps.count - 1)
         selection = [steps[next].id]
         selectedLink = nil

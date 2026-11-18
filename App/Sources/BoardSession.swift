@@ -492,7 +492,7 @@ final class BoardSession: ObservableObject {
 
     func selectAll() {
         selectedLink = nil
-        selection = Set(board.items.filter { !facts.hidden.contains($0.id) }.map(\.id))
+        selection = Set(board.items.filter { !facts.hidden.contains($0.id) && (!board.isSequence || $0.kind != .message || board.isDrawnMessage($0)) }.map(\.id))
     }
 
     func deleteSelection() {
@@ -711,7 +711,7 @@ final class BoardSession: ObservableObject {
             return
         }
         // The iPhone opens a board readable (75 % or more, on the main idea) instead of whole and tiny.
-        place.resized(to: size, showing: board.bounds, readableAround: Finger.phone ? board.mainThing?.frame : nil)
+        place.resized(to: size, showing: board.bounds, readableAround: Finger.phone ? (board.isSequence ? board.sequenceMainFrame : board.mainThing?.frame) : nil)
     }
 
     /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.

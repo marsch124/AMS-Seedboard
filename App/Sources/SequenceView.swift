@@ -128,6 +128,8 @@ struct SequenceView: View {
             }
             #if os(macOS)
             .background(ScrollCatcher(session: session))
+            #else
+            .background(TrackpadCatcher(session: session))
             #endif
             .onAppear { session.placeIfNeeded(geo.size) }
             .onChange(of: geo.size) { _, new in session.resized(new) }
