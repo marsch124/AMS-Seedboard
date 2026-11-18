@@ -67,6 +67,10 @@ simulator "Seedboard iPhone 18 Pro", by day, the same sample boards in both:
 - `thumb-today.png` — `-sampleData`
 - `thumb-new.png` — `-thumbRow -sampleData`
 
+Seen in the pictures (both looked at): the same 12 sample boards; today 11 whole rows fit and the 12th is cut
+by the Settings line, with the row all 12 fit; the row sits between the list and the "Settings" line, well clear
+of the home indicator (its middle is about 92 points above the screen's lower edge on the iPhone 18 Pro).
+
 ## NOT built (phase 2, after his pick)
 
 - Making it the real layout (no launch word) or taking it out.
