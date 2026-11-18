@@ -81,6 +81,7 @@ struct TouchLayer: UIViewRepresentable {
 
     func updateUIView(_ view: TouchSurface, context: Context) {
         view.session = session
+        view.hold.session = session
         view.onPress = onPress
         view.ink = ink
     }
@@ -101,6 +102,10 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     /// Takes no touches at all: only the scrolling of a trackpad or a mouse wheel.
     private let scroll = UIPanGestureRecognizer()
     private let hover = UIHoverGestureRecognizer()
+    /// A trackpad's or mouse's secondary click: the menu of what lies under the pointer (BoardMenu.swift).
+    private let secondary = UITapGestureRecognizer()
+    /// Press and hold: a still press of half a second opens the same menu (BoardMenu.swift).
+    let hold = HoldWatch()
 
     /// One press as it goes on.
     private final class Track {
@@ -171,7 +176,11 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
 
         hover.addTarget(self, action: #selector(hovered(_:)))
 
-        for recogniser in [fingerPress, pencilPress, inkStroke, twoPan, pinch, scroll, hover] as [UIGestureRecognizer] {
+        secondary.allowedTouchTypes = [pointer]
+        secondary.buttonMaskRequired = .secondary
+        secondary.addTarget(self, action: #selector(secondaryClicked(_:)))
+
+        for recogniser in [fingerPress, pencilPress, inkStroke, twoPan, pinch, scroll, hover, secondary] as [UIGestureRecognizer] {
             recogniser.delegate = self
             recogniser.cancelsTouchesInView = false
             recogniser.delaysTouchesEnded = false
@@ -244,6 +253,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     /// What one finger (or the pointer) had begun is over: the board is told once, with the word to
     /// take a small shove back, and hears no more of that press. A finger's stroke is not kept.
     private func giveUpFingers() {
+        hold.cancel()
         if fingerTrack.live, !fingerTrack.ignored {
             fingerTrack.ignored = true
             send(.lost(takeBack: true), fingerPress, fingerTrack)
@@ -291,19 +301,27 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
             track.live = true
             track.start = recogniser.location(in: self)
             track.last = track.start
-            if !track.ignored { send(.began, recogniser, track) }
+            if !track.ignored {
+                send(.began, recogniser, track)
+                hold.began(at: track.start, kind: track.kind)
+            }
         case .changed:
             guard track.live, !track.ignored else { return }
+            // While the press-and-hold menu is open, a trembling finger does not move anything.
+            guard hold.moved(to: recogniser.location(in: self)) else { return }
             track.last = recogniser.location(in: self)
             send(.moved, recogniser, track)
         case .ended:
+            // A press that opened the menu is not a press on the thing as well.
+            let held = hold.ended()
             if track.live, !track.ignored {
-                track.last = recogniser.location(in: self)
-                send(.ended, recogniser, track)
+                if !held { track.last = recogniser.location(in: self) }
+                send(held ? .lost(takeBack: false) : .ended, recogniser, track)
             }
             track.live = false
             track.ignored = false
         case .cancelled, .failed:
+            hold.cancel()
             // The system took the press away (a call, the home swipe, leaving the app).
             if track.live, !track.ignored { send(.lost(takeBack: false), recogniser, track) }
             track.live = false
@@ -391,6 +409,13 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         case .began, .changed: pointerAt = recogniser.location(in: self)
         default: pointerAt = nil
         }
+        // A paste lands under the pointer (ClipBoard.swift).
+        BarDesk.shared.pointer = pointerAt
+    }
+
+    @objc private func secondaryClicked(_ recogniser: UITapGestureRecognizer) {
+        guard recogniser.state == .ended, let session else { return }
+        BoardMenu.open(session, at: recogniser.location(in: self), finger: false)
     }
 
     @objc private func scrolled(_ recogniser: UIPanGestureRecognizer) {

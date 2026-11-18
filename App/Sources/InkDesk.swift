@@ -196,11 +196,8 @@ extension BoardSession {
         if linkEnd(at: p) != nil { return false }
         var plain = board
         plain.items.removeAll { $0.kind == .drawing && !selection.contains($0.id) }
-        if editing == nil, selection.count == 1, let id = selection.first, let item = plain.item(id) {
-            let handles = BoardPainter.handles(for: item, side: facts.side[id] ?? .right, scale: scale)
-            if Fingers.control(at: toScreen(p), boxes: handles.map { toScreen($0.rect) },
-                               onThing: plain.hit(p) != nil, least: 0) != nil { return false }
-        }
+        // The small controls round the one chosen thing (ChosenFrame.swift).
+        if control(at: toScreen(p), finger: false, onThing: plain.hit(p) != nil) != nil { return false }
         if plain.hit(p, scale: Double(scale), least: 0) != nil { return false }
         return plain.hitLink(p, within: Double(9 / scale)) == nil
     }
