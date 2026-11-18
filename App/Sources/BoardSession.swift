@@ -58,6 +58,11 @@ final class BoardSession: ObservableObject {
     private var lineBreakWanted = false
     private var undoStack: [Board] = []
     private var redoStack: [Board] = []
+    /// 0.9: when each step in `undoStack` / `redoStack` was taken (same order), for the Undo list.
+    private var undoTimes: [Date] = []
+    private var redoTimes: [Date] = []
+    /// 0.9: the Undo list page is open (UndoListPage in FindingViews.swift).
+    @Published var showUndoList = false
     private var liveBase: Board?
     private var editBase: Board?
     private var editIsNew = false
@@ -93,8 +98,13 @@ final class BoardSession: ObservableObject {
 
     private func pushUndo(_ old: Board) {
         undoStack.append(old)
-        if undoStack.count > 120 { undoStack.removeFirst(undoStack.count - 120) }
+        undoTimes.append(Date())
+        if undoStack.count > 120 {
+            undoStack.removeFirst(undoStack.count - 120)
+            undoTimes.removeFirst(max(undoTimes.count - 120, 0))
+        }
         redoStack = []
+        redoTimes = []
         undoCount = undoStack.count
         redoCount = 0
         clearNotice()
@@ -148,6 +158,7 @@ final class BoardSession: ObservableObject {
         clearNotice()
         guard editing == nil, let old = undoStack.popLast() else { return }
         redoStack.append(board)
+        redoTimes.append(undoTimes.popLast() ?? Date())
         // What went to PARAGON meanwhile is not taken back with the step (0.5: no task goes twice).
         var back = old.keepingSentMarks(of: board)
         back.touch()
@@ -158,9 +169,21 @@ final class BoardSession: ObservableObject {
         onChange?(board)
     }
 
+    /// 0.9: the last steps, newest first, each with a plain name and its time (the rule is `StepWords`).
+    func undoSteps() -> [StepWords.Step] {
+        StepWords.list(before: undoStack, now: board, times: undoTimes)
+    }
+
+    /// 0.9: goes back `steps` steps in one go (to just before the one pressed in the Undo list). Redo brings them back.
+    func undo(steps: Int) {
+        guard editing == nil else { return }
+        for _ in 0..<max(0, min(steps, undoStack.count)) { undo() }
+    }
+
     func redo() {
         guard editing == nil, let next = redoStack.popLast() else { return }
         undoStack.append(board)
+        undoTimes.append(redoTimes.popLast() ?? Date())
         var again = next.keepingSentMarks(of: board)
         again.touch()
         set(again)
@@ -178,6 +201,8 @@ final class BoardSession: ObservableObject {
         // Steps taken before the other device's change must not be put back over it.
         undoStack = []
         redoStack = []
+        undoTimes = []
+        redoTimes = []
         undoCount = 0
         redoCount = 0
         clearNotice()
@@ -365,6 +390,7 @@ final class BoardSession: ObservableObject {
         back.touch()
         set(back)
         if editIsNew, let item = board.item(id), let before = undoStack.popLast() {
+            _ = undoTimes.popLast()
             // The step that made it is taken back, so it leaves no trace.
             let parent = item.parent
             var old = before

@@ -144,8 +144,15 @@ enum Sample {
 
         var ideas = made(.mindMap, "App ideas", "pink", daysAgo: 1)
         ideas.pinned = true
+        // 0.9: two boards that were put away (the "Put away (2)" row, the Put away page).
+        var oldYear = made(.mindMap, "Last year's trip", "blue", daysAgo: 200)
+        oldYear.putAway = now.addingTimeInterval(-86_400 * 12)
+        var oldBench = made(.steps, "Old bench plan", "orange", daysAgo: 150)
+        oldBench.putAway = now.addingTimeInterval(-86_400 * 3)
         return [
             cabin,
+            oldYear,
+            oldBench,
             timeline(now: now),
             timing(now: now),
             midsummer(now: now),

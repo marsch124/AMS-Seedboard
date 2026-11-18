@@ -106,6 +106,11 @@ struct SeedMenus: Commands {
             .disabled(!canChange || session?.starterDraft == true)
             Button("Starters…") { model.ask(.page) }
             Divider()
+            // 0.9: out of the list, never deleted; "Put away (n)" at the bottom of the list brings it back.
+            Button("Put Board Away") {
+                if let session { model.putAway(session.board.id) }
+            }
+            .disabled(!canChange || session?.starterDraft == true || session?.board.isPutAway == true)
             Button("Remove Board…") { desk.remove.send() }
                 .disabled(session == nil || session?.starterDraft == true)
         }
