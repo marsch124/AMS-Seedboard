@@ -5,6 +5,7 @@ import CoreGraphics
 public enum Starter: String, CaseIterable, Identifiable, Sendable {
     case blank, mindMap, flow, prosCons, steps
     case timeline
+    case sequence
 
     public var id: String { rawValue }
 
@@ -16,6 +17,7 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
         case .prosCons: return "Pros and cons"
         case .steps: return "Plan in steps"
         case .timeline: return "Timeline"
+        case .sequence: return "Who does what"
         }
     }
 
@@ -27,6 +29,7 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
         case .prosCons: return "Two columns of sticky notes"
         case .steps: return "Five steps in a row, each with a note"
         case .timeline: return "Bars on days, with what comes after what"
+        case .sequence: return "People in a row, messages in order"
         }
     }
 
@@ -34,10 +37,13 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
     public func board(title: String? = nil, now: Date = Date()) -> Board {
         var board = Board(title: title ?? (self == .blank ? "New board" : name), created: now)
         if self == .timeline { return Board.timelineStart(title: board.title, now: now) }
+        if self == .sequence { return Board.sequenceStart(title: board.title, now: now) }
         switch self {
         case .blank:
             break
         case .timeline:
+            break
+        case .sequence:
             break
         case .mindMap:
             let centre = board.addMap(from: [OutlineNode("Main idea", [

@@ -83,7 +83,9 @@ enum Thumbs {
     static func board(of starter: Starter) -> Board {
         if let board = starterBoards[starter] { return board }
         let fixed = Date(timeIntervalSinceReferenceDate: 0)
-        var board = starter.board(now: fixed)
+        // A timeline is drawn round today: its starter is made for today, or its bars (and today, 25 years
+        // later) would be too far apart to see. Its picture is still drawn only once.
+        var board = starter.board(now: starter == .timeline ? Date() : fixed)
         board.changed = fixed
         starterBoards[starter] = board
         return board

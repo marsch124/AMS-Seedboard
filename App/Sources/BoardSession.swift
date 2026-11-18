@@ -443,6 +443,7 @@ final class BoardSession: ObservableObject {
     func paste(_ text: String) {
         guard !readOnly, editing == nil else { return }
         if board.isTimeline { return }
+        if board.isSequence { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
         let nodes = Outline.parse(clean)
@@ -491,6 +492,7 @@ final class BoardSession: ObservableObject {
 
     func deleteSelection() {
         guard editing == nil else { return }
+        if board.isSequence { sequenceRemove(); return }
         let ids = selection
         let link = selectedLink
         guard !ids.isEmpty || link != nil else { return }
@@ -508,12 +510,14 @@ final class BoardSession: ObservableObject {
     func duplicateSelection() {
         guard editing == nil, !selection.isEmpty else { return }
         if board.isTimeline { timelineDuplicate(); return }
+        if board.isSequence { sequenceDuplicate(); return }
         var copies: Set<UUID> = []
         change { copies = $0.duplicate(self.selection) }
         if !copies.isEmpty { selection = copies }
     }
 
     func toggleTodo() {
+        if board.isSequence { sequenceToggleTodo(); return }
         let ids = selection
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
@@ -712,6 +716,7 @@ final class BoardSession: ObservableObject {
     /// Moves the view just enough to bring an item into sight.
     func reveal(_ id: UUID) {
         if board.isTimeline { timelineReveal(id); return }
+        if board.isSequence { sequenceReveal(id); return }
         guard let item = board.item(id), viewSize.width > 10 else { return }
         let r = toScreen(item.frame)
         let safe = CGRect(x: 30, y: 70, width: viewSize.width - 60, height: viewSize.height - 190)

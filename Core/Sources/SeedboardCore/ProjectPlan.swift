@@ -116,6 +116,7 @@ extension ParagonExport {
     /// "3 ticked ideas become tasks, 9 stay as plain lines." or
     /// "Nothing is ticked: all 12 ideas become tasks." nil when the project would hold no such lines.
     public static func projectLine(board: Board) -> String? {
+        if board.isSequence { return sequenceProjectLine(board) }
         let t = projectTally(board: board)
         if t.ticks {
             let tasks = t.ideaTasks + t.shapeTasks + t.otherTasks

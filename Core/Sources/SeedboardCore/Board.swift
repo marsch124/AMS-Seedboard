@@ -82,6 +82,9 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case bar, milestone, phase
     /// New in 0.2 (ShapeOutline.swift). The stored names are these words and never change.
     case person, document, slanted, store
+    /// A "Who does what" board's own things (format 2): a name with its dashed line, a message between two
+    /// names, a note across the lines, a section heading.
+    case who, message, band, section
 
     /// The flowchart shapes (`ItemKind.flowShapes`).
     public var isShape: Bool { ItemKind.flowShapes.contains(self) }
@@ -103,6 +106,10 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .document: return "Document"
         case .slanted: return "Slanted box"
         case .store: return "Store"
+        case .who: return "Who"
+        case .message: return "Message"
+        case .band: return "Note"
+        case .section: return "Section"
         }
     }
 
@@ -121,6 +128,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .document: return CGSize(width: 150, height: 68)
         case .slanted: return CGSize(width: 160, height: 56)
         case .store: return CGSize(width: 130, height: 80)
+        case .who, .message, .band, .section: return CGSize(width: 60, height: 17)
         }
     }
 }
@@ -159,6 +167,11 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var row: Int?
     /// A frame only: its lanes (Lanes.swift). nil = a plain frame.
     public var lanes: Lanes? = nil
+    /// Who does what: the name a message comes from and the name it goes to (the same for a message to itself).
+    public var from: UUID?
+    public var to: UUID?
+    /// Who does what: the message is an answer, drawn with dashes.
+    public var answer: Bool?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -183,6 +196,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case side
         case start, end, row
         case lanes
+        case from, to, answer
     }
 
     public init(from decoder: Decoder) throws {
@@ -208,6 +222,9 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         end = try? c.decode(String.self, forKey: .end)
         row = try? c.decode(Int.self, forKey: .row)
         lanes = try? c.decode(Lanes.self, forKey: .lanes)
+        from = try? c.decode(UUID.self, forKey: .from)
+        to = try? c.decode(UUID.self, forKey: .to)
+        answer = try? c.decode(Bool.self, forKey: .answer)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -231,6 +248,9 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(end, forKey: .end)
         try c.encodeIfPresent(row, forKey: .row)
         try c.encodeIfPresent(lanes, forKey: .lanes)
+        try c.encodeIfPresent(from, forKey: .from)
+        try c.encodeIfPresent(to, forKey: .to)
+        try c.encodeIfPresent(answer, forKey: .answer)
     }
 
     public var frame: CGRect {
@@ -369,7 +389,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public var sentTodos: [UUID]
     /// Fields in the file this version does not know: carried through a load and a save untouched.
     public private(set) var extra: [String: JSONValue] = [:]
-    /// What kind of board this is: "timeline", or nothing for an ordinary board.
+    /// What kind of board this is: "timeline", "sequence" (Who does what), or nothing for an ordinary board.
     public var kind: String?
 
     public init(id: UUID = UUID(), title: String = "New board", created: Date = Date(), changed: Date? = nil,

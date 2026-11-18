@@ -12,6 +12,8 @@ enum Part: String, CaseIterable {
     case timeline
     /// Removed boards and earlier versions (0.2): a warm brick red.
     case kept
+    /// The "Who does what" board: its Who tool, its Answer and Colour buttons.
+    case sequence
 
     private typealias RGB = (Double, Double, Double)
 
@@ -26,6 +28,7 @@ enum Part: String, CaseIterable {
         case .paragon: return (hex(0x6B4EA8), hex(0xB59CEB))
         case .timeline: return (hex(0xC4551F), hex(0xF59A66))
         case .kept: return (hex(0xB4492B), hex(0xF0A183))
+        case .sequence: return (hex(0x5C7A12), hex(0xB5D95A))
         case .text: return nil   // ink: the primary text colour
         }
     }

@@ -160,6 +160,7 @@ public extension Board {
     /// The whole board as plain text to copy.
     var outlineText: String {
         if isTimeline { return timelineText }
+        if isSequence { return sequenceText }
         func one(_ s: String) -> String {
             let parts = s.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             return parts.isEmpty ? "(empty)" : parts.joined(separator: " ")

@@ -244,7 +244,7 @@ final class StoredFieldsTests: XCTestCase {
                   sent: ["kind", "path", "title", "when"]),
         // 0.2: a main branch remembers its side. (The lead adds the other 0.2 fields here when the builders' work is joined.)
         2: Fields(board: ["changed", "colour", "created", "format", "id", "items", "kind", "links", "pinned", "sent", "sentTodos", "title"],
-                  item: ["bothSides", "colour", "end", "folded", "h", "id", "kind", "lanes", "order", "parent", "row", "side", "start", "text", "todo", "w", "x", "y"],
+                  item: ["answer", "bothSides", "colour", "end", "folded", "from", "h", "id", "kind", "lanes", "order", "parent", "row", "side", "start", "text", "to", "todo", "w", "x", "y"],
                   link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
                   sent: ["kind", "path", "title", "when"]),
     ]
