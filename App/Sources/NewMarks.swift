@@ -1,8 +1,7 @@
 import SwiftUI
 import AMSIcons
 
-/// Marks that are new in 0.2. Until they are drawn in the shared icon library each one shows a
-/// stand-in; when the library has them, only `standIn` below changes — the screens keep their names.
+/// Marks that are new in 0.2, by the name the screens use; each is a drawing in the shared icon library.
 enum NewMark: String, CaseIterable {
     // Timeline board
     case timeline, bar, milestone, today, calendar
@@ -21,20 +20,46 @@ enum NewMark: String, CaseIterable {
     // Boards
     case bringBack, earlier, export, search, cut, paste, rename
 
+    /// The drawing in the shared icon library (AMS-Icons, the seed family).
     var standIn: AppMark {
         switch self {
-        case .timeline, .calendar: return .seedStarter
-        case .bar, .document, .slanted: return .seedBox
-        case .milestone: return .seedDiamond
-        case .today, .bringBack: return .seedPin
-        case .draw, .rubber, .thin, .medium, .thick, .rename: return .seedText
-        case .sequence, .answer, .oneWay, .bothWays, .noEnds, .dashed: return .seedArrow
-        case .person: return .seedRound
-        case .store: return .seedOval
-        case .lanes: return .seedFrame
-        case .lineUp, .evenGaps, .sameSize, .search: return .seedFit
-        case .moveUp, .moveDown, .outLevel, .ideaUnder, .nextIdea, .branch: return .seedMindMap
-        case .earlier, .export, .cut, .paste: return .seedBoard
+        case .timeline: return .seedTimeline
+        case .bar: return .seedBar
+        case .milestone: return .seedMilestone
+        case .today: return .seedToday
+        case .calendar: return .seedCalendar
+        case .draw: return .seedDraw
+        case .rubber: return .seedRubber
+        case .thin: return .seedThin
+        case .medium: return .seedMedium
+        case .thick: return .seedThick
+        case .sequence: return .seedSequence
+        case .person: return .seedPerson
+        case .answer: return .seedAnswer
+        case .document: return .seedDocument
+        case .slanted: return .seedSlanted
+        case .store: return .seedStore
+        case .lanes: return .seedLanes
+        case .lineUp: return .seedLineUp
+        case .evenGaps: return .seedEvenGaps
+        case .sameSize: return .seedSameSize
+        case .oneWay: return .seedOneWay
+        case .bothWays: return .seedBothWays
+        case .noEnds: return .seedNoEnds
+        case .dashed: return .seedDashed
+        case .moveUp: return .seedMoveUp
+        case .moveDown: return .seedMoveDown
+        case .outLevel: return .seedOutLevel
+        case .ideaUnder: return .seedIdeaUnder
+        case .nextIdea: return .seedNextIdea
+        case .branch: return .seedBranch
+        case .bringBack: return .seedBringBack
+        case .earlier: return .seedEarlier
+        case .export: return .seedExport
+        case .search: return .seedSearch
+        case .cut: return .seedCut
+        case .paste: return .seedPaste
+        case .rename: return .seedRename
         }
     }
 }
