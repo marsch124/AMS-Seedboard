@@ -9,7 +9,7 @@ PARAGON as a note, as a project, or as to-dos for the Inbox.
 
 What is in 0.2:
 
-- A home page (Mac and iPad) under the heading "Plant a seed": six ways to start as cards with a small drawing, and your boards as cards with their picture and "Changed 2 days ago". The list at the side has Pinned, Recent and Sent to PARAGON, and a search that finds boards by their name and by the words on them.
+- A home page (Mac and iPad) under the heading "Plant a seed": seven ways to start as cards with a small drawing, and your boards as cards with their picture and "Changed 2 days ago". The list at the side has Pinned, Recent and Sent to PARAGON, and a search that finds boards by their name and by the words on them.
 - New board starts blank, or as a mind map, a flow, pros and cons, a plan in steps, or a timeline.
 - Seedboard opens where you left: the last board, at the same zoom and spot (each device remembers its own).
 - Mind maps: type an idea, Return for the next one, Tab for one under it. Fold, colour the branches, drag an idea onto another to hang it there, or between two sisters to put it in another place (also ⌘↑ and ⌘↓, or Move up and Move down). On the iPhone and iPad a bar above the keyboard has Idea under, Next idea, Out one level and Done.
@@ -30,8 +30,8 @@ What is in 0.2:
 - A board from a newer Seedboard is shown, not changed, never written over. Boards changed by 0.2 are stored in format 2: Seedboard 0.1 shows them but cannot change them.
 - Undo and Redo (120 steps), zoom 20 % to 300 %, day and night colours.
 - Settings has How it works and What's new (on the Mac its own window, ⌘,).
-- To come in 0.2 (not in this text yet): Apple Pencil drawing, the "Who does what" board (sequence diagram), the new bar beside the chosen thing.
-- Not in 0.2: copy and paste between boards, right-click menus on the board, find in a board, notes on ideas, pictures on boards, shared editing.
+- Also in 0.2: Apple Pencil drawing (a Draw tool, a rubber, three thicknesses, ten colours), the "Who does what" board (a sequence diagram: people in a row, messages in order), the bar beside the chosen thing (one row on the iPhone), a right-click / press-and-hold menu on every thing, copy, cut and paste (also between boards, and dragged-in text), and a Home row in the boards list.
+- Not in 0.2: find in a board, notes on ideas, pictures on boards, shared editing.
 
 Build:
 
