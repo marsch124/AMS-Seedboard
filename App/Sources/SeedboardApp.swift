@@ -46,6 +46,8 @@ struct SeedboardApp: App {
 
     private var root: some View {
         RootView()
+            // The lines about a clash or a removed board, and "Removed and earlier versions" over the window.
+            .modifier(BringBackHost())
             .environmentObject(model)
             .tint(Theme.text(.boards))
             // For pictures: `-night` shows the app by night whatever the device is set to.

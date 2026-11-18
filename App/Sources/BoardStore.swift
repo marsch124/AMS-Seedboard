@@ -41,6 +41,8 @@ final class BoardStore {
     var onCloudGone: (([UUID: Date]) -> Void)?
     /// `notInCloud` or `warning` changed.
     var onState: (() -> Void)?
+    /// Two devices changed the same board: the version that lost is kept under Earlier versions (id, title).
+    var onClash: ((UUID, String) -> Void)?
 
     /// Boards whose newest change is on this device but not in iCloud yet. Empty when iCloud is off.
     private(set) var notInCloud: Set<UUID> = []
@@ -143,6 +145,18 @@ final class BoardStore {
         return board
     }
 
+    /// A board as the bytes of its file, and back (for the export, and for boards that come in again).
+    func bytes(of board: Board) -> Data? { disk.encode(board) }
+    func board(from data: Data) -> Board? { disk.decode(data) }
+
+    /// Work on the kept copies (the Removed folders and SafetyCopies; BringBack.swift), in line with the
+    /// store's other file work and off the main thread. nil with the example boards: nothing is read then.
+    func kept<T: Sendable>(_ work: @escaping @Sendable (KeptPlaces) -> T) async -> T? {
+        if sample { return nil }
+        let disk = self.disk
+        return await Task.detached(priority: .userInitiated) { disk.kept(work) }.value
+    }
+
     /// Plain words for Settings, e.g. "12 boards · last safety copy today 08:10".
     func safetyLine() -> String {
         let count = sample ? memory.count : known.count
@@ -198,6 +212,9 @@ final class BoardStore {
             cloudProblems[id] = nil
         case .newer(let board):
             tell([board])
+            onClash?(board.id, board.title)
+        case let .clash(id, title):
+            onClash?(id, title)
         }
         onState?()
     }
@@ -347,6 +364,8 @@ private final class BoardDisk: @unchecked Sendable {
         case cloudOff(UUID)
         /// iCloud held a newer version: it was kept, and mine went to the safety copies.
         case newer(Board)
+        /// Another device's version of this board lost against this device's and was set aside.
+        case clash(UUID, title: String)
     }
 
     struct Found: Sendable {
@@ -395,6 +414,15 @@ private final class BoardDisk: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return lineage[id]?.holds(stamp) ?? false
+    }
+
+    /// Where a version that is set aside came from, as far as this run of the app can tell: one this
+    /// device showed or saved, or one another device wrote. nil while the board was not shown here yet.
+    private func origin(_ board: Board) -> SetAsideOrigin? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let line = lineage[board.id] else { return nil }
+        return line.holds(board.changed) ? .here : .away
     }
 
     // MARK: Folders
@@ -458,7 +486,7 @@ private final class BoardDisk: @unchecked Sendable {
 
     // MARK: Coding
 
-    private func encode(_ board: Board) -> Data? {
+    func encode(_ board: Board) -> Data? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         // Times are written to the thousandth of a second, so "which change is newer" is never a tie.
@@ -469,7 +497,7 @@ private final class BoardDisk: @unchecked Sendable {
         return try? encoder.encode(board)
     }
 
-    private func decode(_ data: Data) -> Board? {
+    func decode(_ data: Data) -> Board? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let text = try decoder.singleValueContainer().decode(String.self)
@@ -568,9 +596,11 @@ private final class BoardDisk: @unchecked Sendable {
                         if keepLoser(mine), writeCloudBytes(data, to: file) {
                             result = .got(other)
                             settled = true
+                            report?(.clash(id, title: other.title))
                         }
                     } else {
                         settled = setAside(data, id: id, ending: "seedboard")
+                        if settled { report?(.clash(id, title: mine.title)) }
                     }
                 } else {
                     settled = setAside(data, id: id, ending: "unreadable")
@@ -598,7 +628,8 @@ private final class BoardDisk: @unchecked Sendable {
         return setAside(bytes, id: board.id, ending: "seedboard")
     }
 
-    /// Keeps these bytes in SafetyCopies as `<id>-<yyyyMMdd-HHmmss>-<6 letters>.<ending>`.
+    /// Keeps these bytes in SafetyCopies as `<id>-<yyyyMMdd-HHmmss>-<6 letters>.<ending>`; a board's name
+    /// also says where the version came from when that is known (`…-here.seedboard`, `…-away.seedboard`).
     /// The same bytes are not kept twice. False when they could not be kept.
     @discardableResult
     private func setAside(_ bytes: Data, id: UUID, ending: String) -> Bool {
@@ -608,9 +639,13 @@ private final class BoardDisk: @unchecked Sendable {
             if size == bytes.count, (try? Data(contentsOf: url)) == bytes { return true }
         }
         // A few random letters at the end: two set-aside versions in one second never share a name.
-        let file = safety.appendingPathComponent("\(id.uuidString)-\(stamp())-\(UUID().uuidString.prefix(6)).\(ending)")
+        let kept = ending == "seedboard" ? decode(bytes) : nil
+        let from = kept.flatMap(origin)
+        let file = safety.appendingPathComponent("\(id.uuidString)-\(stamp())-\(UUID().uuidString.prefix(6))\(KeptFileName.ending(for: from)).\(ending)")
         do {
             try bytes.write(to: file, options: .atomic)
+            // Another device's version lost: said once, so the clash is not silent.
+            if let kept, from == .away { report?(.clash(id, title: kept.title)) }
             return true
         } catch {
             return false
@@ -624,6 +659,8 @@ private final class BoardDisk: @unchecked Sendable {
         cloud.sync {
             local.sync { dailySafetyCopy() }
             purgeRemoved()
+            // Set-aside versions are kept 30 days (the daily copies keep their own 14).
+            KeptFiles.tidy(safety: safety, now: Date())
             var found = Found()
             var ids = Set<UUID>()
             var marks: [UUID: [URL]] = [:]
@@ -762,8 +799,10 @@ private final class BoardDisk: @unchecked Sendable {
                 break
             } else if SafetyRules.wins(other, over: mine) {
                 guard keepLoser(mine), writeCloudBytes(data, to: file) else { return }
+                report?(.clash(id, title: other.title))
             } else {
                 guard setAside(data, id: id, ending: "seedboard") else { return }
+                report?(.clash(id, title: mine.title))
             }
         }
         removeCloud(url)
@@ -1110,6 +1149,16 @@ private final class BoardDisk: @unchecked Sendable {
                 cloudStamp[id] = board.changed
             }
             return board
+        }
+    }
+
+    /// The folders of the kept copies, for work that runs in line with the store's other file work
+    /// (BringBack.swift: listing them, removing one board for good, reading an earlier version).
+    func kept<T>(_ work: (KeptPlaces) -> T) -> T {
+        cloud.sync {
+            work(KeptPlaces(removed: [localRemoved] + [cloudRemoved()].compactMap { $0 }, safety: safety,
+                            boards: [localBoards] + [cloudBoards()].compactMap { $0 },
+                            decode: { [self] data in decode(data) }))
         }
     }
 

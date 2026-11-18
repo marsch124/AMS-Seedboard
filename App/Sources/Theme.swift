@@ -8,6 +8,8 @@ import UIKit
 /// The parts of Seedboard. Each has its own colour for headings and marks, one shade for day, a lighter one for night.
 enum Part: String, CaseIterable {
     case boards, mindMap, shapes, arrows, notes, text, frames, paragon
+    /// Removed boards and earlier versions (0.2): a warm brick red.
+    case kept
 
     private typealias RGB = (Double, Double, Double)
 
@@ -20,6 +22,7 @@ enum Part: String, CaseIterable {
         case .notes: return (hex(0xB77A08), hex(0xF0BE50))
         case .frames: return (hex(0x178378), hex(0x5CCBBE))
         case .paragon: return (hex(0x6B4EA8), hex(0xB59CEB))
+        case .kept: return (hex(0xB4492B), hex(0xF0A183))
         case .text: return nil   // ink: the primary text colour
         }
     }
