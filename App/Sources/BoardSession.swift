@@ -468,7 +468,8 @@ final class BoardSession: ObservableObject {
     /// A list becomes a mind map (or hangs under the chosen idea); one line becomes a sticky note.
     func paste(_ text: String) {
         guard !readOnly, editing == nil else { return }
-        if board.isTimeline { return }
+        // On a timeline a list becomes bars (TimelineOfIt.swift).
+        if board.isTimeline { timelinePaste(text); return }
         if board.isSequence { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }

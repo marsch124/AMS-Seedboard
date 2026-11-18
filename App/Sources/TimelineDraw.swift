@@ -28,6 +28,9 @@ struct TimelinePainter {
     /// What lies behind (white for a picture).
     var ground: Color?
     var nameSize: CGFloat = TimelineLook.nameSize
+    /// How each to-do stands (the board's own knowledge with what was read back from PARAGON laid over it):
+    /// a bar ticked off in PARAGON is drawn done (TimelineProgress.swift).
+    var todoStates: [UUID: TodoState] = [:]
 
     static let gripRadius: CGFloat = 6
     static let dotRadius: CGFloat = 5
@@ -128,6 +131,7 @@ struct TimelinePainter {
         for (row, item) in rows.enumerated() {
             guard let box = rect(of: item, row: row), box.maxX > names - 40, box.minX < size.width + 40 else { continue }
             drawBar(item, box, &days)
+            drawState(item, box, &days)
         }
 
         // Today: a red line down the middle of the day.
@@ -178,7 +182,7 @@ struct TimelinePainter {
             let left = TimelinePainter.nameLeft(item, grouped: grouped.contains(item.id))
             let empty = item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let words = empty ? item.kind.word : item.nameLine
-            let shade = empty ? paint.faint : (item.kind == .phase ? colour(of: item) : paint.ink)
+            let shade = empty ? paint.faint : (item.kind == .phase ? colour(of: item) : (nameShade(item) ?? paint.ink))
             let text = column.resolve(Text(words).font(.system(size: nameSize, weight: item.kind == .phase ? .semibold : .regular)).foregroundColor(shade))
             let line = text.measure(in: CGSize(width: 2000, height: 100)).height
             var clipped = column
@@ -221,7 +225,9 @@ struct TimelinePainter {
             if g.scale == .days {
                 band.draw(text, at: CGPoint(x: x + CGFloat(g.scale.pointsPerDay) / 2, y: 31), anchor: .center)
             } else {
-                band.draw(text, at: CGPoint(x: x + 5, y: 31), anchor: .leading)
+                // On the Weeks scale the week's number stands over its Monday's date (TimelineProgress.swift).
+                band.draw(text, at: CGPoint(x: x + 5, y: g.scale == .weeks ? TimelinePainter.weekDateY : 31), anchor: .leading)
+                if g.scale == .weeks { drawWeek(tick.day, x: x, &band) }
                 var line = Path()
                 line.move(to: CGPoint(x: x.rounded() + 0.5, y: 22))
                 line.addLine(to: CGPoint(x: x.rounded() + 0.5, y: header))
@@ -235,6 +241,7 @@ struct TimelinePainter {
 
         // The corner, and the two edges that pin names and dates.
         ctx.fill(Path(CGRect(x: 0, y: 0, width: names, height: header)), with: .color(ground ?? paint.plate))
+        drawProgress(&ctx)
         var edges = Path()
         edges.move(to: CGPoint(x: 0, y: header + 0.5)); edges.addLine(to: CGPoint(x: size.width, y: header + 0.5))
         edges.move(to: CGPoint(x: names + 0.5, y: 0)); edges.addLine(to: CGPoint(x: names + 0.5, y: size.height))
@@ -242,15 +249,19 @@ struct TimelinePainter {
     }
 
     private func drawBar(_ item: Item, _ box: CGRect, _ ctx: inout GraphicsContext) {
-        let fill = colour(of: item)
+        // A done bar is paler (laid on the ground first, so no line shows through it).
+        let pale = barStrength(item) < 1
+        let fill = colour(of: item).opacity(barStrength(item))
         if item.kind == .milestone {
             var diamond = Path()
             diamond.move(to: CGPoint(x: box.midX, y: box.minY)); diamond.addLine(to: CGPoint(x: box.maxX, y: box.midY))
             diamond.addLine(to: CGPoint(x: box.midX, y: box.maxY)); diamond.addLine(to: CGPoint(x: box.minX, y: box.midY))
             diamond.closeSubpath()
+            if pale { ctx.fill(diamond, with: .color(ground ?? paint.canvas)) }
             ctx.fill(diamond, with: .color(fill))
             ctx.stroke(diamond, with: .color(ground ?? paint.canvas), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round))
         } else {
+            if pale { ctx.fill(Path(roundedRect: box, cornerRadius: min(7, box.width / 2)), with: .color(ground ?? paint.canvas)) }
             ctx.fill(Path(roundedRect: box, cornerRadius: min(7, box.width / 2)), with: .color(fill))
         }
     }

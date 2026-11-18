@@ -83,6 +83,14 @@ public struct Day: Hashable, Comparable, Sendable, CustomStringConvertible {
 
     /// The Monday of this day's week.
     public var weekStart: Day { self - weekday }
+    /// The number of this day's week, 1 to 53, counted as in Sweden and most of Europe: weeks begin on
+    /// Monday, and week 1 is the week that holds the year's first Thursday.
+    public var weekNumber: Int {
+        let thursday = weekStart + 3
+        return (thursday - Day(year: thursday.parts.year, month: 1, day: 1)) / 7 + 1
+    }
+    /// "w 49", as it stands above a week on the Weeks scale.
+    public var weekWord: String { "w \(weekNumber)" }
     /// The first day of this day's month.
     public var monthStart: Day { self - (parts.day - 1) }
     /// The first day of the month after this day's.
@@ -422,6 +430,27 @@ public extension Board {
         number(rows: order)
     }
 
+    /// A row dragged up or down by its name. A bar or a milestone moves alone (`moveRow`). A phase carries
+    /// its rows: the heading and every row under it move as one block, and the block only ever lands where
+    /// it splits no other phase — before another phase, at the very end, or among the rows above the first phase.
+    mutating func carryRow(_ id: UUID, to row: Int) {
+        guard let group = phaseGroups.first(where: { $0.id == id }) else { moveRow(id, to: row); return }
+        var order = timelineRows.map(\.id)
+        let block = Array(order[group.firstRow...group.lastRow])
+        order.removeSubrange(group.firstRow...group.lastRow)
+        let phases = Set(items.filter { $0.kind == .phase }.map(\.id))
+        let firstPhase = order.firstIndex(where: phases.contains) ?? order.count
+        let wanted = min(max(row, 0), order.count)
+        let allowed = (0...order.count).filter { $0 <= firstPhase || $0 == order.count || phases.contains(order[$0]) }
+        // The nearest such place; of two equally near, the one in the direction the block is dragged.
+        let down = row > group.firstRow
+        let at = allowed.min { a, b in
+            (abs(a - wanted), down ? -a : a) < (abs(b - wanted), down ? -b : b)
+        } ?? wanted
+        order.insert(contentsOf: block, at: at)
+        number(rows: order)
+    }
+
     /// The phases with their rows: a phase holds every row under it down to the next phase.
     var phaseGroups: [PhaseGroup] {
         let rows = timelineRows
@@ -597,6 +626,8 @@ public extension Board {
             guard let row = timelineRow(of: source.id) else { continue }
             var copy = source
             copy.id = UUID()
+            // A copy is a new piece of work: it is not done yet.
+            copy.doneDay = nil
             insert(copy, atRow: row + 1)
             copies.insert(copy.id)
         }

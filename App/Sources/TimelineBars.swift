@@ -58,6 +58,10 @@ struct TimelineToolPill: View {
 /// Further away, closer (days → weeks → months), the whole timeline at once, and Today.
 struct TimelineZoomCluster: View {
     @ObservedObject var session: BoardSession
+    /// What was read back from PARAGON: a bar ticked off there is not late.
+    @ObservedObject private var echo = ParagonEcho.shared
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         HStack(spacing: 2) {
@@ -93,6 +97,8 @@ struct TimelineZoomCluster: View {
             .accessibilityLabel("Today")
             .accessibilityIdentifier("timeline.today")
             .padding(.leading, 3)
+            // 0.5: Catch up, only while something is late (TimelineProgress.swift).
+            if !session.readOnly, session.timelineLateCount > 0 { catchUp }
         }
         .padding(4)
         .fixedSize()
@@ -101,6 +107,35 @@ struct TimelineZoomCluster: View {
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline.zoom")
+    }
+
+    /// Brings a plan that fell behind back to today: in the red of the Today line and of what is late.
+    /// The iPhone shows the mark alone.
+    private var catchUp: some View {
+        Button {
+            if let words = session.timelineCatchUp() { AppModel.shared.say(words, seconds: 6) }
+            session.takeKeys()
+        } label: {
+            HStack(spacing: 3) {
+                GlyphView(glyph: .new(.catchUp), size: 15, colour: .white)
+                if sizeClass != .compact {
+                    Text("Catch up")
+                        .font(Txt.pill)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
+            .padding(.horizontal, 7)
+            .frame(height: 26)
+            .background(Paint(scheme).line("red"), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .help("Catch up: late bars are stretched to today, and what comes after moves along")
+        .accessibilityLabel("Catch up")
+        .accessibilityIdentifier("timeline.catchUp")
+        .padding(.leading, 2)
     }
 
     private func button(_ glyph: Glyph, _ id: String, _ help: String, on: Bool, action: @escaping () -> Void) -> some View {
@@ -123,6 +158,8 @@ struct TimelineZoomCluster: View {
 struct TimelineSelectionBar: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: BoardSession
+    /// What was read back from PARAGON: a bar ticked off there shows Done as on.
+    @ObservedObject private var echo = ParagonEcho.shared
     @Environment(\.colorScheme) private var scheme
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showColours = false
@@ -152,6 +189,7 @@ struct TimelineSelectionBar: View {
                             .font(Txt.pill)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
+                        if session.selection.contains(where: { session.board.item($0)?.span != nil }) { doneChip }
                         chip("To do", .control(.ticked), "sel.todo", .paragon) { session.toggleTodo() }
                         chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
                     }
@@ -213,9 +251,17 @@ struct TimelineSelectionBar: View {
                 session.commitEdit()
                 dating = item.id
             }
+            doneChip
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
         }
         chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
+    }
+
+    /// 0.5: Done marks the chosen bars and milestones done today (full colour while they are); again takes the mark off.
+    private var doneChip: some View {
+        chip("Done", .new(.done), "sel.done", .timeline, on: session.timelineChosenDone) {
+            if let words = session.timelineToggleDone() { model.say(words) }
+        }
     }
 
     private func chip(_ word: String, _ glyph: Glyph, _ id: String, _ part: Part, on: Bool = false, action: @escaping () -> Void) -> some View {

@@ -246,15 +246,22 @@ struct BoardView: View {
                     }
                 }
                 Divider()
-                Button("Paste a list as a mind map") {
+                // On a timeline the list becomes bars (0.5, TimelineOfIt.swift).
+                Button(session.board.isTimeline ? "Paste a list as bars" : "Paste a list as a mind map") {
                     if let text = model.clipboardText() { session.paste(text) } else { model.say("Nothing to paste.") }
                     session.takeKeys()
                 }
-                .disabled(session.board.placesItself)
+                .disabled(session.board.isSequence)
                 Button("Copy the board as text") {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
                     session.takeKeys()
+                }
+                // 0.5: a new timeline board from this board's ideas and shapes (not on a board that places its things itself).
+                if !session.board.placesItself && !session.starterDraft {
+                    Button("Make a timeline of it…") { model.makeTimeline(of: session) }
+                        .disabled(session.board.isEmpty)
+                        .accessibilityIdentifier("more.makeTimeline")
                 }
                 if !session.board.isEmpty {
                     ShareLink(item: BoardPNG(board: session.board), preview: SharePreview(session.board.title)) {
@@ -475,7 +482,7 @@ struct BoardCommands: Commands {
             Button("Even Gaps") { session?.evenGaps() }.disabled((session?.tidyCount ?? 0) < 3)
             Button("Same Size") { session?.sameSize() }.disabled((session?.sizeCount ?? 0) < 2)
             IdeaOrderCommands()
-            Button("Paste a List as a Mind Map") {
+            Button(session?.board.isTimeline == true ? "Paste a List as Bars" : "Paste a List as a Mind Map") {
                 #if os(macOS)
                 let text = NSPasteboard.general.string(forType: .string)
                 #else
@@ -484,7 +491,7 @@ struct BoardCommands: Commands {
                 if let text { session?.paste(text) }
             }
             .keyboardShortcut("v", modifiers: [.command, .shift])
-            .disabled(session == nil || session?.readOnly == true || session?.editing != nil || session?.board.placesItself == true)
+            .disabled(session == nil || session?.readOnly == true || session?.editing != nil || session?.board.isSequence == true)
         }
     }
 }
