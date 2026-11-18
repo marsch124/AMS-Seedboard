@@ -75,7 +75,9 @@ struct CanvasView: View {
                     var sheet = ctx
                     sheet.translateBy(x: session.offset.width, y: session.offset.height)
                     sheet.scaleBy(x: session.scale, y: session.scale)
-                    var painter = BoardPainter(board: session.board, facts: session.facts, paint: paint)
+                    let shown = session.shownNow
+                    var painter = BoardPainter(board: shown.board, facts: shown.facts, paint: paint)
+                    painter.motion = shown.looks
                     painter.todoStates = ParagonEcho.shared.marks(for: session.board)
                     painter.scale = session.scale
                     painter.selection = session.selection
@@ -352,6 +354,8 @@ struct CanvasView: View {
                 guard !pinched else { return }
                 switch drag {
                 case .idle:
+                    // A finger (or a click) landing ends a glide at once, where it is.
+                    session.stopGlide()
                     let t = target(at: session.toBoard(value.startLocation))
                     pressBegan = value.time
                     // Pressing somewhere else ends the typing.
@@ -578,7 +582,7 @@ struct CanvasView: View {
                 session.linkFrom = nil
             } else if Finger.twoPressesFit, double(nil) {
                 // iPhone and iPad: two presses on empty board show the whole board (the Mac makes a sticky note).
-                withAnimation(.easeOut(duration: 0.2)) { session.fit() }
+                session.fit()
                 lastTapAt = .distantPast
                 return
             } else if double(nil), lastTapBare, session.selection.isEmpty, session.selectedLink == nil {
@@ -649,6 +653,8 @@ struct CanvasView: View {
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard session.editing == nil else { return .ignored }
+        // A key ends a glide at once, where it is (⌘+ and ⌘− go on from the glide's end instead).
+        if !press.modifiers.contains(.command) { session.stopGlide() }
         // A flow shape: Tab (or ⌘ with an arrow key) makes the next shape.
         if session.flowKey(press) { return .handled }
         let command = press.modifiers.contains(.command)

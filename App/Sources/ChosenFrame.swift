@@ -24,7 +24,7 @@ extension BoardSession {
     /// while the arrow tool is on, on a board that cannot be changed, or with several things chosen.
     func chosenControls() -> [Controls.Control] {
         guard !readOnly, editing == nil, laneTyping == nil, !linking, selection.count == 1,
-              let id = selection.first, let item = board.item(id), !facts.hidden.contains(id) else { return [] }
+              let id = selection.first, let item = shownThing(id), !facts.hidden.contains(id) else { return [] }
         var taken: Set<Direction> = []
         var words: [CGRect] = []
         if item.kind != .idea, !board.links.isEmpty {
@@ -155,7 +155,7 @@ struct ChosenLayer: View {
             sheet.scaleBy(x: scale, y: scale)
             let gap = Controls.frameGap / scale
             for id in session.selection {
-                guard let item = session.board.item(id), !session.facts.hidden.contains(id) else { continue }
+                guard let item = session.shownThing(id), !session.facts.hidden.contains(id) else { continue }
                 let frame = ChosenOutline.path(of: item, depth: session.facts.depth[id] ?? 0, gap: gap)
                 sheet.stroke(frame, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2 / scale, lineJoin: .round))
             }

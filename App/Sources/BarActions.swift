@@ -426,7 +426,7 @@ struct BarActions {
             all.append(act("picture", "Picture…", .new(.picture)) { PictureDesk.shared.ask.send(spot) })
         }
         all.append(act("selectAll", "Select all", .app(.seedSelectAll), enabled: !session.board.isEmpty, gap: !all.isEmpty) { session.selectAll() })
-        all.append(act("fit", "Show the whole board", .app(.seedFit)) { withAnimation(.easeOut(duration: 0.2)) { session.fit() } })
+        all.append(act("fit", "Show the whole board", .app(.seedFit)) { session.fit() })
         return all
     }
 }
