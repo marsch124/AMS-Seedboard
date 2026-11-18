@@ -161,7 +161,8 @@ final class DoorDesk: ObservableObject {
     /// board is not in the list is looked for in the Removed folder.
     func refresh(_ session: BoardSession) {
         let model = AppModel.shared
-        guard !session.board.doors.isEmpty else { return }
+        // A starter being changed is left alone (its doors are re-pointed when a board is made of it).
+        guard !session.board.doors.isEmpty, !session.starterDraft else { return }
         let names = model.boards.reduce(into: [UUID: String]()) { $0[$1.id] = $1.title }
         session.quietly { $0.nameDoors(names) }
         let look = DoorLook.shared

@@ -74,6 +74,8 @@ extension AppModel {
         let result: Board
         if openID == target.id, let session, !session.starterDraft {
             session.commitEdit()
+            // A drag in progress is ended where it is first, or the next move would rebuild the board without the thought.
+            if session.busy { session.liveEnd(keep: true) }
             session.change { made = Outside.add(text: clean, picture: arrived, to: &$0) }
             result = session.board
             if !made.isEmpty {

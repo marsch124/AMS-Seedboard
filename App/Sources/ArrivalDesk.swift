@@ -113,6 +113,8 @@ final class ArrivalDesk {
         var arrivals: [Arrival] = []
         /// Every picture that was kept for the boards, with its size in pixels.
         var pixels: [UUID: CGSize] = [:]
+        /// Pictures that could be read but not kept with the boards (e.g. the device is full): they wait, never lost.
+        var notTaken: Set<UUID> = []
     }
 
     /// Reads every list, and keeps the waiting pictures where the boards' pictures live. Off the main thread.
@@ -124,7 +126,8 @@ final class ArrivalDesk {
             for arrival in box.waiting() where seen.insert(arrival.id).inserted {
                 found.arrivals.append(arrival)
                 guard arrival.kind == .picture, let name = arrival.picture, let bytes = box.pictureBytes(name),
-                      let size = pixelSize(of: bytes), PictureStore.shared.adopt(bytes, named: name) else { continue }
+                      let size = pixelSize(of: bytes) else { continue }
+                guard PictureStore.shared.adopt(bytes, named: name) else { found.notTaken.insert(arrival.id); continue }
                 found.pixels[arrival.id] = size
             }
         }
@@ -155,7 +158,8 @@ final class ArrivalDesk {
             if model.openID == group.board, let session = model.session {
                 // The board that is open: one step that can be undone. In the middle of typing or dragging
                 // nothing is laid under his hands; the lines wait.
-                if session.busy {
+                // A board that waits for its newest version (Handoff) cannot take anything yet: the lines wait too.
+                if session.busy || session.readOnly {
                     held = true
                     continue
                 }
@@ -174,7 +178,10 @@ final class ArrivalDesk {
                 }
             }
             things += laid.count
-            handled.append((group.board, group.arrivals))
+            // A picture that could be read but not kept waits for the next round (its line stays).
+            let waiting = group.arrivals.filter { found.notTaken.contains($0.id) }
+            if !waiting.isEmpty { held = true }
+            handled.append((group.board, group.arrivals.filter { !found.notTaken.contains($0.id) }))
             if let first = laid.first { landed.append((group.board, first)) }
         }
 
@@ -183,7 +190,11 @@ final class ArrivalDesk {
         model.saveNow()
         model.store.flush()
         try? await Task.sleep(nanoseconds: 60_000_000)
-        let gone = handled.filter { !model.store.notOnDevice($0.board) }.flatMap(\.arrivals)
+        let gone = handled.filter { !model.store.notOnDevice($0.board) }.flatMap { group -> [Arrival] in
+            let stored = model.openID == group.board ? model.session?.board : model.boards.first { $0.id == group.board }
+            // Only what really is on the board leaves the list; an unreadable picture is said as lost and goes too.
+            return group.arrivals.filter { stored?.item($0.id) != nil || ($0.kind == .picture && found.pixels[$0.id] == nil) }
+        }
         if !gone.isEmpty {
             await Task.detached(priority: .utility) { for box in boxes { box.remove(gone) } }.value
         }

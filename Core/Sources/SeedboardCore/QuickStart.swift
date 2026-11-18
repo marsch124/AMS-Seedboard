@@ -55,6 +55,11 @@ public enum NewLink {
             let wanted = id.lowercased()
             if let found = shelf.shown.first(where: { $0.id.lowercased() == wanted }),
                let board = shelf.makeBoard(from: found.id, now: now) {
+                // A starter a newer Seedboard wrote would make a board that cannot be saved.
+                guard board.canBeChanged else {
+                    return Made(board: Starter.blank.board(now: now),
+                                line: "This starter was made by a newer Seedboard. Update the app to use it. A blank board was made instead.")
+                }
                 return Made(board: board, line: nil)
             }
             return Made(board: Starter.blank.board(now: now), line: "That starter is not here any more. This is a blank board.")

@@ -154,6 +154,15 @@ extension BoardSession {
                     return
                 }
                 guard let taken else { failed += 1; continue }
+                // Never under his hands: while he types or drags, the picture waits (else the typing's Escape or the
+                // drag's next move would take it away again).
+                while busy {
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    guard SafetyRules.maySave(asking: self, shown: AppModel.shared.session) else {
+                        AppModel.shared.say(closed, tone: .problem)
+                        return
+                    }
+                }
                 let size = Board.pictureSize(forPixels: taken.pixels)
                 let at = spot ?? freeSpot(near: visibleCentre, size: size)
                 var id: UUID?

@@ -318,6 +318,8 @@ public struct StarterShelf: Equatable, Sendable {
             b.items[i].parent = b.items[i].parent.flatMap { map[$0] }
             b.items[i].from = b.items[i].from.flatMap { map[$0] }
             b.items[i].to = b.items[i].to.flatMap { map[$0] }
+            // A new plan starts undone.
+            b.items[i].doneDay = nil
         }
         var arrows: [Link] = []
         for var link in b.links {
