@@ -53,7 +53,7 @@ In and out
 31. iPhone under the thumb (picture first) — AP 10. M.
 
 ## His picks
-18 Nov 2026, 15:40, tick form ("Your picks plus my ticks"): **1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 22, 23, 24, 28, 29, 30, 31** — 25 picks.
+18 Nov 2026, 15:28, tick form ("Your picks plus my ticks"): **1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 22, 23, 24, 28, 29, 30, 31** — 25 picks.
 - NOT ticked (= turned down, do not propose again): 9 small pictures, 14 mind map as a list, 21 a PARAGON project as a board, 25 widget, 26 two boards side by side, 27 a board is a real file.
 - 17: he was told plainly that it needs his clear yes (first time something lands inside an existing PARAGON note, written by PARAGON from the waiting list) and then ticked it. Say it once more in the release report.
 - Picture first, ONE combined numbered picture before building these: 7 (home), 8 (branches A / B), 31 (iPhone thumb row), and the three marks of 16.
