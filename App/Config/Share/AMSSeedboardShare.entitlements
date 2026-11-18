@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Share › Seedboard on iPhone and iPad (0.5). -->
+	<!-- ALWAYS: the keychain group the app can read too (it is the app's own identity). Words and links wait there
+	     when the shared folder below is not handed out. Needs nothing set up on Apple's page. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>D24ENP83QQ.com.schabbauer.AMSSeedboard</string>
+	</array>
+	<!-- APP GROUP BLOCK, begin. PARAGON's shared folder: words, links AND pictures wait in Seedboard/arrivals/.
+	     It needs the group attached to com.schabbauer.AMSSeedboard.Share on Apple's page. If that cannot be done:
+	     delete everything from this "begin" line to the "end" line below (the comment, the key and its array).
+	     Share then takes words and links only, and the page says so. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.schabbauer.amspara</string>
+	</array>
+	<!-- APP GROUP BLOCK, end. -->
+</dict>
+</plist>

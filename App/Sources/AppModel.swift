@@ -124,6 +124,8 @@ final class AppModel: ObservableObject {
         // A link that arrived before the boards were loaded is followed now.
         if let id = waitingLink { follow(id) }
         checkParagon()
+        // 0.5: what was shared from other apps is laid on its boards (ArrivalDesk.swift).
+        ArrivalDesk.shared.start(self)
         #if DEBUG
         // For trying the hand-over without a press: `-sendNow note|project|todos` (with `-paragonFolder`).
         if let word = LaunchOptions.value(for: "-sendNow"), let kind = SendKind(rawValue: word) {
