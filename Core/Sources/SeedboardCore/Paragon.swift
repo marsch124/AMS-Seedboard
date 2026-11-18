@@ -75,6 +75,7 @@ public enum ParagonExport {
     /// The whole text of a new note for Resources/: front matter as PARAGON needs it (type resource), "# Title", the picture line,
     /// a line that links back to the board, then Outline, Flow, Notes and Tasks (a section with nothing in it is left out).
     public static func note(board: Board, title: String, picture: String?, now: Date) -> String {
+        if board.isTimeline { return timelineNote(board: board, title: title, picture: picture, now: now) }
         var out = frontMatter(title: title, type: "resource", status: nil, now: now)
         out += "# \(title)\n\n"
         out += head(board: board, picture: picture)
@@ -108,6 +109,7 @@ public enum ParagonExport {
     /// ideas under it is one task by itself, listed before the headings. Flow shapes in arrow order go under
     /// "### Steps", other to-do items under "### To do".
     public static func project(board: Board, title: String, picture: String?, now: Date) -> String {
+        if board.isTimeline { return timelineProject(board: board, title: title, picture: picture, now: now) }
         var out = frontMatter(title: title, type: "project", status: "active", now: now)
         out += "# \(title)\n\n"
         out += head(board: board, picture: picture)
@@ -242,7 +244,7 @@ public enum ParagonExport {
 
     // MARK: Pieces
 
-    private static func frontMatter(title: String, type: String, status: String?, now: Date) -> String {
+    static func frontMatter(title: String, type: String, status: String?, now: Date) -> String {
         var out = "---\ntitle: \(yaml(title))\ntype: \(type)\n"
         if let status { out += "status: \(status)\n" }
         out += "created: \(stamp(now, "yyyy-MM-dd"))\n---\n"
@@ -257,14 +259,14 @@ public enum ParagonExport {
 
     /// The picture line and the way back to the board. A picture sits in `Pictures/`, one folder above the note's folder,
     /// so it is written relative to the note, with `%20` for spaces, as a plain `![…](…)` line (PARAGON's `Pictures.matches`).
-    private static func head(board: Board, picture: String?) -> String {
+    static func head(board: Board, picture: String?) -> String {
         var out = ""
         if let picture, !picture.isEmpty { out += "![Picture](../Pictures/\(encode(picture)))\n\n" }
         out += "[Open the board in Seedboard](\(boardLink(board.id)))\n\n"
         return out
     }
 
-    private static func section(_ name: String, _ lines: [String], into out: inout String) {
+    static func section(_ name: String, _ lines: [String], into out: inout String) {
         guard !lines.isEmpty else { return }
         out += "## \(name)\n\n" + lines.joined(separator: "\n") + "\n\n"
     }
@@ -335,7 +337,7 @@ public enum ParagonExport {
         return text.addingPercentEncoding(withAllowedCharacters: ascii) ?? text
     }
 
-    private static func stamp(_ date: Date, _ format: String) -> String {
+    static func stamp(_ date: Date, _ format: String) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.calendar = Calendar(identifier: .gregorian)

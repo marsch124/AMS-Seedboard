@@ -17,7 +17,11 @@ final class BoardSession: ObservableObject {
     /// Where the board stands on screen, and whether the owner has moved it.
     @Published private(set) var place = Viewport()
     /// Where the board's zero point is on screen, and how big one board point is.
-    var offset: CGSize { place.offset }
+    var offset: CGSize {
+        get { place.offset }
+        // The timeline places its days itself (TimelineSession.swift).
+        set { place.offset = newValue }
+    }
     var scale: CGFloat { CGFloat(place.scale) }
     var viewSize: CGSize { place.size }
     /// The arrow tool is on: the next two shapes pressed are joined.
@@ -27,6 +31,8 @@ final class BoardSession: ObservableObject {
     @Published var choosingMore = false
     @Published private(set) var undoCount = 0
     @Published private(set) var redoCount = 0
+    /// Timeline boards only: the scale of the days (see TimelineSession.swift).
+    @Published var timeline = TimelineLook()
 
     /// A short line with an Undo button, after a step the owner may not have meant.
     struct Notice: Equatable {
@@ -416,6 +422,7 @@ final class BoardSession: ObservableObject {
     /// A list becomes a mind map (or hangs under the chosen idea); one line becomes a sticky note.
     func paste(_ text: String) {
         guard !readOnly, editing == nil else { return }
+        if board.isTimeline { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
         let nodes = Outline.parse(clean)
@@ -480,6 +487,7 @@ final class BoardSession: ObservableObject {
 
     func duplicateSelection() {
         guard editing == nil, !selection.isEmpty else { return }
+        if board.isTimeline { timelineDuplicate(); return }
         var copies: Set<UUID> = []
         change { copies = $0.duplicate(self.selection) }
         if !copies.isEmpty { selection = copies }
@@ -601,16 +609,32 @@ final class BoardSession: ObservableObject {
     }
 
     /// Every way of moving the view goes through `place`, which remembers that the owner moved it.
-    func pan(by delta: CGSize) { place.pan(by: delta) }
+    func pan(by delta: CGSize) {
+        place.pan(by: delta)
+        if board.isTimeline { clampTimeline() }
+    }
 
     /// A finger slide on empty board: the view as it stood when the slide began, moved by the finger's way.
-    func slide(from start: CGSize, by way: CGSize) { place.slide(from: start, by: way) }
+    func slide(from start: CGSize, by way: CGSize) {
+        place.slide(from: start, by: way)
+        if board.isTimeline { clampTimeline() }
+    }
 
     /// Zooms so the board point under the screen point stays where it is.
-    func zoom(to newScale: CGFloat, around point: CGPoint? = nil) { place.zoom(to: Double(newScale), around: point) }
+    func zoom(to newScale: CGFloat, around point: CGPoint? = nil) {
+        if board.isTimeline {
+            let anchor = point ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
+            timelineZoom(by: newScale / max(scale, 0.01), around: anchor)
+            return
+        }
+        place.zoom(to: Double(newScale), around: point)
+    }
 
     /// Shows the whole board, never bigger than life size.
-    func fit() { place.fit(board.bounds) }
+    func fit() {
+        if board.isTimeline { timelineFit(); return }
+        place.fit(board.bounds)
+    }
 
     /// The first time the board's place on screen is known, it is shown whole — and again whenever its
     /// room changes (a window still settling, a page opening over it), until the owner has moved or zoomed it.
@@ -624,6 +648,7 @@ final class BoardSession: ObservableObject {
 
     /// Moves the view just enough to bring an item into sight.
     func reveal(_ id: UUID) {
+        if board.isTimeline { timelineReveal(id); return }
         guard let item = board.item(id), viewSize.width > 10 else { return }
         let r = toScreen(item.frame)
         let safe = CGRect(x: 30, y: 70, width: viewSize.width - 60, height: viewSize.height - 190)

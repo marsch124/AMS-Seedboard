@@ -4,6 +4,7 @@ import CoreGraphics
 /// The ways a new board can begin.
 public enum Starter: String, CaseIterable, Identifiable, Sendable {
     case blank, mindMap, flow, prosCons, steps
+    case timeline
 
     public var id: String { rawValue }
 
@@ -14,6 +15,7 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
         case .flow: return "Flow"
         case .prosCons: return "Pros and cons"
         case .steps: return "Plan in steps"
+        case .timeline: return "Timeline"
         }
     }
 
@@ -24,14 +26,18 @@ public enum Starter: String, CaseIterable, Identifiable, Sendable {
         case .flow: return "Shapes with arrows and a yes or no choice"
         case .prosCons: return "Two columns of sticky notes"
         case .steps: return "Five steps in a row, each with a note"
+        case .timeline: return "Bars on days, with what comes after what"
         }
     }
 
     /// A new board with this start on it, centred round (0,0).
     public func board(title: String? = nil, now: Date = Date()) -> Board {
         var board = Board(title: title ?? (self == .blank ? "New board" : name), created: now)
+        if self == .timeline { return Board.timelineStart(title: board.title, now: now) }
         switch self {
         case .blank:
+            break
+        case .timeline:
             break
         case .mindMap:
             let centre = board.addMap(from: [OutlineNode("Main idea", [

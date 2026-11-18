@@ -58,9 +58,13 @@ struct SendSheet: View {
             }
 
             choice(.note, "As a note",
-                   "The board's picture and its words as a tidy outline. It goes to Resources, and one line in the Inbox points to it.")
+                   session.board.isTimeline
+                   ? "The timeline's picture and its bars with their dates. It goes to Resources, and one line in the Inbox points to it."
+                   : "The board's picture and its words as a tidy outline. It goes to Resources, and one line in the Inbox points to it.")
             choice(.project, "As a project",
-                   "The branches become headings, the ideas under them become tasks. It goes to Projects.")
+                   session.board.isTimeline
+                   ? "The phases become headings, the bars become tasks with their start and due day. It goes to Projects."
+                   : "The branches become headings, the ideas under them become tasks. It goes to Projects.")
             choice(.todos, "Only the to-do boxes",
                    waiting == 0 ? "No to-do boxes are waiting. Choose a box and press To do first."
                    : (waiting == 1 ? "1 to-do box goes to the Inbox as a task." : "\(waiting) to-do boxes go to the Inbox as tasks."))

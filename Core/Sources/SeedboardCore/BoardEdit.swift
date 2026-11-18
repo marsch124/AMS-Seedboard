@@ -230,6 +230,7 @@ public extension Board {
 
     /// The smallest box round everything that can be seen; nil for an empty board.
     var bounds: CGRect? {
+        if isTimeline { return isEmpty ? nil : timelinePicture().box }
         var all: CGRect?
         for item in items where !isHidden(item.id) {
             all = all.map { $0.union(item.frame) } ?? item.frame
@@ -242,6 +243,7 @@ public extension Board {
 
     /// Short words for the list: "12 ideas · 4 shapes · 2 notes".
     var countLine: String {
+        if isTimeline { return timelineCountLine }
         let ideas = items.filter { $0.kind == .idea }.count
         let shapes = items.filter { $0.kind.isShape }.count
         let notes = items.filter { $0.kind == .note }.count

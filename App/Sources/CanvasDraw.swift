@@ -145,6 +145,8 @@ enum Lettering {
                 board.items[i].h = max(item.h, Double(t.height + 22))
             case .frame:
                 break
+            case .bar, .milestone, .phase:
+                break
             }
         }
         board.layoutMaps()
@@ -219,6 +221,8 @@ struct BoardPainter {
     static let handleSize: CGFloat = 18
 
     func draw(_ ctx: inout GraphicsContext) {
+        // A timeline is drawn by its own painter (TimelineDraw.swift), whole, from the corner of its box.
+        if board.isTimeline { TimelinePainter.whole(board, paint: paint, ground: ground).draw(&ctx); return }
         let byID = board.items.reduce(into: [UUID: Item]()) { $0[$1.id] = $1 }
 
         for item in board.items where item.kind == .frame { drawFrame(item, &ctx) }
@@ -438,6 +442,8 @@ struct BoardPainter {
         case .text:
             align = .leading
         case .frame:
+            return
+        case .bar, .milestone, .phase:
             return
         }
 
