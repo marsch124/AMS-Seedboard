@@ -85,6 +85,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     /// A "Who does what" board's own things (format 2): a name with its dashed line, a message between two
     /// names, a note across the lines, a section heading.
     case who, message, band, section
+    /// Lines drawn by hand (format 2): the strokes are in `Item.strokes` (Ink.swift).
+    case drawing
 
     /// The flowchart shapes (`ItemKind.flowShapes`).
     public var isShape: Bool { ItemKind.flowShapes.contains(self) }
@@ -110,6 +112,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .message: return "Message"
         case .band: return "Note"
         case .section: return "Section"
+        case .drawing: return "Sketch"
         }
     }
 
@@ -129,6 +132,7 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .slanted: return CGSize(width: 160, height: 56)
         case .store: return CGSize(width: 130, height: 80)
         case .who, .message, .band, .section: return CGSize(width: 60, height: 17)
+        case .drawing: return CGSize(width: 120, height: 80)
         }
     }
 }
@@ -172,6 +176,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var to: UUID?
     /// Who does what: the message is an answer, drawn with dashes.
     public var answer: Bool?
+    /// A drawing's lines, measured from its corner (Ink.swift). nil for everything else.
+    public var strokes: [Stroke]?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -197,6 +203,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case start, end, row
         case lanes
         case from, to, answer
+        case strokes
     }
 
     public init(from decoder: Decoder) throws {
@@ -225,6 +232,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         from = try? c.decode(UUID.self, forKey: .from)
         to = try? c.decode(UUID.self, forKey: .to)
         answer = try? c.decode(Bool.self, forKey: .answer)
+        strokes = (try? c.decode([Lenient<Stroke>].self, forKey: .strokes))?.compactMap(\.value)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -251,6 +259,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(from, forKey: .from)
         try c.encodeIfPresent(to, forKey: .to)
         try c.encodeIfPresent(answer, forKey: .answer)
+        try c.encodeIfPresent(strokes, forKey: .strokes)
     }
 
     public var frame: CGRect {

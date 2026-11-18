@@ -97,6 +97,8 @@ final class AppModel: ObservableObject {
             session.selection = []
             session.selectedLink = link.id
         }
+        // For pictures: `-draw` opens the board with the Draw tool on and its plate showing.
+        if LaunchOptions.arguments.contains("-draw") { session?.ink.on = true }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // For pictures: `-removed` opens "Removed and earlier versions", `-clash` shows the clash notice.
         bringBackLaunch()

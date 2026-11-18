@@ -123,6 +123,8 @@ struct CanvasView: View {
                     .allowsHitTesting(false)
                     .accessibilityIdentifier("board.count")
                 IdeaPlaceMark(session: session)
+                // The line that runs under the Pencil (or a finger, or the mouse) while it draws.
+                InkLayer(wet: session.ink.wet, offset: session.offset, scale: session.scale, paint: paint)
 
                 editor
                 LaneOverlay(session: session)
@@ -328,8 +330,9 @@ struct CanvasView: View {
 
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
-            .onChanged { pressMoved(Press($0)) }
-            .onEnded { pressEnded(Press($0)) }
+            // With the Draw tool on, the drag is a line (InkDesk.swift).
+            .onChanged { if !session.inkMouse($0, ended: false) { pressMoved(Press($0)) } }
+            .onEnded { if !session.inkMouse($0, ended: true) { pressEnded(Press($0)) } }
     }
 
     /// A press landed or moved: the Mac's click and drag, or TouchLayer's finger, Pencil or pointer.
@@ -596,7 +599,8 @@ struct CanvasView: View {
             case .lost(let takeBack):
                 pressLost(value, takeBack: takeBack)
             }
-        })
+        }, ink: session.inkHook)
+        .pencilTaps(session.ink)
     }
 
     /// The press was taken away. By a second finger (or the page's edge swipe): two fingers only ever
@@ -664,6 +668,7 @@ struct CanvasView: View {
         case .escape:
             session.clearSelection()
             session.linking = false
+            session.ink.leave()
             return .handled
         case .upArrow: session.arrow(.up, big: press.modifiers.contains(.shift)); return .handled
         case .downArrow: session.arrow(.down, big: press.modifiers.contains(.shift)); return .handled

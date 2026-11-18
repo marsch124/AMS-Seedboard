@@ -152,6 +152,9 @@ enum Lettering {
                 let size = SequenceLook.wordsSize(of: item)
                 board.items[i].w = Double(size.width)
                 board.items[i].h = Double(size.height)
+            case .drawing:
+                // As big as its lines (Ink.swift).
+                break
             }
         }
         board.layoutMaps()
@@ -326,6 +329,8 @@ struct BoardPainter {
             return [plus(side == .right ? .right : .left)]
         case .frame:
             return [knob]
+        case .drawing:
+            return [knob]
         case .text:
             return [plus(.right), plus(.down)]
         default:
@@ -406,6 +411,10 @@ struct BoardPainter {
         case .bar, .milestone, .phase:
             return
         case .who, .message, .band, .section:
+            return
+        case .drawing:
+            // Lines drawn by hand (InkDraw.swift): no words, no tick.
+            drawInk(item, ctx)
             return
         }
 

@@ -123,6 +123,8 @@ enum Sample {
             made(.steps, "Workshop bench", "green", daysAgo: 20, sent: true),
             looks,
             lanes(now: now),
+            // Drawing by hand (0.2), for pictures: `-board Sketch` (SampleSketch.swift).
+            sketch(now: now),
         ]
     }
 
