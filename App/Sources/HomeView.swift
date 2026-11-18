@@ -207,6 +207,8 @@ struct BoardCard: View {
     let board: Board
     let open: () -> Void
     @Environment(\.colorScheme) private var scheme
+    /// 0.5: "5 of 13 done", read from PARAGON (EchoKeeper.swift).
+    @ObservedObject private var echo = EchoKeeper.shared
 
     var body: some View {
         let paint = Paint(scheme)
@@ -230,7 +232,7 @@ struct BoardCard: View {
                             .font(.body.weight(.medium))
                             .lineLimit(1)
                     }
-                    Text(board.changedWords())
+                    DoneWords(changed: board.changedWords(), tail: echo.doneTail(board))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -243,7 +245,7 @@ struct BoardCard: View {
             .modifier(CardPlate())
         }
         .buttonStyle(PressStyle())
-        .accessibilityLabel("\(board.title). \(board.changedWords())")
+        .accessibilityLabel("\(board.title). \(board.changedWords())\(echo.doneTail(board))")
     }
 }
 

@@ -76,6 +76,8 @@ final class AppModel: ObservableObject {
         store.onCloudGone = { [weak self] gone in self?.cloudRemoved(gone) }
         store.onState = { [weak self] in self?.storeStateChanged() }
         store.onClash = { [weak self] id, title in self?.clash = ClashNotice(id: id, title: title) }
+        // 0.5: what PARAGON says about the boards that were sent is read back (EchoKeeper.swift).
+        EchoKeeper.shared.watch(self)
         #if os(macOS)
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.leaving(closing: true) }
@@ -544,9 +546,9 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Opens the note the board became, in PARAGON.
+    /// Opens the note the board became, in PARAGON: under the title it was FOUND with (also after a rename there).
     func openInParagon(_ info: SentInfo) {
-        guard let url = ParagonExport.openURL(noteTitle: info.title) else { return }
+        guard let url = ParagonExport.openURL(noteTitle: EchoKeeper.shared.titleToOpen(info)) else { return }
         #if os(macOS)
         NSWorkspace.shared.open(url)
         #else
