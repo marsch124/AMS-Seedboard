@@ -33,6 +33,8 @@ targets:
     dependencies:
       - package: SeedboardCore
       - package: AMSIcons
+      # 0.5: Share › Seedboard, embedded in the app on iPhone, iPad and Mac.
+      - target: AMSSeedboardShare
     entitlements:
       path: App/Config/AMSSeedboard.entitlements
       properties:
@@ -91,6 +93,48 @@ targets:
           UIColorName: ""
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+  # 0.5: Share › Seedboard. ONE target and ONE bundle id for iPhone, iPad and Mac. It takes words, a link and
+  # pictures from any app's Share button and only ever writes into the waiting place (ArrivalBox); the app lays
+  # the things on their board the next time it is in front.
+  AMSSeedboardShare:
+    type: app-extension
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: App/Share
+      # The two files the app and the share page have in common: the waiting place and the page itself.
+      - path: App/Sources/ArrivalBox.swift
+      - path: App/Sources/ShareInPage.swift
+    dependencies:
+      - package: SeedboardCore
+      - package: AMSIcons
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.schabbauer.AMSSeedboard.Share
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_HARDENED_RUNTIME: true
+        SKIP_INSTALL: true
+        INFOPLIST_FILE: App/Config/Share/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        # Hand-written files (not made from this spec), so the app-group block in each can be deleted by hand.
+        CODE_SIGN_ENTITLEMENTS: App/Config/Share/AMSSeedboardShare.entitlements
+        CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: App/Config/Share/AMSSeedboardShare-macOS.entitlements
+    info:
+      path: App/Config/Share/Info.plist
+      properties:
+        CFBundleDisplayName: Seedboard
+        CFBundleName: AMS Seedboard Share
+        # The same two settings as the app: Apple refuses an upload whose share page has another version or build.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsWebPageWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 10
   AMSSeedboardUITests:
     type: bundle.ui-testing
     supportedDestinations: [iOS, macOS]

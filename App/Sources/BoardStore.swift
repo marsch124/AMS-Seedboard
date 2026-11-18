@@ -76,6 +76,9 @@ final class BoardStore {
         return nil
     }
 
+    /// 0.5 (Share): true while this board's last write on the device failed.
+    func notOnDevice(_ id: UUID) -> Bool { deviceProblems[id] != nil }
+
     /// The device's copies and iCloud's files made into one list. For the same id the newer `changed` wins.
     func loadAll() async -> [Board] {
         if sample { return Array(memory.values).sorted { $0.changed > $1.changed } }
