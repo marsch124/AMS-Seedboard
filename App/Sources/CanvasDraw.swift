@@ -248,11 +248,11 @@ struct BoardPainter {
         // Mind-map branches.
         for item in board.items where item.kind == .idea && !facts.hidden.contains(item.id) {
             guard let parentID = item.parent, let parent = byID[parentID] else { continue }
-            // 0.5: thick to thin, and (look B) the words on the line — BranchLook.swift.
-            let look = BranchLook.current, depth = facts.depth[item.id] ?? 1
-            let path = look.path(from: parent.frame, parentDepth: depth - 1, to: item.frame, side: facts.side[item.id] ?? .right)
+            // 0.5: thick to thin, and the words sit on the line — BranchLook.swift.
+            let depth = facts.depth[item.id] ?? 1
+            let path = BranchLook.path(from: parent.frame, parentDepth: depth - 1, to: item.frame, side: facts.side[item.id] ?? .right)
             ctx.stroke(path, with: .color(paint.line(facts.colour[item.id] ?? "pink")),
-                       style: StrokeStyle(lineWidth: look.weight(depth: depth), lineCap: .round, lineJoin: .round))
+                       style: StrokeStyle(lineWidth: BranchLook.weight(depth: depth), lineCap: .round, lineJoin: .round))
         }
 
         drawArrows(&ctx)

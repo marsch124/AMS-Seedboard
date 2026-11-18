@@ -63,6 +63,7 @@ enum Thumbs {
             sheet.translateBy(x: -box.midX, y: -box.midY)
             var painter = BoardPainter(board: fitted, facts: facts, paint: paint)
             painter.handles = false
+            painter.todoStates = TodoMark.marks(for: fitted)
             painter.ground = paint.canvas
             painter.draw(&sheet)
         }

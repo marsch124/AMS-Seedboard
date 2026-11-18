@@ -89,7 +89,7 @@ final class AppModel: ObservableObject {
 
     private func load() async {
         var all = LaunchOptions.sampleData ? Sample.boards() : await store.loadAll()
-        // 0.5, pictures first: the sample boards of `-branches` and `-marks` (LooksLaunch.swift).
+        // For pictures: the sample boards of `-garden` and `-marks` (LooksLaunch.swift).
         LooksLaunch.addBoards(to: &all)
         all.sort { $0.changed > $1.changed }
         boards = all

@@ -3,30 +3,25 @@ import SeedboardCore
 import AMSIcons
 
 // The home page (Mac and iPad, when no board is open), the cards on it, the starter chooser made of
-// the same cards, and the search field over the boards list.
+// the same cards, and the search field over the boards list. The strip's card is in HomeStrip.swift.
 
-/// The home page: the ways to begin on top, the boards as cards with their small pictures below.
+/// The home page (0.5: his boards first): the sprout and "Plant a seed", the starters as ONE strip that slides
+/// sideways, then the boards as cards with their small pictures — Pinned, Recent, Sent to PARAGON.
 /// It has the board's own background by day and by night.
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.horizontalSizeClass) private var sizeClass
     /// The words in the search field over the list: the cards follow them.
     let search: String
     let open: (UUID) -> Void
 
-    @State private var showStarters = false
-    @State private var showStarterSheet = false
+    @State private var renaming: Board?
+    @State private var newName = ""
+    @State private var removing: Board?
 
     private let columns = [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 10, alignment: .top)]
 
-    /// 0.5, pictures first: with the launch word `-homeStrip` the new home page (HomeStrip.swift), else as in 0.4.
-    @ViewBuilder
     var body: some View {
-        if LooksLaunch.homeStrip { HomeStripPage(search: search, open: open) } else { today }
-    }
-
-    private var today: some View {
         let found = BoardSearch.find(search, in: model.boards)
         let pinned = found.filter(\.pinned)
         let recent = found.filter { !$0.pinned && $0.sent == nil }
@@ -54,12 +49,22 @@ struct HomeView: View {
                     .accessibilityIdentifier("home.startersEdit")
                 }
                 .padding(.top, 6)
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                    ForEach(model.shelf.shown) { starter in
-                        StarterCard(starter: starter, pick: { open(model.newBoard(from: starter)) }, ask: { model.ask($0) })
-                            .accessibilityIdentifier("home.starter.\(starter.id)")
+                // ONE strip: it slides sideways, a card that is cut off at the edge says there are more.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: StarterStripCard.gap) {
+                        // The Blank board always first: the sure way to a new board when the list is hidden.
+                        ForEach(model.shelf.strip) { starter in
+                            StarterStripCard(starter: starter, pick: { open(model.newBoard(from: starter)) }, ask: { model.ask($0) })
+                                .accessibilityIdentifier("home.starter.\(starter.id)")
+                        }
                     }
+                    // Room for the cards' faint shadow and edge.
+                    .padding(.horizontal, 1)
+                    .padding(.top, 1)
+                    .padding(.bottom, 3)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("home.starterStrip")
 
                 section("Pinned", pinned)
                 section("Recent", recent)
@@ -83,8 +88,28 @@ struct HomeView: View {
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("board.none")
+        .alert("Name of the board", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Name", text: $newName)
+            Button("Cancel", role: .cancel) { renaming = nil }
+            Button("Save") {
+                if let board = renaming { model.rename(board.id, to: newName) }
+                renaming = nil
+            }
+        }
+        .confirmationDialog("Remove “\(removing?.title ?? "")”?",
+                            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                            titleVisibility: .visible) {
+            Button("Remove the board", role: .destructive) {
+                if let board = removing { model.remove(board.id) }
+                removing = nil
+            }
+            Button("Cancel", role: .cancel) { removing = nil }
+        } message: {
+            Text("It is kept for 30 days in the Removed folder.")
+        }
     }
 
+    /// The sprout and "Plant a seed" — no button: the list's "New board" is the one green button.
     private var header: some View {
         HStack(spacing: 10) {
             AppMarkView(.seedSprout, size: 30, colour: Part.boards.text)
@@ -96,31 +121,6 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            // The same choice of starters as the list's own New board button.
-            Button {
-                if sizeClass == .compact { showStarterSheet = true } else { showStarters = true }
-            } label: {
-                HStack(spacing: 6) {
-                    ControlMarkView(.add, size: 15, colour: .white)
-                    Text("New board")
-                }
-            }
-            .buttonStyle(FilledButton(.boards))
-            .accessibilityIdentifier("empty.newBoard")
-            .popover(isPresented: $showStarters, arrowEdge: .top) {
-                StarterPicker(pick: { starter in
-                    showStarters = false
-                    open(model.newBoard(from: starter))
-                }, close: { showStarters = false })
-                .presentationCompactAdaptation(.popover)
-            }
-            .sheet(isPresented: $showStarterSheet) {
-                StarterPicker(wide: true, pick: { starter in
-                    showStarterSheet = false
-                    open(model.newBoard(from: starter))
-                }, close: { showStarterSheet = false })
-                .presentationDetents(StarterPicker.sheetDetents)
-            }
         }
     }
 
@@ -133,10 +133,33 @@ struct HomeView: View {
                 .foregroundStyle(part.text)
                 .padding(.top, 16)
                 .padding(.bottom, 4)
+                .accessibilityIdentifier("home.heading.\(title)")
             LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                 ForEach(boards) { board in
                     BoardCard(board: board) { open(board.id) }
                         .accessibilityIdentifier("home.board.\(board.title)")
+                        // The list's own press-and-hold menu (RootView.swift `row`), word for word.
+                        .contextMenu {
+                            Button("Rename…") {
+                                newName = board.title
+                                renaming = board
+                            }
+                            Button(board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(board.id) }
+                            Button("Make a copy") { model.duplicate(board.id) }
+                            if board.canBeChanged {
+                                Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
+                            }
+                            Menu("Colour") {
+                                ForEach(Palette.boards, id: \.self) { name in
+                                    Button(name.capitalized) { model.setColour(board.id, name) }
+                                }
+                            }
+                            if let sent = board.sent {
+                                Button("Open in PARAGON") { model.openInParagon(sent) }
+                            }
+                            Divider()
+                            Button("Remove…", role: .destructive) { removing = board }
+                        }
                 }
             }
         }

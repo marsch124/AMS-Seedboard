@@ -4,30 +4,27 @@ import SeedboardCore
 import AppKit
 #endif
 
-// 0.5, the `looks` lane, PICTURES FIRST: the launch words that show the looks the owner must pick from.
+// 0.5, the `looks` lane: launch words for pictures of the mind-map branches and the four to-do marks.
 //
-//   -homeStrip            the home page with his boards first (HomeStrip.swift)
-//   -branches A | B       mind-map branches thick to thin (A), and with the words on the line (B) — BranchLook.swift;
-//                         any other word (e.g. `-branches today`) keeps today's look. With `-sampleData` it also adds
-//                         the sample mind map "Garden year" (three levels deep): `-board Garden`
+//   -garden               with `-sampleData`: adds the sample mind map "Garden year" (three levels deep, both sides,
+//                         one to-do, one folded idea): `-board Garden`
 //   -marks                with `-sampleData`: adds the sample board "To-do marks" (`-board marks`) and fills
 //                         `ParagonEcho` with made-up states, so all four marks show; the sample timeline
 //                         (`-board timeline`) and "Loan steps" (`-board Loan`) show the four as well
 //   -zoom 1.5 | most      the opened board at this zoom, round its middle; `most` = as big as the whole board
 //                         still fits (for pictures)
-//
-// Trap: the Mac reads launch words in pairs, so a word WITHOUT a value (`-marks`, `-homeStrip`, `-night`) must
-// stand after the pairs (`-board marks -marks -sampleData`), or the window does not come up.
 //   -window 1280x800      the Mac window at this size (for pictures)
+//
+// Trap: the Mac reads launch words in pairs, so a word WITHOUT a value (`-marks`, `-garden`, `-night`) must
+// stand after the pairs (`-board marks -marks -sampleData`), or the window does not come up.
 
 enum LooksLaunch {
-    static let homeStrip = LaunchOptions.arguments.contains("-homeStrip")
     static let marks = LaunchOptions.arguments.contains("-marks")
 
     /// The sample boards these launch words add, and the made-up states of `-marks`. Sample data only.
     static func addBoards(to boards: inout [Board], now: Date = Date()) {
         guard LaunchOptions.sampleData else { return }
-        if LaunchOptions.value(for: "-branches") != nil { boards.append(garden(now: now)) }
+        if LaunchOptions.arguments.contains("-garden") { boards.append(garden(now: now)) }
         guard marks else { return }
         let made = marksBoard(now: now)
         boards.append(made.board)
@@ -110,7 +107,7 @@ enum LooksLaunch {
     }
 
     /// "Garden year": a mind map three levels deep on both sides, with one to-do and one folded idea, so the
-    /// branches' weights and the words on the line can be judged.
+    /// branches' weights, the words on the line, the to-do mark and the folded dot can be looked at.
     static func garden(now: Date = Date()) -> Board {
         var board = Board(title: "Garden year", created: now.addingTimeInterval(-86_400 * 7),
                           changed: now.addingTimeInterval(-86_400 * 7), colour: "green")
@@ -131,6 +128,7 @@ enum LooksLaunch {
         // Both sides is switched on after the branches are there: the first two go right, the last two left.
         if let i = board.index(of: centre) { board.items[i].bothSides = true }
         if let i = board.items.firstIndex(where: { $0.text == "Buy timber" }) { board.items[i].todo = true }
+        if let i = board.items.firstIndex(where: { $0.text == "Order seeds" }) { board.items[i].folded = true }
         board.layoutMaps()
         return board
     }
