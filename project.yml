@@ -74,6 +74,8 @@ targets:
             CFBundleTypeRole: Viewer
         # iPad with a trackpad or mouse: clicks arrive as pointer touches, scrolling and pinching as their own events.
         UIApplicationSupportsIndirectInputEvents: true
+        # 0.5: glides and landings run at the screen's full 120 frames a second on an iPhone Pro.
+        CADisableMinimumFrameDurationOnPhone: true
         # 0.5: a board open on one device offers itself on the others (Handoff).
         NSUserActivityTypes: [com.schabbauer.AMSSeedboard.board]
         # 0.5: a photo straight onto a board (iPhone and iPad), and a photo or scan from the iPhone on the Mac.
