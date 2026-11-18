@@ -75,8 +75,11 @@ public enum ParagonExport {
     /// The whole text of a new note for Resources/: front matter as PARAGON needs it (type resource), "# Title", the picture line,
     /// a line that links back to the board, then Outline, Flow, Notes and Tasks (a section with nothing in it is left out).
     public static func note(board: Board, title: String, picture: String?, now: Date) -> String {
-        if board.isTimeline { return timelineNote(board: board, title: title, picture: picture, now: now) }
-        if board.isSequence { return sequenceNote(board: board, title: title, picture: picture, now: now) }
+        noteHandover(board: board, title: title, picture: picture, now: now).text
+    }
+
+    /// The note of a board that is neither a timeline nor a "Who does what" board (see SendTasks.swift).
+    static func plainNote(board: Board, title: String, picture: String?, now: Date, made: inout Made) -> String {
         var out = frontMatter(title: title, type: "resource", status: nil, now: now)
         out += "# \(title)\n\n"
         out += head(board: board, picture: picture)
@@ -98,11 +101,14 @@ public enum ParagonExport {
         section("Flow", flow, into: &out)
         out += laneText(board)
 
-        section("Notes", noteBullets(board, picture: picture != nil), into: &out)
+        out += notesText(board, picture: picture != nil)
         // 0.5: a door is a line with a link that opens its board (Door.swift).
         section("Doors", doorBullets(board), into: &out)
 
-        let tasks = board.items.filter { $0.todo && !oneLine($0.text).isEmpty }.map { "- [ ] \(oneLine($0.text))" }
+        var tasks: [String] = []
+        for item in board.items where item.todo && !oneLine(item.text).isEmpty {
+            tasks.append(taskLine(item, oneLine(item.text), in: board, made: &made))
+        }
         section("Tasks", tasks, into: &out)
         return out
     }
@@ -115,8 +121,11 @@ public enum ParagonExport {
     /// When at least one idea carries the To do tick, the ticks decide: only ticked ideas and ticked shapes
     /// become tasks, the others stay as plain lines in the same places (see ProjectPlan.swift).
     public static func project(board: Board, title: String, picture: String?, now: Date) -> String {
-        if board.isTimeline { return timelineProject(board: board, title: title, picture: picture, now: now) }
-        if board.isSequence { return sequenceProject(board: board, title: title, picture: picture, now: now) }
+        projectHandover(board: board, title: title, picture: picture, now: now).text
+    }
+
+    /// The project of a board that is neither a timeline nor a "Who does what" board (see SendTasks.swift).
+    static func plainProject(board: Board, title: String, picture: String?, now: Date, made: inout Made) -> String {
         var out = frontMatter(title: title, type: "project", status: "active", now: now)
         out += "# \(title)\n\n"
         out += head(board: board, picture: picture)
@@ -125,7 +134,10 @@ public enum ParagonExport {
         out += "## Outcome\n\n\(outcomeText)\n\n"
 
         let plan = projectPlan(board)
-        var groups = plan.groups
+        made.tasks.append(contentsOf: plan.made.tasks)
+        made.inInbox += plan.made.inInbox
+        // A named frame is a heading of its own for the ticked notes in it (SendFrames.swift).
+        var groups = plan.groups + plan.framed
         if !plan.steps.isEmpty { groups.append(["### Steps"] + plan.steps) }
         if !plan.todo.isEmpty { groups.append(["### To do"] + plan.todo) }
 
@@ -133,9 +145,7 @@ public enum ParagonExport {
         if !plan.loose.isEmpty { out += plan.loose.joined(separator: "\n") + "\n\n" }
         for group in groups { out += group.joined(separator: "\n") + "\n\n" }
 
-        out += "## Notes\n\n"
-        let notes = noteBullets(board, picture: picture != nil)
-        if !notes.isEmpty { out += notes.joined(separator: "\n") + "\n\n" }
+        out += "## Notes\n\n" + notesBody(board, picture: picture != nil)
         // 0.5: a door is a line with a link that opens its board (Door.swift).
         section("Doors", doorBullets(board), into: &out)
 
@@ -145,13 +155,16 @@ public enum ParagonExport {
 
     // MARK: Inbox
 
-    /// The to-do items not yet in `board.sentTodos`, as (id, one-line text) in board order; empty texts skipped.
+    /// The to-do items that are not in PARAGON yet (not in `board.sentTodos`, not among `board.sentTasks`), as
+    /// (id, one-line text) in board order; empty texts skipped. A timeline's bar keeps its days:
+    /// "Permit (starts 1 Dec) >2026-12-05" (PARAGON reads the day out of a waiting line with its own task reader).
     public static func inboxTasks(board: Board) -> [(id: UUID, text: String)] {
-        let sent = Set(board.sentTodos)
+        let sent = Set(board.sentTodos).union(board.sentTasks.map(\.id))
         return board.items.compactMap { item in
             guard item.todo, !sent.contains(item.id) else { return nil }
             let words = oneLine(item.text)
-            return words.isEmpty ? nil : (item.id, words)
+            if words.isEmpty { return nil }
+            return (item.id, item.span != nil && item.kind.isTimeline ? timelineWords(item) : words)
         }
     }
 
@@ -260,10 +273,15 @@ public enum ParagonExport {
         out += "## \(name)\n\n" + lines.joined(separator: "\n") + "\n\n"
     }
 
-    private static func noteBullets(_ board: Board, picture: Bool = true) -> [String] {
-        // A drawing has no words: one plain line stands in its place.
-        board.items.filter { (($0.kind == .note || $0.kind == .text) && !oneLine($0.text).isEmpty) || $0.kind == .drawing || $0.kind == .picture }
-            .map { $0.kind == .drawing ? "- " + sketchLine(picture: picture) : ($0.kind == .picture ? "- " + pictureLine(for: $0, picture: picture) : "- \(oneLine($0.text))") }
+    /// Is this thing one line under "Notes"? A sticky note or free text with words, a drawing, a picture.
+    static func isNoteThing(_ item: Item) -> Bool {
+        ((item.kind == .note || item.kind == .text) && !oneLine(item.text).isEmpty) || item.kind == .drawing || item.kind == .picture
+    }
+
+    /// The line of one such thing. A drawing has no words: one plain line stands in its place.
+    static func noteBullet(_ item: Item, picture: Bool) -> String {
+        item.kind == .drawing ? "- " + sketchLine(picture: picture)
+            : (item.kind == .picture ? "- " + pictureLine(for: item, picture: picture) : "- \(oneLine(item.text))")
     }
 
     /// What a note or project says where a drawing is.
@@ -310,15 +328,6 @@ public enum ParagonExport {
         var lines = [String(repeating: "  ", count: level) + "- " + label(item)]
         for child in board.children(of: item.id) {
             lines.append(contentsOf: bullets(of: child, in: board, level: level + 1, depth: depth + 1))
-        }
-        return lines
-    }
-
-    static func taskLines(of item: Item, in board: Board, level: Int, depth: Int = 0) -> [String] {
-        guard depth < 200 else { return [] }
-        var lines = [String(repeating: "  ", count: level) + "- [ ] " + label(item)]
-        for child in board.children(of: item.id) {
-            lines.append(contentsOf: taskLines(of: child, in: board, level: level + 1, depth: depth + 1))
         }
         return lines
     }

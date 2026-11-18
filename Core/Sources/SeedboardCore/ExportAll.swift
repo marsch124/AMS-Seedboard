@@ -139,6 +139,7 @@ public enum ExportRules {
         new.pinned = false
         new.sent = nil
         new.sentTodos = []
+        new.sentTasks = []
         return new
     }
 }

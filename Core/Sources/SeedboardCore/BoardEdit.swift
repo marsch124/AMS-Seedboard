@@ -73,6 +73,7 @@ public extension Board {
         items.removeAll { gone.contains($0.id) }
         links.removeAll { gone.contains($0.id) || gone.contains($0.from) || gone.contains($0.to) }
         sentTodos.removeAll { gone.contains($0) }
+        sentTasks.removeAll { gone.contains($0.id) }
     }
 
     /// Copies the items (ideas with everything under them) a little to the side, with the arrows

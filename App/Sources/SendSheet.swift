@@ -18,20 +18,67 @@ struct SendSheet: View {
     /// Only the chosen idea and everything under it is sent.
     @State private var branchOnly = false
 
+    /// What a look at the note the board became found (reading only); nil while that is not known, and for a
+    /// board that was never sent as a note or a project.
+    @State private var look: NoteLook?
+    /// "Say where they come from": on at first, remembered on this device.
+    @AppStorage("send.sayOrigin") private var sayOrigin = true
+    /// "Also remind me when a bar starts" (a timeline): off each time the page opens.
+    @State private var remindStarts = false
+
     /// The one chosen idea, when there is one: the page then offers to send just that branch.
     private var branch: Item? { session.branchToSend }
+    /// The whole board (for pictures: the sample board shown as sent before, SendParts.swift).
+    private var whole: Board { SendSample.board(session.board) }
     /// What is sent: the whole board, or the chosen branch as a small map of its own.
     private var subject: Board {
-        guard branchOnly, let branch, let part = session.board.branchOnly(branch.id) else { return session.board }
+        guard branchOnly, let branch, let part = session.board.branchOnly(branch.id) else { return whole }
         return part
     }
     private var waiting: Int { ParagonExport.inboxTasks(board: subject).count }
     private var todoCount: Int { subject.items.filter(\.todo).count }
+    /// The to-do boxes that become tasks in a note: those the Inbox does not have already.
+    private var todoTasks: Int { subject.items.filter { $0.todo && !subject.isInInbox($0.id) }.count }
+    private var choices: SendChoices { SendChoices(sayOrigin: sayOrigin, remindStarts: remindStarts && subject.isTimeline) }
+    /// The look counts for the whole board only: a branch is a small map of its own.
+    private var subjectLook: NoteLook? { branchOnly ? nil : look }
+    /// What has become a task since the board went to PARAGON; nil when it never did (or it cannot be told).
+    private var news: NewTasks? { branchOnly ? nil : ParagonExport.newTasks(board: whole, look: look) }
+    /// What "Add what is new" would send; nil when nothing is new.
+    private var adding: LinesToSend? { branchOnly ? nil : ParagonExport.addSend(board: whole, look: look, choices: choices) }
 
     private var canSend: Bool {
         guard model.paragonReady, !busy, !session.readOnly else { return false }
         if kind == .todos { return waiting > 0 && model.place?.outbox != nil }
+        if kind == .add { return adding != nil && model.place?.outbox != nil }
         return !subject.isEmpty
+    }
+
+    /// The rows of the box "What PARAGON gets", read out of the very text Send writes, and how many things
+    /// stand in it as a plain line because the Inbox has them.
+    private var gets: (rows: [PreviewRow], inInbox: Int) {
+        switch kind {
+        case .note:
+            let made = ParagonExport.noteHandover(board: subject, title: title, picture: "picture.png", now: Date(), choices: choices)
+            return (ParagonExport.preview(ofNote: made.text), made.inInbox)
+        case .project:
+            let made = ParagonExport.projectHandover(board: subject, title: title, picture: "picture.png", now: Date(), choices: choices)
+            return (ParagonExport.preview(ofNote: made.text), made.inInbox)
+        case .todos:
+            return (ParagonExport.preview(ofTasks: ParagonExport.inboxSend(board: subject, look: subjectLook, choices: choices).lines), 0)
+        case .add:
+            return (ParagonExport.preview(ofTasks: adding?.lines ?? []), 0)
+        }
+    }
+
+    /// The words under "Only the to-do boxes".
+    private var todosWords: String {
+        if waiting == 0 {
+            if todoCount == 0 { return "No to-do boxes are waiting. Choose a box and press To do first." }
+            return todoCount == 1 ? "The 1 to-do box is already in PARAGON." : "All \(todoCount) to-do boxes are already in PARAGON."
+        }
+        return (waiting == 1 ? "1 to-do box goes to the Inbox as a task." : "\(waiting) to-do boxes go to the Inbox as tasks.")
+            + " " + ParagonGate.whenTheyShow
     }
 
     var body: some View {
@@ -69,6 +116,11 @@ struct SendSheet: View {
                     .accessibilityIdentifier("send.notReady")
             }
 
+            if let sent = whole.sent, let adding {
+                // The board already is a note or a project in PARAGON and holds new tasks: the first row, chosen.
+                choice(.add, "Add what is new to “\(sent.title)”",
+                       ParagonExport.addRowWords(count: adding.tasks.count, sentAs: sent.kind, noteThere: adding.notePath != nil))
+            }
             choice(.note, "As a note",
                    session.board.isSequence ? SequenceWords.sendNote :
                    session.board.isTimeline
@@ -79,9 +131,7 @@ struct SendSheet: View {
                    session.board.isTimeline
                    ? "The phases become headings, the bars become tasks with their start and due day. It goes to Projects."
                    : "The branches become headings. The ideas you ticked To do become tasks; with nothing ticked, all of them do. It goes to Projects.")
-            choice(.todos, "Only the to-do boxes",
-                   waiting == 0 ? "No to-do boxes are waiting. Choose a box and press To do first."
-                   : (waiting == 1 ? "1 to-do box goes to the Inbox as a task." : "\(waiting) to-do boxes go to the Inbox as tasks."))
+            choice(.todos, "Only the to-do boxes", todosWords)
 
             if let branch {
                 BranchSwitch(words: session.branchSwitchWords(branch), on: $branchOnly)
@@ -93,7 +143,7 @@ struct SendSheet: View {
                 }
             }
 
-            if kind != .todos {
+            if kind == .note || kind == .project {
                 HStack(spacing: 8) {
                     Text("Name")
                         .font(Txt.label)
@@ -109,14 +159,45 @@ struct SendSheet: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("send.projectLine")
-                } else if todoCount > 0 {
-                    Text(todoCount == 1 ? "The 1 to-do box becomes a task in it." : "The \(todoCount) to-do boxes become tasks in it.")
+                } else if todoTasks > 0 {
+                    Text(todoTasks == 1 ? "The 1 to-do box becomes a task in it." : "The \(todoTasks) to-do boxes become tasks in it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            if let sent = session.board.sent {
+            // Inbox to-dos (and new tasks that must go to the Inbox) can say which board they come from.
+            if kind == .todos || (kind == .add && adding?.notePath == nil) {
+                SendSwitch(words: "Say where they come from", on: $sayOrigin, identifier: "send.sayOrigin")
+            }
+            if subject.isTimeline {
+                SendSwitch(words: "Also remind me when a bar starts", on: $remindStarts, identifier: "send.remindStarts")
+            }
+
+            let made = gets
+            ParagonGetsBox(rows: made.rows, picture: branchOnly ? nil : session.board,
+                           countLine: ParagonExport.countLine(made.rows, inInbox: made.inInbox))
+
+            if let sent = whole.sent, let news,
+               let line = ParagonExport.cannotFollowLine(renamed: news.renamed, moved: news.moved, since: sent.when) {
+                // What cannot follow is said, not hidden.
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(line)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("send.cannotFollow")
+                    if kind == .add {
+                        Button("Send a fresh copy") { kind = SendKind(rawValue: sent.kind) ?? .note }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Part.paragon.text)
+                            .buttonStyle(PressStyle())
+                            .accessibilityIdentifier("send.freshCopy")
+                    }
+                }
+            }
+
+            if let sent = whole.sent {
                 HStack(spacing: 8) {
                     Text("Last sent \(Self.day.string(from: sent.when)) as a \(sent.kind): “\(sent.title)”")
                         .font(.caption)
@@ -129,7 +210,9 @@ struct SendSheet: View {
                 }
             }
 
-            Text("Seedboard only adds something new. It never changes a note you already have; sending again makes a second note.")
+            Text(kind == .add
+                 ? "Seedboard only hands PARAGON the new lines. PARAGON puts them at the end of the tasks itself; Seedboard never changes a note you already have."
+                 : "Seedboard only adds something new. It never changes a note you already have; sending again makes a second note.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -162,8 +245,21 @@ struct SendSheet: View {
             // For pictures: `-sendAs note|project|todos` chooses the row, `-branchOnly` switches the branch switch on.
             if let word = LaunchOptions.value(for: "-sendAs"), let wanted = SendKind(rawValue: word) { kind = wanted }
             if LaunchOptions.arguments.contains("-branchOnly"), branch != nil { branchOnly = true }
+            if LaunchOptions.arguments.contains("-starts") { remindStarts = true }
+        }
+        .task {
+            // A look at the note the board became (reading only), so the page can offer "Add what is new" and
+            // say where the tasks go. With it known, that row is the one chosen.
+            if let sample = SendSample.look {
+                look = sample
+            } else if let sent = session.board.sent, let place = model.place {
+                look = await Task.detached(priority: .userInitiated) { ParagonGate.look(at: sent, in: place) }.value
+            }
+            if adding != nil, LaunchOptions.value(for: "-sendAs") == nil, !branchOnly { kind = .add }
         }
         .onChange(of: branchOnly) { _, on in
+            // A branch is a small map of its own: nothing is added to the note the whole board became.
+            if on, kind == .add { kind = .note }
             // The name follows the switch, unless the owner has typed a name of their own.
             let whole = ParagonExport.noteTitle(for: session.board.title)
             let part = branch.map { ParagonExport.noteTitle(for: session.board.branchName($0.id)) } ?? whole
@@ -205,7 +301,7 @@ struct SendSheet: View {
         busy = true
         problem = nil
         Task {
-            let failure = await model.send(kind: kind, title: title, branch: branchOnly ? branch?.id : nil)
+            let failure = await model.send(kind: kind, title: title, branch: branchOnly ? branch?.id : nil, choices: choices)
             busy = false
             if let failure {
                 problem = failure

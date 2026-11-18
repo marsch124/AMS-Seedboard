@@ -301,6 +301,7 @@ public enum KeptRules {
         copy.pinned = false
         copy.sent = nil
         copy.sentTodos = []
+        copy.sentTasks = []
         return copy
     }
 

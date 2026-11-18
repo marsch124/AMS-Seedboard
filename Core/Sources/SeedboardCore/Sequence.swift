@@ -596,7 +596,7 @@ public extension ParagonExport {
     }
 
     /// Blank lines stand between a list and what breaks it (a note, a heading); none at the ends, never two.
-    private static func tidy(_ lines: [String]) -> [String] {
+    internal static func tidy(_ lines: [String]) -> [String] {
         var out: [String] = []
         for line in lines where !(line.isEmpty && (out.isEmpty || out.last == "")) { out.append(line) }
         while out.last == "" { out.removeLast() }
@@ -650,12 +650,12 @@ public extension ParagonExport {
         return (tidy(lines), tasks, plain)
     }
 
-    private static func people(_ board: Board) -> [String] {
+    internal static func people(_ board: Board) -> [String] {
         let names = board.whos.map { whoName($0) }
         return names.isEmpty ? [] : [names.joined(separator: " · ")]
     }
 
-    private static func bandBullets(_ board: Board) -> [String] {
+    internal static func bandBullets(_ board: Board) -> [String] {
         board.steps.filter { $0.kind == .band && !oneLine($0.text).isEmpty }.map { "- " + oneLine($0.text) }
     }
 

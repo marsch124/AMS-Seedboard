@@ -244,7 +244,11 @@ public extension Board {
         case .frames:
             return sharePages(.frames).map { page in
                 let rule = String(repeating: "-", count: min(max(page.heading.count, 3), 40))
-                let words = page.board.outlineText
+                // The page's own frame is its heading already: it is not said a second time inside (since 0.5 a
+                // named frame is a heading in "Copy the board as text").
+                var inner = page.board
+                inner.items.removeAll { $0.kind == .frame && $0.lanes == nil && ParagonExport.oneLine($0.text) == page.heading }
+                let words = inner.outlineText
                 return page.heading + "\n" + rule + (words.isEmpty ? "" : "\n" + words)
             }.joined(separator: "\n\n\n")
         }

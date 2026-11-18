@@ -348,8 +348,8 @@ final class TimelineTests: XCTestCase {
 
         - [ ] Permit (starts 1 Dec) >2026-12-05
         """), text)
-        // Only the to-do boxes: as before, the ticked bar is the one Inbox task.
-        XCTAssertEqual(ParagonExport.inboxTasks(board: board).map(\.text), ["Permit"])
+        // Only the to-do boxes: the ticked bar is the one Inbox task, and it keeps its days (0.5).
+        XCTAssertEqual(ParagonExport.inboxTasks(board: board).map(\.text), ["Permit (starts 1 Dec) >2026-12-05"])
         XCTAssertTrue(board.outlineText.hasPrefix("- Permit: 1 Dec – 5 Dec 2026 · 5 days"))
     }
 }

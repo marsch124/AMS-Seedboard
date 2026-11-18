@@ -39,16 +39,19 @@ extension ParagonExport {
 
     /// For a project: per lane one group of tasks — `### Frame name: Lane name` (or `### Lane name`)
     /// with the lane's flow shapes as tasks — and the shapes used, so "Steps" does not list them again.
-    static func laneTasks(_ board: Board, ticks: Bool = false) -> (groups: [[String]], used: Set<UUID>) {
+    static func laneTasks(_ board: Board, ticks: Bool = false, made: inout Made) -> (groups: [[String]], used: Set<UUID>) {
         var groups: [[String]] = []
         var used = Set<UUID>()
         for list in laneLists(board) {
             for lane in list.lanes {
                 let shapes = lane.things.filter { $0.kind.isShape }
                 guard !shapes.isEmpty else { continue }
-                groups.append(["### \(list.frame.isEmpty ? lane.name : "\(list.frame): \(lane.name)")"] + 
-                              // Once an idea is ticked the ticks decide here too, as for the steps (ProjectPlan.swift).
-                              shapes.map { (ticks && !$0.todo ? "- " : "- [ ] ") + oneLine($0.text) })
+                var group = ["### \(list.frame.isEmpty ? lane.name : "\(list.frame): \(lane.name)")"]
+                // Once an idea is ticked the ticks decide here too, as for the steps (ProjectPlan.swift).
+                for shape in shapes {
+                    group.append(ticks && !shape.todo ? "- " + oneLine(shape.text) : taskLine(shape, oneLine(shape.text), in: board, made: &made))
+                }
+                groups.append(group)
                 used.formUnion(shapes.map(\.id))
             }
         }
