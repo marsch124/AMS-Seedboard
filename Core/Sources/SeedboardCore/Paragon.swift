@@ -181,6 +181,65 @@ public enum ParagonExport {
         return URL(string: "amspara://\(encode(words))")
     }
 
+    // MARK: PARAGON's waiting list
+
+    /// One line of PARAGON's waiting list (`capture-outbox.jsonl`), written exactly the way PARAGON's own
+    /// Share button writes it: PARAGON reads each line as its `CaptureItem` (id, text, target, asTask,
+    /// createdAt; its `url` and `files` are optional and left out). A test decodes these lines with a
+    /// copy of that reader, so a change here that PARAGON could not read fails the tests.
+    public struct WaitingLine: Codable, Equatable, Sendable {
+        /// The same three cases as PARAGON's `CaptureTarget`, so the line reads the same there.
+        public enum Target: Codable, Equatable, Sendable { case inbox, today, note(path: String) }
+        public var id: UUID
+        public var text: String
+        public var target: Target
+        public var asTask: Bool
+        public var createdAt: Date
+
+        public init(id: UUID = UUID(), text: String, target: Target = .inbox, asTask: Bool, createdAt: Date) {
+            self.id = id
+            self.text = text
+            self.target = target
+            self.asTask = asTask
+            self.createdAt = createdAt
+        }
+    }
+
+    /// One Inbox task per line, one second apart in board order (PARAGON files them oldest first).
+    public static func taskLines(_ tasks: [(id: UUID, text: String)], now: Date) -> [WaitingLine] {
+        tasks.enumerated().map { n, task in
+            WaitingLine(text: task.text, asTask: true, createdAt: now.addingTimeInterval(Double(n)))
+        }
+    }
+
+    /// The Inbox line that points to a note made from a board.
+    public static func noteLine(title: String, now: Date) -> WaitingLine {
+        WaitingLine(text: "[[\(title)]] — a board from Seedboard", asTask: false, createdAt: now)
+    }
+
+    /// The lines as they go into the file: JSON, one per line, dates as ISO 8601.
+    public static func waitingData(_ lines: [WaitingLine]) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        var data = Data()
+        for line in lines {
+            data.append(try encoder.encode(line))
+            data.append(0x0A)
+        }
+        return data
+    }
+
+    // MARK: PARAGON's folder
+
+    /// Is a folder holding these things (names at its top, plus ".ams-para/config.json" when that file is
+    /// there) PARAGON's notes folder IN USE? PARAGON keeps its settings in `.ams-para/config.json` and its
+    /// Inbox in `Inbox.md`; a file iCloud has not fetched yet shows as ".<name>.icloud". A folder with only
+    /// a `Projects` folder in it does not count: that can be a folder PARAGON never used.
+    public static func looksLikeParagonFolder(_ names: Set<String>) -> Bool {
+        let signs = ["Inbox.md", ".Inbox.md.icloud", ".ams-para/config.json", ".ams-para/.config.json.icloud"]
+        return signs.contains { names.contains($0) }
+    }
+
     // MARK: Pieces
 
     private static func frontMatter(title: String, type: String, status: String?, now: Date) -> String {

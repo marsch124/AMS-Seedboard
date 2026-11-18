@@ -235,6 +235,19 @@ struct BoardList: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("boards.row.\(board.title)")
+        // A tiny dot at the row's end: this board's newest change is on this device, not in iCloud yet.
+        .overlay(alignment: .trailing) {
+            if model.notInCloud.contains(board.id) {
+                Circle()
+                    .fill(chosen ? Color.white : Part.notes.text)
+                    .frame(width: 6, height: 6)
+                    .padding(.trailing, 8)
+                    .allowsHitTesting(false)
+                    .accessibilityElement()
+                    .accessibilityLabel("Not in iCloud yet")
+                    .accessibilityIdentifier("notInCloudDot")
+            }
+        }
         .contextMenu {
             Button("Rename…") {
                 newName = board.title

@@ -3,7 +3,8 @@ import SeedboardCore
 
 // The way into PARAGON. Two rules keep the owner's notes safe:
 //  1. Seedboard only ever ADDS files to the PARAGON folder (a new note, a new picture).
-//     It never opens, changes or replaces a file that is already there.
+//     It never opens, changes or replaces a file that is already there. The one file it may take
+//     away again is a picture it made itself a moment ago, when the note that needs it could not be written.
 //  2. Lines for the Inbox are not written into Inbox.md. They go into the waiting list that
 //     PARAGON's own Share button uses, and PARAGON files them itself the next time it opens.
 
@@ -30,6 +31,8 @@ enum SendProblem: LocalizedError {
     case nothingToSend
     case noInbox
     case cannotWrite(String)
+    /// The note could not be written, and the picture made for it could not be taken away again.
+    case pictureLeft(String)
 
     var errorDescription: String? {
         switch self {
@@ -37,6 +40,7 @@ enum SendProblem: LocalizedError {
         case .nothingToSend: return "No to-do boxes are waiting to be sent."
         case .noInbox: return "This device cannot reach PARAGON's Inbox. Send the board as a note or a project instead."
         case .cannotWrite(let what): return "The \(what) could not be saved in PARAGON's folder. Nothing was changed."
+        case .pictureLeft(let name): return "The note could not be saved in PARAGON's folder. Its picture “\(name)” is left in PARAGON's Pictures folder; no note uses it."
         }
     }
 }
@@ -50,13 +54,14 @@ enum ParagonGate {
     #endif
 
     /// Looks for PARAGON's notes. Slow the first time: call it off the main thread.
+    /// Called when the app starts, on Settings → Check again, and again at EVERY Send.
     static func find() -> ParagonPlace? {
         let fm = FileManager.default
         #if DEBUG
         // For trying the hand-over on a throwaway folder: `-paragonFolder <path>`.
         if let path = LaunchOptions.value(for: "-paragonFolder") {
             let vault = URL(fileURLWithPath: path, isDirectory: true)
-            guard isVault(vault) else { return nil }
+            guard isVault(vault, alsoBareProjects: true) else { return nil }
             return ParagonPlace(vault: vault, outbox: vault.appendingPathComponent(".seedboard-test-outbox/capture-outbox.jsonl"))
         }
         #endif
@@ -70,13 +75,18 @@ enum ParagonGate {
         return ParagonPlace(vault: vault, outbox: outbox)
     }
 
-    /// A PARAGON folder has its Inbox note, or at least its Projects folder.
-    private static func isVault(_ url: URL) -> Bool {
+    /// A PARAGON folder IN USE has its Inbox note or PARAGON's own settings file (`.ams-para/config.json`).
+    /// A folder with only a `Projects` folder is not taken (it can be one PARAGON never used), except for
+    /// the throwaway test folder of debug builds.
+    private static func isVault(_ url: URL, alsoBareProjects: Bool = false) -> Bool {
         let fm = FileManager.default
+        var names = Set((try? fm.contentsOfDirectory(atPath: url.path)) ?? [])
+        for file in (try? fm.contentsOfDirectory(atPath: url.appendingPathComponent(".ams-para").path)) ?? [] {
+            names.insert(".ams-para/" + file)
+        }
+        if ParagonExport.looksLikeParagonFolder(names) { return true }
         var isDir: ObjCBool = false
-        if fm.fileExists(atPath: url.appendingPathComponent("Inbox.md").path) { return true }
-        if fm.fileExists(atPath: url.appendingPathComponent(".Inbox.md.icloud").path) { return true }
-        return fm.fileExists(atPath: url.appendingPathComponent("Projects").path, isDirectory: &isDir) && isDir.boolValue
+        return alsoBareProjects && fm.fileExists(atPath: url.appendingPathComponent("Projects").path, isDirectory: &isDir) && isDir.boolValue
     }
 
     /// Every note title in the folder, in small letters, so a new note never takes a used name.
@@ -115,6 +125,16 @@ enum ParagonGate {
         if let failure { throw failure }
     }
 
+    /// Takes away a file this very hand-over made a moment ago (never any other file). True when it is gone.
+    private static func removeJustMade(_ url: URL) -> Bool {
+        var gone = false
+        var coordinatorError: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: .forDeleting, error: &coordinatorError) { target in
+            gone = (try? FileManager.default.removeItem(at: target)) != nil
+        }
+        return gone || !FileManager.default.fileExists(atPath: url.path)
+    }
+
     /// Hands a board over. Runs off the main thread.
     static func send(board: Board, kind: SendKind, title wanted: String, png: Data?, place: ParagonPlace, now: Date = Date()) throws -> SendResult {
         switch kind {
@@ -123,10 +143,7 @@ enum ParagonGate {
             guard !tasks.isEmpty else { throw SendProblem.nothingToSend }
             guard let outbox = place.outbox else { throw SendProblem.noInbox }
             // All of them in one write: either every task is on its way, or none is.
-            let lines = tasks.enumerated().map { n, task in
-                WaitingLine(text: task.text, asTask: true, createdAt: now.addingTimeInterval(Double(n)))
-            }
-            do { try append(lines, to: outbox) } catch { throw SendProblem.noInbox }
+            do { try append(ParagonExport.taskLines(tasks, now: now), to: outbox) } catch { throw SendProblem.noInbox }
             let count = tasks.count == 1 ? "1 task is" : "\(tasks.count) tasks are"
             return SendResult(info: nil, todos: tasks.map(\.id), message: "\(count) on the way to the PARAGON Inbox. They show the next time PARAGON opens.")
 
@@ -139,6 +156,7 @@ enum ParagonGate {
 
             // The picture first: a note must never point at a picture that is not there.
             var picture: String?
+            var pictureURL: URL?
             if let png {
                 var name = ParagonExport.pictureName(for: board.title, now: now)
                 var url = place.vault.appendingPathComponent("Pictures").appendingPathComponent(name)
@@ -151,6 +169,7 @@ enum ParagonGate {
                 do {
                     try writeNew(png, to: url)
                     picture = name
+                    pictureURL = url
                 } catch {
                     throw SendProblem.cannotWrite("picture")
                 }
@@ -162,13 +181,16 @@ enum ParagonGate {
             do {
                 try writeNew(Data(text.utf8), to: noteURL)
             } catch {
+                // The note is not there, so its picture must not stay behind: the file made a moment ago
+                // (only that one) is taken away again, and the message says what is true.
+                if let pictureURL, let picture, !removeJustMade(pictureURL) { throw SendProblem.pictureLeft(picture) }
                 throw SendProblem.cannotWrite("note")
             }
 
             // A note also gets one line in the Inbox that points to it, so it can be filed from there.
             var inInbox = false
             if kind == .note, let outbox = place.outbox {
-                inInbox = (try? append([WaitingLine(text: "[[\(title)]] — a board from Seedboard", asTask: false, createdAt: now)], to: outbox)) != nil
+                inInbox = (try? append([ParagonExport.noteLine(title: title, now: now)], to: outbox)) != nil
             }
             let info = SentInfo(when: now, kind: kind.rawValue, title: title, path: "\(folder)/\(title).md")
             let todos = board.items.filter(\.todo).map(\.id)
@@ -179,26 +201,11 @@ enum ParagonGate {
 
     // MARK: PARAGON's waiting list
 
-    /// One waiting line, written exactly the way PARAGON's own Share button writes it.
-    private struct WaitingLine: Codable {
-        // The same three cases as PARAGON's own, so the line reads the same there.
-        enum Target: Codable { case inbox, today, note(path: String) }
-        var id = UUID()
-        var text: String
-        var target = Target.inbox
-        var asTask: Bool
-        var createdAt: Date
-    }
-
-    private static func append(_ lines: [WaitingLine], to url: URL) throws {
+    /// The lines are made in SeedboardCore (`ParagonExport.WaitingLine`), exactly the way PARAGON's own
+    /// Share button writes them; a test there reads them with a copy of PARAGON's reader.
+    private static func append(_ lines: [ParagonExport.WaitingLine], to url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        var data = Data()
-        for line in lines {
-            data.append(try encoder.encode(line))
-            data.append(0x0A)
-        }
+        let data = try ParagonExport.waitingData(lines)
         // Added at the end in one step, so PARAGON and Seedboard can never write into each other.
         let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
         guard fd >= 0 else { throw SendProblem.noInbox }

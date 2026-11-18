@@ -35,6 +35,22 @@ struct SettingsView: View {
                     Text(model.safetyLine)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("settings.safetyLine")
+                    if !model.notInCloud.isEmpty {
+                        Text(model.notInCloud.count == 1
+                             ? "1 board is not in iCloud yet. It is safe on this device."
+                             : "\(model.notInCloud.count) boards are not in iCloud yet. They are safe on this device.")
+                            .font(Txt.label)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("settings.notInCloud")
+                    }
+                    if let warning = model.saveWarning {
+                        Text(warning)
+                            .font(Txt.label)
+                            .foregroundStyle(Part.notes.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("settings.saveWarning")
+                    }
                     #if os(macOS)
                     Button("Show the boards folder") { model.showBoardsFolder() }
                         .foregroundStyle(Part.boards.text)
