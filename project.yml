@@ -1,0 +1,99 @@
+# XcodeGen spec — run `xcodegen generate`, then open AMSSeedboard.xcodeproj.
+# ONE target for iPhone, iPad and Mac.
+name: AMSSeedboard
+options:
+  bundleIdPrefix: com.schabbauer
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: D24ENP83QQ
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    # The version lives here only; the Info.plist reads it from these two.
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  # The rules: boards, layout, arrows, text in and out, what goes to PARAGON. No screen in it.
+  SeedboardCore:
+    path: Core
+  # The shared AMS icon hub, pinned to one commit so a hub change never arrives by surprise.
+  AMSIcons:
+    url: https://github.com/marsch124/AMS-Icons
+    revision: 8d40eb7dfaef996adb1a04914366f6b9f94da141
+targets:
+  AMSSeedboard:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: App/Sources
+      - path: App/Resources/Assets.xcassets
+    dependencies:
+      - package: SeedboardCore
+      - package: AMSIcons
+    entitlements:
+      path: App/Config/AMSSeedboard.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.developer.icloud-services: [CloudDocuments]
+        # Seedboard's own container first; PARAGON's second, so a board can be handed over.
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
+        com.apple.developer.ubiquity-container-identifiers: [iCloud.com.schabbauer.AMSSeedboard, iCloud.com.schabbauer.AMSPara]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.schabbauer.AMSSeedboard
+        # iPhone AND iPad. iPad means all four orientations (upload error 90474).
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_FILE: App/Config/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: App/Config/Info.plist
+      properties:
+        CFBundleDisplayName: Seedboard
+        CFBundleName: AMS Seedboard
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleIconName: AppIcon
+        LSApplicationCategoryType: public.app-category.productivity
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.schabbauer.AMSSeedboard
+            CFBundleURLSchemes: [seedboard]
+            CFBundleTypeRole: Viewer
+        # So the app may ask whether PARAGON is installed.
+        LSApplicationQueriesSchemes: [amspara]
+        NSUbiquitousContainers:
+          iCloud.com.schabbauer.AMSSeedboard:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Seedboard
+            NSUbiquitousContainerSupportedFolderLevels: Any
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+  AMSSeedboardUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: UITests
+    dependencies:
+      - target: AMSSeedboard
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.schabbauer.AMSSeedboardUITests
+        TEST_TARGET_NAME: AMSSeedboard
+schemes:
+  AMSSeedboard:
+    build:
+      targets:
+        AMSSeedboard: all
+    test:
+      targets:
+        - AMSSeedboardUITests
+        - package: SeedboardCore/SeedboardCoreTests

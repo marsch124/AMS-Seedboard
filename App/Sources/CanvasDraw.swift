@@ -1,0 +1,480 @@
+import SwiftUI
+import SeedboardCore
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
+
+// How a board is drawn. One painter draws the live board and the picture that goes to PARAGON,
+// so the two can never differ.
+
+/// The board's colours, by day and by night. Colour names come from the file (`Palette`).
+struct Paint {
+    let night: Bool
+
+    init(_ scheme: ColorScheme) { night = scheme == .dark }
+    init(night: Bool) { self.night = night }
+
+    private typealias RGB = (Double, Double, Double)
+
+    private static func rgb(_ v: Int) -> RGB {
+        (Double((v >> 16) & 255) / 255, Double((v >> 8) & 255) / 255, Double(v & 255) / 255)
+    }
+
+    private static func colour(_ c: RGB) -> Color { Color(red: c.0, green: c.1, blue: c.2) }
+
+    private static func mix(_ a: RGB, _ b: RGB, _ t: Double) -> RGB {
+        (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t, a.2 + (b.2 - a.2) * t)
+    }
+
+    private static let lines: [String: (Int, Int)] = [
+        "pink": (0xC0399F, 0xE58AD0), "orange": (0xE07B1A, 0xF2A45C), "teal": (0x1E9C8E, 0x5CCBBE),
+        "blue": (0x3572D6, 0x7FAEF5), "purple": (0x8E55D9, 0xB99AF0), "green": (0x2E8B57, 0x5FBF8A),
+        "yellow": (0xC99A0A, 0xF0C850), "red": (0xD5485C, 0xF08A98), "grey": (0x7B8794, 0xA9B4C4),
+    ]
+
+    private static let notes: [String: (Int, Int)] = [
+        "yellow": (0xFBE38A, 0x6B5A1E), "pink": (0xF9C2D4, 0x6B3048), "blue": (0xBFD9FA, 0x2C4A73),
+        "green": (0xBFE8C8, 0x2C5A3B), "orange": (0xFBD0A0, 0x6E4520), "purple": (0xDCC9F7, 0x49367A),
+    ]
+
+    private func lineRGB(_ name: String) -> RGB {
+        let pair = Paint.lines[name] ?? Paint.lines["grey"]!
+        return Paint.rgb(night ? pair.1 : pair.0)
+    }
+
+    /// A line or an outline in the named colour.
+    func line(_ name: String) -> Color { Paint.colour(lineRGB(name)) }
+
+    /// A soft fill of the named colour, for a tinted shape or frame.
+    func soft(_ name: String) -> Color {
+        let base = Paint.rgb((Paint.lines[name] ?? Paint.lines["grey"]!).0)
+        return Paint.colour(night ? Paint.mix(base, Paint.rgb(0x17181B), 0.72) : Paint.mix(base, (1, 1, 1), 0.84))
+    }
+
+    /// A sticky note's paper.
+    func note(_ name: String) -> Color {
+        let pair = Paint.notes[name] ?? Paint.notes["yellow"]!
+        return Paint.colour(Paint.rgb(night ? pair.1 : pair.0))
+    }
+
+    var canvas: Color { Paint.colour(Paint.rgb(night ? 0x17181B : 0xF6F7F9)) }
+    var plate: Color { Paint.colour(Paint.rgb(night ? 0x26282D : 0xFFFFFF)) }
+    var edge: Color { Paint.colour(Paint.rgb(night ? 0x4A4E57 : 0xD5DAE2)) }
+    var ink: Color { Paint.colour(Paint.rgb(night ? 0xECEEF2 : 0x1E2530)) }
+    var faint: Color { Paint.colour(Paint.rgb(night ? 0x8A919C : 0x8B94A1)) }
+    var arrow: Color { Paint.colour(Paint.rgb(night ? 0xA9B4C4 : 0x7B8794)) }
+    var chosen: Color { Paint.colour(Paint.rgb(night ? 0x5FBF8A : 0x2E8B57)) }
+}
+
+/// Text sizes on the board, and how much room words need.
+enum Lettering {
+    static func style(for item: Item, depth: Int) -> (size: CGFloat, bold: Bool) {
+        switch item.kind {
+        case .idea: return depth == 0 ? (17, true) : (15, depth == 1)
+        case .text: return (17, false)
+        case .frame: return (13, true)
+        default: return (15, false)
+        }
+    }
+
+    static func font(size: CGFloat, bold: Bool) -> Font {
+        .system(size: size, weight: bold ? .semibold : .regular)
+    }
+
+    /// The room the words take when they may be at most this wide.
+    static func measure(_ text: String, size: CGFloat, bold: Bool, maxWidth: CGFloat) -> CGSize {
+        let words = text.isEmpty ? " " : text
+        #if os(macOS)
+        let font = NSFont.systemFont(ofSize: size, weight: bold ? .semibold : .regular)
+        #else
+        let font = UIFont.systemFont(ofSize: size, weight: bold ? .semibold : .regular)
+        #endif
+        let box = (words as NSString).boundingRect(
+            with: CGSize(width: maxWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font], context: nil)
+        return CGSize(width: ceil(box.width) + 1, height: ceil(box.height) + 1)
+    }
+
+    /// The width the words of an item may take inside it.
+    static func wrapWidth(for item: Item) -> CGFloat {
+        switch item.kind {
+        case .idea: return 240
+        case .text: return 360
+        case .diamond: return max(CGFloat(item.w) * 0.56, 50)
+        case .oval: return max(CGFloat(item.w) * 0.72, 50)
+        case .note: return max(CGFloat(item.w) - 20, 50)
+        case .frame: return max(CGFloat(item.w) - 20, 50)
+        default: return max(CGFloat(item.w) - 24, 50)
+        }
+    }
+
+    /// Sizes every item so its words fit: ideas and free text take exactly the room of their
+    /// words; shapes and notes only ever grow. Then the mind maps are laid out again.
+    static func fit(_ board: inout Board, facts: MapFacts) {
+        for i in board.items.indices {
+            let item = board.items[i]
+            let depth = facts.depth[item.id] ?? 0
+            let look = style(for: item, depth: depth)
+            let words = item.text.isEmpty && item.kind == .idea ? "Idea" : item.text
+            let t = measure(words, size: look.size, bold: look.bold, maxWidth: wrapWidth(for: item))
+            switch item.kind {
+            case .idea:
+                if depth == 0 {
+                    board.items[i].w = Double(max(110, t.width + 32))
+                    board.items[i].h = Double(max(44, t.height + 20))
+                } else {
+                    board.items[i].w = Double(max(36, t.width + 6))
+                    board.items[i].h = Double(max(26, t.height + 8))
+                }
+            case .text:
+                board.items[i].w = Double(max(40, t.width + 8))
+                board.items[i].h = Double(max(26, t.height + 6))
+            case .box, .round:
+                board.items[i].h = max(item.h, Double(t.height + 22))
+            case .diamond:
+                board.items[i].h = max(item.h, Double(t.height * 2 + 20))
+            case .oval:
+                board.items[i].h = max(item.h, Double(t.height * 1.4 + 16))
+            case .note:
+                board.items[i].h = max(item.h, Double(t.height + 22))
+            case .frame:
+                break
+            }
+        }
+        board.layoutMaps()
+    }
+}
+
+/// What the painter needs to know about every idea, worked out once per change.
+struct MapFacts {
+    var depth: [UUID: Int] = [:]
+    var side: [UUID: Side] = [:]
+    var colour: [UUID: String] = [:]
+    var hidden: Set<UUID> = []
+    var children: [UUID: Int] = [:]
+
+    init() {}
+
+    init(_ board: Board) {
+        var kids: [UUID: [Item]] = [:]
+        for item in board.items where item.kind == .idea {
+            if let parent = item.parent { kids[parent, default: []].append(item) }
+        }
+        for key in kids.keys {
+            kids[key]?.sort { ($0.order, $0.id.uuidString) < ($1.order, $1.id.uuidString) }
+        }
+        for (key, list) in kids { children[key] = list.count }
+
+        func walk(_ item: Item, depth d: Int, side s: Side, colour c: String, hidden h: Bool) {
+            depth[item.id] = d
+            side[item.id] = s
+            colour[item.id] = c
+            if h { hidden.insert(item.id) }
+            guard d < 200 else { return }
+            for child in kids[item.id] ?? [] {
+                walk(child, depth: d + 1, side: s, colour: c, hidden: h || item.folded)
+            }
+        }
+
+        for centre in board.items where centre.kind == .idea && centre.parent == nil {
+            depth[centre.id] = 0
+            side[centre.id] = .right
+            let list = kids[centre.id] ?? []
+            let half = (list.count + 1) / 2
+            for (n, branch) in list.enumerated() {
+                let s: Side = centre.bothSides && n >= half ? .left : .right
+                walk(branch, depth: 1, side: s, colour: branch.colour.isEmpty ? "pink" : branch.colour, hidden: centre.folded)
+            }
+        }
+    }
+}
+
+/// Draws a board. The context must already be in board points.
+struct BoardPainter {
+    let board: Board
+    let facts: MapFacts
+    let paint: Paint
+    /// Screen points per board point, so handles keep their size when zoomed.
+    var scale: CGFloat = 1
+    var selection: Set<UUID> = []
+    var selectedLink: UUID?
+    /// The item being typed in: the text field shows its words.
+    var editing: UUID?
+    /// An idea being dragged to a new place: drawn where the finger is.
+    var ghost: (id: UUID, offset: CGSize)?
+    /// The idea a dragged idea would hang under.
+    var dropTarget: UUID?
+    var handles = true
+
+    static let handleGap: CGFloat = 20
+    static let handleSize: CGFloat = 20
+
+    func draw(_ ctx: inout GraphicsContext) {
+        let byID = board.items.reduce(into: [UUID: Item]()) { $0[$1.id] = $1 }
+
+        for item in board.items where item.kind == .frame { drawFrame(item, &ctx) }
+
+        // Mind-map branches.
+        for item in board.items where item.kind == .idea && !facts.hidden.contains(item.id) {
+            guard let parentID = item.parent, let parent = byID[parentID] else { continue }
+            let ends = Route.branch(from: parent.frame, to: item.frame, side: facts.side[item.id] ?? .right)
+            var path = Path()
+            path.move(to: ends.start)
+            let midX = (ends.start.x + ends.end.x) / 2
+            path.addCurve(to: ends.end, control1: CGPoint(x: midX, y: ends.start.y), control2: CGPoint(x: midX, y: ends.end.y))
+            ctx.stroke(path, with: .color(paint.line(facts.colour[item.id] ?? "pink")),
+                       style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
+        }
+
+        for link in board.links { drawLink(link, byID, &ctx) }
+
+        for item in board.items where item.kind != .frame && !facts.hidden.contains(item.id) {
+            if ghost?.id == item.id { continue }
+            drawItem(item, &ctx)
+        }
+
+        if let ghost, let item = byID[ghost.id] {
+            var moved = item
+            moved.x += Double(ghost.offset.width)
+            moved.y += Double(ghost.offset.height)
+            var layer = ctx
+            layer.opacity = 0.7
+            drawItem(moved, &layer)
+        }
+
+        if let dropTarget, let item = byID[dropTarget] {
+            let box = Path(roundedRect: item.frame.insetBy(dx: -6, dy: -5), cornerRadius: 9)
+            ctx.stroke(box, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2.5 / scale, dash: [6 / scale, 4 / scale]))
+        }
+
+        for id in selection {
+            guard let item = byID[id], !facts.hidden.contains(id) else { continue }
+            let box = Path(roundedRect: item.frame.insetBy(dx: -5, dy: -4), cornerRadius: 9)
+            ctx.stroke(box, with: .color(paint.chosen), lineWidth: 2 / scale)
+        }
+
+        if handles, selection.count == 1, let id = selection.first, let item = byID[id], editing == nil {
+            for handle in BoardPainter.handles(for: item, side: facts.side[id] ?? .right, scale: scale) {
+                switch handle.kind {
+                case .plus:
+                    let circle = Path(ellipseIn: handle.rect)
+                    ctx.fill(circle, with: .color(paint.chosen))
+                    let c = CGPoint(x: handle.rect.midX, y: handle.rect.midY)
+                    let arm = handle.rect.width * 0.26
+                    var plus = Path()
+                    plus.move(to: CGPoint(x: c.x - arm, y: c.y)); plus.addLine(to: CGPoint(x: c.x + arm, y: c.y))
+                    plus.move(to: CGPoint(x: c.x, y: c.y - arm)); plus.addLine(to: CGPoint(x: c.x, y: c.y + arm))
+                    ctx.stroke(plus, with: .color(.white), style: StrokeStyle(lineWidth: 1.9 / scale, lineCap: .round))
+                case .size:
+                    let knob = Path(roundedRect: handle.rect, cornerRadius: 3 / scale)
+                    ctx.fill(knob, with: .color(paint.plate))
+                    ctx.stroke(knob, with: .color(paint.chosen), lineWidth: 2 / scale)
+                }
+            }
+        }
+    }
+
+    // MARK: Handles
+
+    enum HandleKind: Equatable { case plus(Direction), size }
+    struct Handle { let kind: HandleKind; let rect: CGRect }
+
+    /// The little controls round one chosen item, in board points.
+    static func handles(for item: Item, side: Side, scale: CGFloat) -> [Handle] {
+        let s = handleSize / scale
+        let gap = handleGap / scale
+        let f = item.frame
+        func plus(_ d: Direction) -> Handle {
+            let c: CGPoint
+            switch d {
+            case .right: c = CGPoint(x: f.maxX + gap, y: f.midY)
+            case .left: c = CGPoint(x: f.minX - gap, y: f.midY)
+            case .down: c = CGPoint(x: f.midX, y: f.maxY + gap)
+            case .up: c = CGPoint(x: f.midX, y: f.minY - gap)
+            }
+            return Handle(kind: .plus(d), rect: CGRect(x: c.x - s / 2, y: c.y - s / 2, width: s, height: s))
+        }
+        let knob = Handle(kind: .size, rect: CGRect(x: f.maxX - s * 0.2, y: f.maxY - s * 0.2, width: s * 0.7, height: s * 0.7))
+        switch item.kind {
+        case .idea:
+            if item.parent == nil { return [plus(.right), plus(.left)] }
+            return [plus(side == .right ? .right : .left)]
+        case .frame:
+            return [knob]
+        case .text:
+            return [plus(.right), plus(.down)]
+        default:
+            return [plus(.right), plus(.down), plus(.left), plus(.up), knob]
+        }
+    }
+
+    // MARK: Pieces
+
+    private func drawFrame(_ item: Item, _ ctx: inout GraphicsContext) {
+        let name = item.colour.isEmpty ? "teal" : item.colour
+        let box = Path(roundedRect: item.frame, cornerRadius: 14)
+        ctx.fill(box, with: .color(paint.soft(name).opacity(paint.night ? 0.35 : 0.45)))
+        ctx.stroke(box, with: .color(paint.line(name)), lineWidth: 1.6)
+        guard editing != item.id else { return }
+        let words = item.text.isEmpty ? "Frame" : item.text
+        let text = ctx.resolve(Text(words).font(Lettering.font(size: 13, bold: true)).foregroundColor(paint.line(name)))
+        ctx.draw(text, at: CGPoint(x: item.frame.minX + 12, y: item.frame.minY + 15), anchor: .leading)
+    }
+
+    private func drawLink(_ link: SeedboardCore.Link, _ byID: [UUID: Item], _ ctx: inout GraphicsContext) {
+        guard let a = byID[link.from], let b = byID[link.to],
+              !facts.hidden.contains(a.id), !facts.hidden.contains(b.id) else { return }
+        let route = Route.path(from: a.frame, to: b.frame, style: link.style)
+        let points = route.points
+        guard points.count > 1 else { return }
+        let colour = link.colour.isEmpty ? paint.arrow : paint.line(link.colour)
+        let chosen = selectedLink == link.id
+
+        var path = Path()
+        path.move(to: points[0])
+        if link.style == .curve {
+            let s = points[0], e = points[points.count - 1]
+            let sideways = route.leaves == .left || route.leaves == .right
+            let c1 = sideways ? CGPoint(x: (s.x + e.x) / 2, y: s.y) : CGPoint(x: s.x, y: (s.y + e.y) / 2)
+            let c2 = sideways ? CGPoint(x: (s.x + e.x) / 2, y: e.y) : CGPoint(x: e.x, y: (s.y + e.y) / 2)
+            path.addCurve(to: e, control1: c1, control2: c2)
+        } else {
+            for p in points.dropFirst() { path.addLine(to: p) }
+        }
+        if chosen {
+            ctx.stroke(path, with: .color(paint.chosen.opacity(0.35)), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+        }
+        ctx.stroke(path, with: .color(colour), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+
+        if link.head {
+            // The head points the way the line arrives.
+            let tip = points[points.count - 1]
+            let v: CGPoint
+            switch route.arrives {
+            case .left: v = CGPoint(x: 1, y: 0)
+            case .right: v = CGPoint(x: -1, y: 0)
+            case .up: v = CGPoint(x: 0, y: 1)
+            case .down: v = CGPoint(x: 0, y: -1)
+            }
+            let back = CGPoint(x: tip.x - v.x * 9, y: tip.y - v.y * 9)
+            let n = CGPoint(x: -v.y, y: v.x)
+            var head = Path()
+            head.move(to: CGPoint(x: back.x + n.x * 5.5, y: back.y + n.y * 5.5))
+            head.addLine(to: tip)
+            head.addLine(to: CGPoint(x: back.x - n.x * 5.5, y: back.y - n.y * 5.5))
+            ctx.stroke(head, with: .color(colour), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+        }
+
+        if !link.text.isEmpty, editing != link.id {
+            let text = ctx.resolve(Text(link.text).font(.system(size: 13, weight: .medium)).foregroundColor(link.colour.isEmpty ? paint.ink : colour))
+            let size = text.measure(in: CGSize(width: 200, height: 100))
+            let plate = CGRect(x: route.label.x - size.width / 2 - 5, y: route.label.y - size.height / 2 - 2,
+                               width: size.width + 10, height: size.height + 4)
+            ctx.fill(Path(roundedRect: plate, cornerRadius: 5), with: .color(paint.canvas))
+            ctx.draw(text, at: route.label, anchor: .center)
+        }
+    }
+
+    private func drawItem(_ item: Item, _ ctx: inout GraphicsContext) {
+        let f = item.frame
+        let depth = facts.depth[item.id] ?? 0
+        let look = Lettering.style(for: item, depth: depth)
+        var textColour = paint.ink
+        var align: TextAlignment = .center
+        var anchorLeading = false
+        var textBox = f
+
+        switch item.kind {
+        case .idea:
+            if depth == 0 {
+                let box = Path(roundedRect: f, cornerRadius: 11)
+                ctx.fill(box, with: .color(paint.plate))
+                ctx.stroke(box, with: .color(paint.edge), lineWidth: 1.4)
+            } else {
+                align = (facts.side[item.id] ?? .right) == .right ? .leading : .trailing
+            }
+        case .box, .round, .diamond, .oval:
+            let shape: Path
+            switch item.kind {
+            case .round: shape = Path(roundedRect: f, cornerRadius: min(f.height, f.width) / 2)
+            case .oval: shape = Path(ellipseIn: f)
+            case .diamond:
+                var p = Path()
+                p.move(to: CGPoint(x: f.midX, y: f.minY)); p.addLine(to: CGPoint(x: f.maxX, y: f.midY))
+                p.addLine(to: CGPoint(x: f.midX, y: f.maxY)); p.addLine(to: CGPoint(x: f.minX, y: f.midY)); p.closeSubpath()
+                shape = p
+            default: shape = Path(roundedRect: f, cornerRadius: 9)
+            }
+            if item.colour.isEmpty {
+                ctx.fill(shape, with: .color(paint.plate))
+                ctx.stroke(shape, with: .color(paint.edge), lineWidth: 1.4)
+            } else {
+                ctx.fill(shape, with: .color(paint.soft(item.colour)))
+                ctx.stroke(shape, with: .color(paint.line(item.colour)), style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
+            }
+        case .note:
+            let paper = Path(roundedRect: f, cornerRadius: 4)
+            var shade = ctx
+            shade.addFilter(.shadow(color: .black.opacity(paint.night ? 0.35 : 0.14), radius: 3, x: 0, y: 1.5))
+            shade.fill(paper, with: .color(paint.note(item.colour)))
+            align = .leading
+            anchorLeading = true
+            textBox = f.insetBy(dx: 10, dy: 10)
+            if !paint.night { textColour = Color(red: 0.12, green: 0.14, blue: 0.19) }
+        case .text:
+            align = .leading
+        case .frame:
+            return
+        }
+
+        if editing != item.id {
+            let placeholder = item.text.isEmpty
+            let words = placeholder ? (item.kind == .idea ? "Idea" : "") : item.text
+            if !words.isEmpty {
+                let text = ctx.resolve(Text(words)
+                    .font(Lettering.font(size: look.size, bold: look.bold))
+                    .foregroundColor(placeholder ? paint.faint : textColour))
+                let wrap = Lettering.wrapWidth(for: item)
+                let size = text.measure(in: CGSize(width: wrap, height: .greatestFiniteMagnitude))
+                var origin: CGPoint
+                if anchorLeading {
+                    origin = CGPoint(x: textBox.minX, y: textBox.minY)
+                } else {
+                    switch align {
+                    case .leading: origin = CGPoint(x: f.minX + 3, y: f.midY - size.height / 2)
+                    case .trailing: origin = CGPoint(x: f.maxX - 3 - size.width, y: f.midY - size.height / 2)
+                    default: origin = CGPoint(x: f.midX - size.width / 2, y: f.midY - size.height / 2)
+                    }
+                }
+                if item.kind == .text { origin.x = f.minX + 4 }
+                ctx.draw(text, in: CGRect(origin: origin, size: CGSize(width: size.width + 1, height: size.height + 1)))
+            }
+        }
+
+        if item.todo {
+            // A small ring with a tick at the top corner: this goes to PARAGON as a task.
+            let r: CGFloat = 7.5
+            let c = item.kind == .idea && depth > 0
+                ? CGPoint(x: (facts.side[item.id] ?? .right) == .right ? f.maxX + 12 : f.minX - 12, y: f.midY)
+                : CGPoint(x: f.maxX - 3, y: f.minY + 3)
+            let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
+            ctx.fill(ring, with: .color(Part.paragon.fill))
+            var tick = Path()
+            tick.move(to: CGPoint(x: c.x - 3.4, y: c.y + 0.2)); tick.addLine(to: CGPoint(x: c.x - 0.9, y: c.y + 2.8)); tick.addLine(to: CGPoint(x: c.x + 3.6, y: c.y - 2.6))
+            ctx.stroke(tick, with: .color(.white), style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+        }
+
+        if item.kind == .idea, item.folded, let count = facts.children[item.id], count > 0 {
+            // Folded: a small dot with the number of ideas hidden under it.
+            let right = (facts.side[item.id] ?? .right) == .right || depth == 0
+            let c = CGPoint(x: right ? f.maxX + 14 : f.minX - 14, y: f.midY)
+            let name = depth == 0 ? "grey" : (facts.colour[item.id] ?? "pink")
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 9, y: c.y - 9, width: 18, height: 18)), with: .color(paint.line(name)))
+            let n = ctx.resolve(Text("\(count)").font(.system(size: 11, weight: .bold)).foregroundColor(.white))
+            ctx.draw(n, at: c, anchor: .center)
+        }
+    }
+}

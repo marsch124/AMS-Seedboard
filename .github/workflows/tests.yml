@@ -1,0 +1,15 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['Docs/**', '**/*.md']
+  pull_request:
+    paths-ignore: ['Docs/**', '**/*.md']
+jobs:
+  rules:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rule tests
+        run: swift test --package-path Core
