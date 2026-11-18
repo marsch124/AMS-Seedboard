@@ -174,6 +174,9 @@ struct ShowBar: View {
     var body: some View {
         let total = session.views.order.count
         HStack(spacing: 6) {
+            GlyphView(glyph: .new(.showFrames), size: 18, colour: Part.frames.text)
+                .padding(.leading, 6)
+                .accessibilityHidden(true)
             step("show.back", "Back", .control(.chevron), flip: true, on: session.views.step > 0) { session.showNext(-1) }
             Text("\(session.views.step + 1) of \(total)")
                 .font(Txt.label)
@@ -332,13 +335,13 @@ struct ViewsMoreLines: View {
 
     var body: some View {
         if !session.board.placesItself && !session.starterDraft {
-            Button("Show frames") { session.startShow() }
+            Button { session.startShow() } label: { MarkLabel("Show frames", .showFrames) }
                 .disabled(!session.canShow)
                 .accessibilityIdentifier("show.start")
             Button("Tidy into a grid") { session.tidyIntoGrid(); session.takeKeys() }
                 .disabled(session.gridTidyCount < 2)
                 .accessibilityIdentifier("more.tidyGrid")
-            Toggle("Small map", isOn: Binding(get: { mapOn }, set: { mapOn = $0; ViewsDesk.mapOn = $0; session.objectWillChange.send() }))
+            Toggle(isOn: Binding(get: { mapOn }, set: { mapOn = $0; ViewsDesk.mapOn = $0; session.objectWillChange.send() })) { MarkLabel("Small map", .smallMap) }
                 .accessibilityIdentifier("more.smallMap")
         }
     }
@@ -367,7 +370,7 @@ extension BarActions {
     /// "Focus" for a chosen frame: bar, right-click menu.
     func focusAction(show: BarAction.Show = .wideWord, drop: Int = 3) -> BarAction {
         let session = session
-        return BarAction(id: prefix + "focus", word: "Focus", glyph: .app(.seedFit),
+        return BarAction(id: prefix + "focus", word: "Focus", glyph: .new(.focus),
                          kind: .press { session.startFocus() }, show: show, enabled: session.canFocus, drop: drop)
     }
 }

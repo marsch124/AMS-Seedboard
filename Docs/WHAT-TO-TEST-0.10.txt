@@ -1,0 +1,33 @@
+AMS Seedboard 0.10 (build 10) - what to test
+
+A small version: eleven buttons get a hand-drawn mark of their own. Nothing else changed, and boards keep their format, so older boards open as before.
+
+Look at each mark on iPhone, iPad and Mac, by day and by night. Each must be clear, in the same thin style as the other marks, and different from its neighbours.
+
+1. Mind map
+- Make a mind map with a middle idea and 2 or more branches. Choose the middle. The bar button Balance: a middle idea with two branches on each side (before: the Even gaps mark). Same mark in More.
+
+2. Draw plate (press Draw)
+- Highlighter: a broad pen over a band (before: only a word).
+- Lasso: a rope loop with a loose end (before: only a word).
+
+3. Sketch and picture
+- Draw a sketch of handwriting and choose it. Make typed: a squiggle turning into a T (before: the Words mark).
+- Choose a picture. Draw on it: a picture with a pencil at its corner (before: the plain pencil). Make sure it still opens the Draw tool and says "Drawing on the picture".
+
+4. Notes
+- Choose a note. Vote: a note with a dot on its corner (before: a plain dot). Tick list: two ticked lines (before: the list mark). Both still work.
+
+5. Legend
+- More, Colour legend...: the line has a small card with two colour dots. The Colour legend page's heading wears the same mark.
+
+6. Frames and views
+- Make a frame and choose it. Focus: frame corners round a ring with a dot. It must not look like Fit window (corners round a square). Press it: it still focuses.
+- More, Show frames: frame corners round a play triangle. Grey when there is no frame.
+- More, Small map: a board with a small map in its lower right corner. The switch still turns the small map on and off.
+
+7. Narrow bar
+- On an iPhone in portrait, open the bars with the ... button: the marks fit and nothing is cut.
+
+Also look at: Settings shows version 0.10 (10); What's new (0.10) lists all eleven; How it works.
+Tell us: any mark that is too faint, too heavy, cut off or hard to tell from another, day or night, on iPhone, iPad or Mac.

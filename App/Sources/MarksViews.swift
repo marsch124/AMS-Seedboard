@@ -16,10 +16,10 @@ struct MarksMoreLines: View {
         Button("Clear all dots") { session.clearAllDots(); session.takeKeys() }
             .disabled(!session.marksOn || !session.board.hasDots)
             .accessibilityIdentifier("more.clearDots")
-        Button("Colour legend…") {
+        Button {
             session.commitEdit()
             MarksDesk.shared.legendOpen = true
-        }
+        } label: { MarkLabel("Colour legend…", .legend) }
         .disabled(!session.marksOn)
         .accessibilityIdentifier("more.legend")
         if session.board.legend != nil {
@@ -94,9 +94,14 @@ struct LegendPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Colour legend")
-                .font(Txt.big)
-                .foregroundStyle(Part.notes.text)
+            HStack(spacing: 8) {
+                GlyphView(glyph: .new(.legend), size: 24, colour: Part.notes.text)
+                    .accessibilityHidden(true)
+                Text("Colour legend")
+                    .font(Txt.big)
+                    .foregroundStyle(Part.notes.text)
+            }
+                .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("legend.heading")
                 .padding(.top, 12)

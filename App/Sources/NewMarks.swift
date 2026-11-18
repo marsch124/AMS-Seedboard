@@ -28,6 +28,8 @@ enum NewMark: String, CaseIterable {
     // into notes; a bar is done; catch up; share, as PDF, as words, print; take a photo, scan a page.
     case door, nextNote, nextShape, turnInto, tidy, byColour, breakNotes, done, catchUp
     case share, pdf, words, print, camera, scan
+    // 0.10: the buttons of 0.9 that borrowed a neighbour's mark or showed only words.
+    case balance, highlighter, lasso, makeTyped, drawOnIt, vote, tickList, legend, focus, showFrames, smallMap
 
     /// The drawing in the shared icon library (AMS-Icons, the seed family).
     var standIn: AppMark {
@@ -90,6 +92,55 @@ enum NewMark: String, CaseIterable {
         case .print: return .seedPrint
         case .camera: return .seedCamera
         case .scan: return .seedScan
+        // 0.10 (AMS-Icons a6bf561).
+        case .balance: return .seedBalance
+        case .highlighter: return .seedHighlighter
+        case .lasso: return .seedLasso
+        case .makeTyped: return .seedMakeTyped
+        case .drawOnIt: return .seedDrawOnIt
+        case .vote: return .seedVote
+        case .tickList: return .seedTickList
+        case .legend: return .seedLegend
+        case .focus: return .seedFocus
+        case .showFrames: return .seedShowFrames
+        case .smallMap: return .seedSmallMap
         }
+    }
+}
+
+/// A menu line with its hand-drawn mark (0.10). Menus take only pictures, so the mark is drawn once into
+/// a template picture the menu tints like its words.
+struct MarkLabel: View {
+    let words: String
+    let mark: NewMark
+    init(_ words: String, _ mark: NewMark) { self.words = words; self.mark = mark }
+
+    var body: some View {
+        if let picture = MarkPicture.image(mark) {
+            Label { Text(words) } icon: { picture }
+        } else {
+            Text(words)
+        }
+    }
+}
+
+@MainActor
+enum MarkPicture {
+    private static var made: [NewMark: Image] = [:]
+
+    static func image(_ mark: NewMark) -> Image? {
+        if let done = made[mark] { return done }
+        let renderer = ImageRenderer(content: AppMarkView(mark.standIn, size: 18, colour: .black).frame(width: 18, height: 18))
+        renderer.scale = 3
+        guard let cg = renderer.cgImage else { return nil }
+        #if os(macOS)
+        let ns = NSImage(cgImage: cg, size: NSSize(width: 18, height: 18))
+        ns.isTemplate = true
+        let picture = Image(nsImage: ns)
+        #else
+        let picture = Image(uiImage: UIImage(cgImage: cg, scale: 3, orientation: .up).withRenderingMode(.alwaysTemplate))
+        #endif
+        made[mark] = picture
+        return picture
     }
 }

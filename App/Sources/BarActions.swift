@@ -122,13 +122,13 @@ struct BarActions {
     /// "Make typed" (0.9): a chosen sketch's handwriting becomes a Text thing with the words (InkWords.swift).
     private func makeTyped(_ id: UUID, drop: Int = 1) -> BarAction {
         let session = session
-        return act("totext", "Make typed", .new(.words), show: .wideWord, drop: drop, exact: "ink.totext") { session.makeTyped(id) }
+        return act("totext", "Make typed", .new(.makeTyped), show: .wideWord, drop: drop, exact: "ink.totext") { session.makeTyped(id) }
     }
 
     /// "Draw on it" (0.9): the Draw tool opens with this picture as its target.
     private func drawOn(_ id: UUID, drop: Int = 1) -> BarAction {
         let session = session
-        return act("draw", "Draw on it", .new(.draw), show: .wideWord, drop: drop, exact: "picture.draw") { session.drawOnPicture(id) }
+        return act("draw", "Draw on it", .new(.drawOnIt), show: .wideWord, drop: drop, exact: "picture.draw") { session.drawOnPicture(id) }
     }
 
     private func words(_ id: UUID, show: BarAction.Show = .wideWord, drop: Int = 1) -> BarAction {
@@ -190,7 +190,7 @@ struct BarActions {
             if first { one.gap = true; first = false }
             all.append(one)
         }
-        put(act("vote.add", "Vote", .app(.dot), show: .wideWord, drop: 6) { session.vote() })
+        put(act("vote.add", "Vote", .new(.vote), show: .wideWord, drop: 6) { session.vote() })
         if full {
             let hasDots = chosen.contains { ($0.votes ?? 0) > 0 }
             put(act("vote.remove", "Remove a dot", .app(.minus), enabled: hasDots) { session.removeDot() })
@@ -200,7 +200,7 @@ struct BarActions {
         put(act("pin.toggle", pinned ? "Unpin" : "Pin in place", .app(.seedPin), show: .wideWord, on: pinned, drop: 6) { session.togglePinned() })
         if chosen.allSatisfy({ $0.kind == .note }) {
             let ticked = chosen.allSatisfy { TickList.hasTicks($0.text) }
-            put(act("tick.list", "Tick list", .control(.list), show: .wideWord, on: ticked, drop: 6) { session.tickList() })
+            put(act("tick.list", "Tick list", .new(.tickList), show: .wideWord, on: ticked, drop: 6) { session.tickList() })
         }
         if chosen.count == 1, let item = chosen.first, WebAddress.first(in: item.text) != nil {
             let id = item.id
@@ -317,7 +317,7 @@ struct BarActions {
             if item.parent == nil {
                 all.append(act("sides", item.bothSides ? "One side" : "Both sides", .app(.seedMindMap), show: .wideWord, drop: 3) { session.toggleBothSides() })
                 if session.board.canBalance(item.id) {
-                    all.append(act("balance", "Balance", .new(.evenGaps), show: .wideWord, drop: 3) { session.balanceMap() })
+                    all.append(act("balance", "Balance", .new(.balance), show: .wideWord, drop: 3) { session.balanceMap() })
                 }
             } else {
                 all.append(colour(for: item))
@@ -480,7 +480,7 @@ struct BarActions {
                 more.append(act("unfoldAll", "Unfold all", .control(.chevron)) { session.unfoldAll() })
             }
             if item.parent == nil, session.board.canBalance(item.id) {
-                more.append(act("balance", "Balance", .new(.evenGaps)) { session.balanceMap() })
+                more.append(act("balance", "Balance", .new(.balance)) { session.balanceMap() })
             }
         case .frame:
             more.append(list("lanes", "Lanes", .new(.lanes), on: item.lanes != nil, laneChoices(item)))

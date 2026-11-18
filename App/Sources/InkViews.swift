@@ -75,9 +75,9 @@ struct DrawPlate: View {
         WrapRow(spacing: Finger.chipGap) {
             HStack(spacing: Finger.chipGap) {
                 tile(.draw, "draw.pen", "Pen", on: pen) { desk.usePen() }
-                word("Highlighter", "draw.highlighter", on: desk.highlighter, help: "Highlighter (H)") { desk.highlighter.toggle() }
+                tile(.highlighter, "draw.highlighter", "Highlighter (H)", on: desk.highlighter) { desk.highlighter.toggle() }
                 tile(.rubber, "draw.rubber", "Rubber", on: desk.rubber) { desk.rubber = true }
-                word("Lasso", "draw.lasso", on: desk.lasso, help: "Lasso (L): draw a loop round pencil lines to choose them") { desk.lasso.toggle() }
+                tile(.lasso, "draw.lasso", "Lasso (L): draw a loop round pencil lines to choose them", on: desk.lasso) { desk.lasso.toggle() }
             }
             if desk.rubber {
                 // 0.9: how near a line the rubber must come; it takes whole lines.

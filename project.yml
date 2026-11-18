@@ -13,8 +13,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     # The version lives here only; the Info.plist reads it from these two.
-    MARKETING_VERSION: "0.9"
-    CURRENT_PROJECT_VERSION: "9"
+    MARKETING_VERSION: "0.10"
+    CURRENT_PROJECT_VERSION: "10"
 packages:
   # The rules: boards, layout, arrows, text in and out, what goes to PARAGON. No screen in it.
   SeedboardCore:
@@ -22,7 +22,7 @@ packages:
   # The shared AMS icon hub, pinned to one commit so a hub change never arrives by surprise.
   AMSIcons:
     url: https://github.com/marsch124/AMS-Icons
-    revision: 8e79eafd54b040b9e96fe07e3abae3e7d85157dc
+    revision: a6bf561489a87a1ac899ea0e1bf35069895b8187
 targets:
   AMSSeedboard:
     type: application

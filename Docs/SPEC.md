@@ -1,4 +1,4 @@
-# AMS Seedboard — specification, version 0.9 (build 9)
+# AMS Seedboard — specification, version 0.10 (build 10)
 
 **Version 0.9 (build 9, 2026-11-18)** is a big round: 40 picks (A, B and 38 numbered ideas from `Docs/IDEAS-0.9.md`) in eight lanes: timeline, marks, views, maps, pencil, PARAGON, finding. Everything is in part **15**. Where part 15 and an older part disagree about a thing 0.9 changed, part 15 is right. Everything of 0.8 that 0.9 does not name is as it was. The board format is now **6**.
 
@@ -1469,7 +1469,7 @@ All off on timeline and Who does what boards; all go through Undo; none changes 
 ### 15.8 Who does what (pick 33) — maps
 
 - Names already had colours; a name with no colour now takes one by its place from the branch colours (before: always blue); messages follow their sender's colour. New: a small "sends 4" under each name (answers count), hidden when 0.
-- Tests: `Maps09Tests` (7). Launch words: `-board Balanced -maps09 -sampleData`, `-board Order -maps09 -sampleData`, `-board Loan -sampleData`. Missing icon: a proper "balance" mark (the even-gaps mark is used).
+- Tests: `Maps09Tests` (7). Launch words: `-board Balanced -maps09 -sampleData`, `-board Order -maps09 -sampleData`, `-board Loan -sampleData`. Balance had no mark of its own in 0.9 (the even-gaps mark was used); 0.10 gives it one, see part 16.
 
 ### 15.9 Pencil and pictures (picks 35–39) — pencil
 
@@ -1505,3 +1505,26 @@ All off on timeline and Who does what boards; all go through Undo; none changes 
 - `Guide.swift`: a new 0.9 entry in What's new (above 0.8); How it works changed in: Starters, The board, Mind maps, Shapes and arrows, Timeline board, Drawing by hand, Pictures, Who does what, Send to PARAGON, Your boards, Choosing … undo, Shortcuts … Spotlight, Menus and keys; new part "Marks on ideas, legend, focus and show". Every text that said seven starters now says ten.
 - Data tests added in 0.9: `Timing09Tests` 3, `Marks09Tests` 8, `Views09Tests` 6, `Maps09Tests` 7, `Pencil09Tests` 9, `Paragon09Tests` 4, `Finding09Tests` 6, `Phases09Tests` 3.
 - `Docs/WHAT-TO-TEST-0.9.txt` is new.
+
+## 16. New in 0.10
+
+**Version 0.10 (build 10, 2026-11-19)** changes nothing but marks. Eleven buttons that in 0.9 borrowed another button's mark or showed only a word now have a hand-drawn mark of their own, all in the AMS-Icons package (commit `a6bf561`): 24-point grid, one 1.9 stroke, round ends, no fill. The board format stays **6**. Where part 15 says a button has the even-gaps mark, only a word, or no mark, part 16 is right.
+
+| Button | Where | Mark (AMS-Icons) | Before (0.9) | Now |
+|---|---|---|---|---|
+| Balance | mind map bar, More | `seedBalance` | the Even gaps mark | a middle idea with two branches each side |
+| Highlighter | Draw plate | `seedHighlighter` | the word only | a broad-tipped pen over a band |
+| Lasso | Draw plate | `seedLasso` | the word only | a rope loop with a loose end |
+| Make typed | handwriting bar | `seedMakeTyped` | the Words mark | a squiggle turning into a typed T |
+| Draw on it | picture bar | `seedDrawOnIt` | the plain Draw pencil | a picture with a pencil at its corner |
+| Vote | bar | `seedVote` | a plain dot | a note with a vote dot on its corner |
+| Tick list | note bar | `seedTickList` | the list mark | two ticked lines |
+| Colour legend | More "Colour legend…", heading of the Colour legend page | `seedLegend` | no mark of its own | a small card with two colour dots |
+| Focus | bar for a chosen frame | `seedFocus` | the Fit window mark | frame corners round a ring with a dot |
+| Show frames | More, left end of the show bar | `seedShowFrames` | no mark | frame corners round a play triangle |
+| Small map | More switch | `seedSmallMap` | no mark | a board with a small map in its lower right corner |
+
+- Identifiers, keys, menus and rules of these buttons are unchanged.
+- Version 0.10 (build 10).
+- `Guide.swift`: a new 0.10 entry in What's new (above 0.9); How it works changed in: The board, Mind maps, Drawing by hand, Pictures, Marks on ideas, legend, focus and show.
+- `Docs/WHAT-TO-TEST-0.10.txt` is new.
