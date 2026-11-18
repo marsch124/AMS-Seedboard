@@ -67,9 +67,37 @@ public enum Outline {
         return read(depth: 0)
     }
 
-    /// True when the text has at least two non-blank lines.
+    /// True when the text is a list (0.5): two lines or more that are not empty, and either one of them begins
+    /// like a list (a list mark, a number, a tick box, a heading mark or an indent) or every line is short
+    /// (80 letters at most). Paragraphs are not a list: they stay one text.
     public static func isList(_ text: String) -> Bool {
+        let lines = text.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard lines.count >= 2 else { return false }
+        if lines.contains(where: beginsLikeAList) { return true }
+        return lines.allSatisfy { $0.trimmingCharacters(in: .whitespaces).count <= shortLine }
+    }
+
+    /// The longest line that still counts as a short one.
+    public static let shortLine = 80
+
+    /// True when the text has at least two lines that are not empty (what counted as a list up to 0.4; still the
+    /// rule for "Paste a list as a mind map", which always makes a map).
+    public static func hasSeveralLines(_ text: String) -> Bool {
         text.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count >= 2
+    }
+
+    /// The kind of the one thing words become when they are no list: several lines are one Text with its
+    /// lines kept, one line is a sticky note.
+    public static func kindForWords(_ text: String) -> ItemKind { hasSeveralLines(text) ? .text : .note }
+
+    /// The line begins like a line of a list: with an indent (a tab, or two spaces or more), a heading mark,
+    /// a list mark, a number or a tick box.
+    static func beginsLikeAList(_ line: String) -> Bool {
+        if line.hasPrefix("\t") || line.hasPrefix("  ") { return true }
+        let body = line.trimmingCharacters(in: .whitespaces)
+        if heading(in: body) != nil { return true }
+        if body.range(of: #"^\[[ xX]\](\s+|$)"#, options: .regularExpression) != nil { return true }
+        return body.range(of: #"^([-*+•–◦]|\d+[.)]|[A-Za-z]\))\s+"#, options: .regularExpression) != nil
     }
 
     /// Nested "- " bullets, two spaces per depth.

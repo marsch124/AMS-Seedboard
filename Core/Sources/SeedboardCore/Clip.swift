@@ -166,8 +166,9 @@ public extension Board {
         return hung.isEmpty ? tops : hung
     }
 
-    /// Words from elsewhere land on the board (pasted or dropped): two lines or more — a list —
-    /// become a mind map, anything else one sticky note, with its middle at the point.
+    /// Words from elsewhere land on the board (pasted or dropped): a list (`Outline.isList`) becomes a mind map,
+    /// several lines that are no list (paragraphs) one Text with its lines kept, one line one sticky note —
+    /// with its middle at the point.
     /// Returns the new thing; nothing for empty words.
     @discardableResult
     mutating func addWords(_ text: String, at point: CGPoint) -> UUID? {
@@ -175,6 +176,6 @@ public extension Board {
         guard !clean.isEmpty, canBeChanged, !placesItself else { return nil }
         let nodes = Outline.parse(clean)
         if Outline.isList(clean), !nodes.isEmpty { return addMap(from: nodes, title: nil, at: point) }
-        return add(.note, centre: point, text: clean)
+        return add(Outline.kindForWords(clean), centre: point, text: clean)
     }
 }

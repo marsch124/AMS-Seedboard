@@ -220,6 +220,8 @@ struct BarActions {
         if session.tidyCount >= 2 { actions.append(act("lineUp", "Line up", .new(.lineUp), show: .wideWord, drop: 3) { session.lineUp() }) }
         if session.tidyCount >= 3 { actions.append(act("evenGaps", "Even gaps", .new(.evenGaps), show: .wideWord, drop: 3) { session.evenGaps() }) }
         if session.sizeCount >= 2 { actions.append(act("sameSize", "Same size", .new(.sameSize), show: .wideWord, drop: 3) { session.sameSize() }) }
+        // 0.5: Tidy, Colour, Make a mind map; behind "…": Turn into, By colour (Thinking.swift).
+        actions += severalBar()
         actions.append(duplicate())
         actions += chooseMore(drop: 2)
         actions.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }))
@@ -311,7 +313,8 @@ struct BarActions {
             }
         }
         all.append(remove())
-        return all
+        // 0.5: "Turn into" behind the "…" (Thinking.swift).
+        return withTurnInto(all)
     }
 
     private func linkBar(_ link: SeedboardCore.Link) -> [BarAction] {
@@ -351,6 +354,8 @@ struct BarActions {
             if session.sizeCount >= 2 { tidy.append(act("sameSize", "Same size", .new(.sameSize)) { session.sameSize() }) }
             if !tidy.isEmpty { tidy[0].gap = true }
             all += tidy
+            // 0.5: Tidy, By colour, Colour, Turn into, Make a mind map (Thinking.swift).
+            all += severalMenu(first: tidy.isEmpty)
             all += moveOutLines()
             all.append(remove(gap: true))
             return all
@@ -390,6 +395,8 @@ struct BarActions {
                 more.append(list("shape", "Shape", item.kind.mark, kinds))
             }
         }
+        // 0.5: Turn into, Choose all of this colour, Break into notes (Thinking.swift).
+        more += singleMenu(item)
         if !more.isEmpty { more[0].gap = true }
         all += more
         all += moveOutLines()
