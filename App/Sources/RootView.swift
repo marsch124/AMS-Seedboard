@@ -74,9 +74,14 @@ struct BoardList: View {
     @State private var removing: Board?
     /// 0.5: "5 of 13 done", read from PARAGON (EchoKeeper.swift).
     @ObservedObject private var echo = EchoKeeper.shared
+    /// The iPhone's list has search and "+" at the bottom, under the thumb (`ThumbRow`).
+    private var thumbRow: Bool { phone && ThumbRow.onThisDevice }
+    @State private var searching = false
 
     var body: some View {
         VStack(spacing: 0) {
+            // On the iPhone search and "+" sit at the bottom instead (`ThumbRow`).
+            if !thumbRow {
             Button {
                 // On the iPhone the choices come up from the bottom; a small pop-up there comes out empty.
                 if sizeClass == .compact { showStarterSheet = true } else { showStarters = true }
@@ -110,6 +115,7 @@ struct BoardList: View {
             SearchField(text: $search)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 4)
+            }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -119,7 +125,7 @@ struct BoardList: View {
                     section("Recent", BoardSearch.find(search, in: model.recent))
                     section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
                     if model.loaded && model.boards.isEmpty {
-                        Text("No boards yet. Press New board.")
+                        Text(thumbRow ? "No boards yet. Press + below." : "No boards yet. Press New board.")
                             .font(Txt.label)
                             .foregroundStyle(.secondary)
                             .padding(10)
@@ -136,7 +142,7 @@ struct BoardList: View {
             }
             .accessibilityIdentifier("boards.list")
 
-            Divider()
+            if thumbRow { ThumbRow(search: $search, typing: $searching, open: open) } else { Divider() }
             HStack {
                 #if os(macOS)
                 SettingsLink { settingsLabel }
@@ -155,6 +161,7 @@ struct BoardList: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
+            .goneWhile(thumbRow && searching)
         }
         .navigationTitle("Seedboard")
         #if os(iOS)
