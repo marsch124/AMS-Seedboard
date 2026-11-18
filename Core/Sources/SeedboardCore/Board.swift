@@ -59,6 +59,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var folded: Bool
     /// Mind map centre only: branches go to the left as well as to the right.
     public var bothSides: Bool
+    /// Mind map, main branch of a both-sides map only: the side it stays on. nil = not settled yet.
+    public var side: Side? = nil
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -79,7 +81,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, kind, text, x, y, w, h, colour, todo, parent, order, folded, bothSides
+        case id, kind, text, x, y, w, h, colour, todo, parent, order, folded, bothSides, side
     }
 
     public init(from decoder: Decoder) throws {
@@ -98,6 +100,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         order = (try? c.decode(Double.self, forKey: .order)) ?? 0
         folded = (try? c.decode(Bool.self, forKey: .folded)) ?? false
         bothSides = (try? c.decode(Bool.self, forKey: .bothSides)) ?? false
+        side = try? c.decode(Side.self, forKey: .side)
     }
 
     public var frame: CGRect {

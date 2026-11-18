@@ -153,7 +153,8 @@ public extension Board {
 
     /// One map as an outline (folded branches included).
     func outline(of centre: UUID) -> OutlineNode {
-        OutlineNode(item(centre)?.text ?? "", children(of: centre).map { outline(of: $0.id) })
+        // An idea with several lines is one line in a list.
+        OutlineNode(ParagonExport.oneLine(item(centre)?.text ?? ""), children(of: centre).map { outline(of: $0.id) })
     }
 
     /// The whole board as plain text to copy.

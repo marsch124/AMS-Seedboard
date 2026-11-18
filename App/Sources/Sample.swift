@@ -6,7 +6,8 @@ import SeedboardCore
 enum Sample {
     static func boards(now: Date = Date()) -> [Board] {
         var cabin = Board(title: "Summer cabin", created: now.addingTimeInterval(-86_400 * 3), changed: now, pinned: true, colour: "green")
-        let centre = cabin.addCentre(at: CGPoint(x: 0, y: 0), text: "Summer cabin", bothSides: true)
+        // Both sides is switched on after the branches are there: the first two go right, the last two left.
+        let centre = cabin.addCentre(at: CGPoint(x: 0, y: 0), text: "Summer cabin", bothSides: false)
         let branches: [(String, [String])] = [
             ("Budget", ["Loan", "Savings"]),
             ("Build", ["Permit", "Builder"]),
@@ -17,6 +18,7 @@ enum Sample {
             guard let branch = cabin.addChild(of: centre, text: name) else { continue }
             for idea in ideas { cabin.addChild(of: branch, text: idea) }
         }
+        if let i = cabin.index(of: centre) { cabin.items[i].bothSides = true }
         if let permit = cabin.items.first(where: { $0.text == "Permit" }), let i = cabin.index(of: permit.id) {
             cabin.items[i].todo = true
         }
