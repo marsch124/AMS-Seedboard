@@ -11,6 +11,8 @@ import UIKit
 enum Glyph {
     case app(AppMark)
     case control(ControlMark)
+    /// New in 0.2 (see NewMarks.swift).
+    case new(NewMark)
 }
 
 struct GlyphView: View {
@@ -22,6 +24,7 @@ struct GlyphView: View {
         switch glyph {
         case .app(let mark): AppMarkView(mark, size: size, colour: colour)
         case .control(let mark): ControlMarkView(mark, size: size, colour: colour)
+        case .new(let mark): AppMarkView(mark.standIn, size: size, colour: colour)
         }
     }
 }
