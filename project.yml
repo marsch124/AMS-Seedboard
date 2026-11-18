@@ -70,6 +70,8 @@ targets:
           - CFBundleURLName: com.schabbauer.AMSSeedboard
             CFBundleURLSchemes: [seedboard]
             CFBundleTypeRole: Viewer
+        # iPad with a trackpad or mouse: clicks arrive as pointer touches, scrolling and pinching as their own events.
+        UIApplicationSupportsIndirectInputEvents: true
         # So the app may ask whether PARAGON is installed.
         LSApplicationQueriesSchemes: [amspara]
         NSUbiquitousContainers:

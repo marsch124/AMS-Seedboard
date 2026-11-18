@@ -609,12 +609,45 @@ final class BoardSession: ObservableObject {
     /// Zooms so the board point under the screen point stays where it is.
     func zoom(to newScale: CGFloat, around point: CGPoint? = nil) { place.zoom(to: Double(newScale), around: point) }
 
+    /// Two fingers (iPhone, iPad): the board slides with the point between them and zooms round it, in one step.
+    func pinch(from old: CGPoint, to new: CGPoint, by factor: CGFloat) { place.pinch(from: old, to: new, by: Double(factor)) }
+
+    /// The thing last typed in while the iPhone's view was zoomed in for typing.
+    private var typedIn: UUID?
+
+    /// iPhone: while words are typed the view is at least life size round them; afterwards it goes
+    /// back to the zoom before. Ideas typed one after the other do not zoom out in between.
+    func typing(in id: UUID?) {
+        guard Finger.phone else { return }
+        func box(_ id: UUID) -> CGRect? {
+            if let item = board.item(id) { return item.frame }
+            guard let link = board.links.first(where: { $0.id == id }),
+                  let a = board.item(link.from), let b = board.item(link.to) else { return nil }
+            return CGRect(origin: Route.path(from: a.frame, to: b.frame, style: link.style).label, size: .zero)
+        }
+        if let id {
+            guard let round = box(id) else { return }
+            typedIn = id
+            if place.typingBegan(round: round) { reveal(id) }
+        } else {
+            let last = typedIn
+            typedIn = nil
+            guard place.typingEnded(round: last.flatMap(box)) else { return }
+            if let last { reveal(last) }
+            // Not moved by the owner: the board opens again as it stood.
+            placeIfNeeded(viewSize)
+        }
+    }
+
     /// Shows the whole board, never bigger than life size.
     func fit() { place.fit(board.bounds) }
 
     /// The first time the board's place on screen is known, it is shown whole — and again whenever its
     /// room changes (a window still settling, a page opening over it), until the owner has moved or zoomed it.
-    func placeIfNeeded(_ size: CGSize) { place.resized(to: size, showing: board.bounds) }
+    /// The iPhone opens a board readable (75 % or more, on the main idea) instead of whole and tiny.
+    func placeIfNeeded(_ size: CGSize) {
+        place.resized(to: size, showing: board.bounds, readableAround: Finger.phone ? board.mainThing?.frame : nil)
+    }
 
     /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.
     func resized(_ size: CGSize) {

@@ -91,15 +91,18 @@ struct BoardView: View {
                         Text(notice.words)
                             .font(Txt.label)
                             .foregroundStyle(.white)
-                        Button("Undo") {
+                        Button {
                             session.undo()
                             session.takeKeys()
+                        } label: {
+                            Text("Undo")
+                                .font(Txt.label.weight(.bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 3)
+                                .background(Color.white.opacity(0.22), in: Capsule())
+                                .pressRoom(0, 11)
                         }
-                        .font(Txt.label.weight(.bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 3)
-                        .background(Color.white.opacity(0.22), in: Capsule())
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("board.noticeUndo")
                     }
@@ -128,11 +131,11 @@ struct BoardView: View {
                         Group {
                             if compact && !session.readOnly { UndoCluster(session: session) } else { Color.clear.frame(height: 1) }
                         }
-                        .frame(width: 150, alignment: .leading)
+                        .frame(width: Finger.side, alignment: .leading)
                         Spacer(minLength: 0)
                         if !session.readOnly { ToolPill(session: session) }
                         Spacer(minLength: 0)
-                        ZoomCluster(session: session).frame(width: 150, alignment: .trailing)
+                        ZoomCluster(session: session).frame(width: Finger.side, alignment: .trailing)
                     }
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
@@ -296,6 +299,7 @@ struct ToolPill: View {
             AppMarkView(mark, size: 24, colour: on ? .white : part.text)
                 .frame(width: 40, height: 40)
                 .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .pressRoom(3, 3)
         }
         .buttonStyle(.plain)
         .help(help)
@@ -318,6 +322,7 @@ struct ZoomCluster: View {
                 .accessibilityIdentifier("zoom.value")
             button(.app(.zoomIn), "zoom.in", "Bigger") { session.zoom(to: session.scale * 1.25) }
             button(.app(.seedFit), "zoom.fit", "Show the whole board") { withAnimation(.easeOut(duration: 0.2)) { session.fit() } }
+                .padding(.leading, Finger.pairGap - 2)
         }
         .padding(4)
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -330,8 +335,9 @@ struct ZoomCluster: View {
             session.takeKeys()
         } label: {
             GlyphView(glyph: glyph, size: 18, colour: Part.arrows.text)
-                .frame(width: 28, height: 28)
+                .frame(width: Finger.zoom.width, height: Finger.zoom.height)
                 .contentShape(Rectangle())
+                .pressRoom(4, 4)
         }
         .buttonStyle(.plain)
         .help(help)
@@ -344,7 +350,8 @@ struct ZoomCluster: View {
 struct SelectionBar: View {
     @ObservedObject var session: BoardSession
     @Environment(\.colorScheme) private var scheme
-    @State private var showColours = false
+    /// For pictures: `-colours` (with `-pick`) opens the colour dots.
+    @State private var showColours = LaunchOptions.arguments.contains("-colours")
 
     var body: some View {
         let item = session.single
@@ -371,7 +378,7 @@ struct SelectionBar: View {
 
     private func chips(_ item: Item?, _ link: SeedboardCore.Link?) -> some View {
         // The buttons wrap onto a second row on a narrow screen: none is ever cut off.
-        WrapRow(spacing: 5) {
+        WrapRow(spacing: Finger.chipGap) {
             if let item {
                 itemChips(item)
             } else if let link {
@@ -448,8 +455,9 @@ struct SelectionBar: View {
             session.takeKeys()
         } label: {
             AppMarkView(mark, size: 20, colour: item.kind == kind ? .white : Part.shapes.text)
-                .frame(width: 30, height: 28)
+                .frame(width: Finger.shape.width, height: Finger.shape.height)
                 .background(item.kind == kind ? Part.shapes.fill : Part.shapes.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .pressRoom(4, 4)
         }
         .buttonStyle(.plain)
         .help(kind.word)
@@ -469,9 +477,10 @@ struct SelectionBar: View {
                     .foregroundStyle(on ? Color.white : Color.primary)
             }
             .padding(.horizontal, 8)
-            .frame(height: 28)
+            .frame(height: Finger.chipHeight)
             .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
+            .pressRoom(0, 4)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
@@ -482,7 +491,10 @@ struct SelectionBar: View {
         let isNote = item?.kind == .note
         let names = isNote ? Palette.notes : Palette.names
         let plain = item.map { $0.kind.isShape } ?? (link != nil)
-        return HStack(spacing: 7) {
+        // iPhone and iPad: bigger dots, well apart; on a narrow screen they take a second row.
+        let row = Finger.on ? AnyLayout(WrapRow(spacing: Finger.dotGap)) : AnyLayout(HStackLayout(spacing: Finger.dotGap))
+        let plate = Finger.on ? AnyShape(RoundedRectangle(cornerRadius: 21, style: .continuous)) : AnyShape(Capsule())
+        return row {
             if plain {
                 dot(paint.plate, edge: paint.edge, id: "colour.none", label: "No colour") { session.setColour("") }
             }
@@ -492,8 +504,8 @@ struct SelectionBar: View {
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
-        .background(Theme.plate, in: Capsule())
-        .overlay(Capsule().stroke(Color.primary.opacity(0.10)))
+        .background(Theme.plate, in: plate)
+        .overlay(plate.stroke(Color.primary.opacity(0.10)))
         .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)
@@ -508,7 +520,8 @@ struct SelectionBar: View {
             Circle()
                 .fill(colour)
                 .overlay(Circle().stroke(edge ?? .clear, lineWidth: 1.5))
-                .frame(width: 22, height: 22)
+                .frame(width: Finger.dot, height: Finger.dot)
+                .pressRoom(7, 7)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -600,7 +613,7 @@ struct UndoCluster: View {
     @ObservedObject var session: BoardSession
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: Finger.pairGap) {
             button(.undo, "board.undo", "Undo", on: session.undoCount > 0) { session.undo() }
             button(.redo, "board.redo", "Redo", on: session.redoCount > 0) { session.redo() }
         }
@@ -615,8 +628,9 @@ struct UndoCluster: View {
             session.takeKeys()
         } label: {
             AppMarkView(mark, size: 18, colour: Part.arrows.text)
-                .frame(width: 30, height: 28)
+                .frame(width: Finger.undo.width, height: Finger.undo.height)
                 .contentShape(Rectangle())
+                .pressRoom(4, 4)
         }
         .buttonStyle(.plain)
         .disabled(!on)
