@@ -766,7 +766,7 @@ final class BoardSession: ObservableObject {
         if board.isTimeline {
             // A timeline is placed by its days, not by where its things lie.
             place.size = size
-            if !place.movedByOwner, size.width > 10 { timelineFit() }
+            if !place.movedByOwner, size.width > 10 { timelineFit(opening: true) }
             return
         }
         // The iPhone opens a board readable (75 % or more, on the main idea) instead of whole and tiny.

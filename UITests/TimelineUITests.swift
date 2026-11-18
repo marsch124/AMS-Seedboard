@@ -60,7 +60,7 @@ final class TimelineUITests: XCTestCase {
         press(app, "starter.timeline")
         waitFor(app, "board.count", toSay: "3 bars · 1 milestone")
         XCTAssertTrue(element(app, "timeline.canvas").exists)
-        XCTAssertTrue(element(app, "timeline.today").exists)
+        XCTAssertTrue(element(app, "today.button").exists)
         XCTAssertTrue(element(app, "tool.milestone").exists)
         XCTAssertTrue(element(app, "tool.phase").exists)
         XCTAssertTrue(element(app, "tool.after").exists)
@@ -86,7 +86,7 @@ final class TimelineUITests: XCTestCase {
         // Further away twice at most: whatever the screen's width chose first, it ends at months.
         for _ in 0..<2 where element(app, "zoom.out").isEnabled { press(app, "zoom.out") }
         waitFor(app, "zoom.value", toSay: "Months")
-        press(app, "timeline.today")
+        press(app, "today.button")
         press(app, "zoom.fit")
 
         press(app, "sel.remove")

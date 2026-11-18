@@ -30,6 +30,39 @@ enum Sample {
         return board
     }
 
+    /// 0.9, for pictures (`-board "Timing sample"`): a late, an early and an on-time done bar round today, so the
+    /// done day's plate sits over the red Today line; plus one bar not done and one late.
+    static func timing(now: Date = Date()) -> Board {
+        var board = Board.timeline(title: "Timing sample", created: now.addingTimeInterval(-86_400 * 5))
+        let today = Day(now)
+        let tiles = board.addBar("Order tiles", start: today - 8, days: 5, colour: "blue")
+        let floor = board.addBar("Lay floor", start: today - 5, days: 6, colour: "teal")
+        let paint = board.addBar("Paint hall", start: today - 6, days: 8, colour: "green")
+        board.addBar("Hang doors", start: today + 3, days: 5, colour: "orange")
+        board.addBar("Order lamps", start: today - 9, days: 4, colour: "pink")
+        let gate = board.addMilestone("Alex signs off", on: today + 4)
+        board.setDone([tiles, floor, paint, gate], true, on: today)
+        board.changed = now.addingTimeInterval(-3_600)
+        return board
+    }
+
+    /// 0.9, for pictures (`-board Midsummer -scale days -goDay 2027-06-21`): a week with Midsummer Eve, Midsummer
+    /// Day and a weekend; with a done-late, a done-early and an on-time bar, far from today (the Today button).
+    static func midsummer(now: Date = Date()) -> Board {
+        var board = Board.timeline(title: "Midsummer sample", created: now.addingTimeInterval(-86_400 * 6))
+        let first = Day(year: 2027, month: 6, day: 14)
+        let order = board.addBar("Order boards", start: first, days: 5, colour: "blue")
+        let paint = board.addBar("Paint fence", start: first + 3, days: 6, colour: "green")
+        board.addBar("Alex builds the table", start: first + 5, days: 4, colour: "orange")
+        let lamps = board.addBar("Hang lamps", start: first + 6, days: 2, colour: "yellow")
+        board.addMilestone("Guests arrive", on: first + 11)
+        board.setDone([order], true, on: first + 12)   // planned to end 18 Jun: 4 days late
+        board.setDone([paint], true, on: first + 6)    // planned to end 22 Jun: 2 days early
+        board.setDone([lamps], true, on: first + 7)    // planned to end 21 Jun: 1 day early
+        board.changed = now.addingTimeInterval(-3_700)
+        return board
+    }
+
     static func boards(now: Date = Date()) -> [Board] {
         var cabin = Board(title: "Summer cabin", created: now.addingTimeInterval(-86_400 * 3), changed: now, pinned: true, colour: "green")
         // Both sides is switched on after the branches are there: the first two go right, the last two left.
@@ -114,6 +147,8 @@ enum Sample {
         return [
             cabin,
             timeline(now: now),
+            timing(now: now),
+            midsummer(now: now),
             loanSteps(now: now),
             ideas,
             made(.steps, "Garage shelves", "orange", daysAgo: 2),

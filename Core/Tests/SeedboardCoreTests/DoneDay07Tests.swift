@@ -16,7 +16,7 @@ final class DoneDay07Tests: XCTestCase {
 
         board.setDone([permit], true, on: today)
         XCTAssertEqual(board.doneWord(for: [permit], today: today), "Done 18 Nov")
-        XCTAssertEqual(board.doneLine(of: permit, today: today), "Done on 18 Nov")
+        XCTAssertEqual(board.doneLine(of: permit, today: today), "Done on 18 Nov · 4 days early")  // 0.9: against the plan (it was to end 4 days later)
 
         // Another year carries the year.
         board.setDone([walls], true, on: Day(year: 2025, month: 12, day: 3))

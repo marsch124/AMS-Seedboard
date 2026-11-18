@@ -84,7 +84,7 @@ final class TimelineTests: XCTestCase {
         XCTAssertEqual(dayTicks.map(\.label), ["1", "2", "3", "4", "5", "6", "7"])
         XCTAssertEqual(dayTicks.filter(\.strong).map(\.label), ["7"])               // the Monday
         let months = TimelineGeometry.ticks(from: dec1, to: dec1 + 70, scale: .months)
-        XCTAssertEqual(months.map(\.label), ["Dec", "Jan", "Feb"])
+        XCTAssertEqual(months.map(\.label), ["Dec 2026", "Jan 2027", "Feb 2027"])  // 0.9: months carry their year
         XCTAssertEqual(TimelineGeometry.heads(from: dec1, to: dec1 + 40, scale: .days).map(\.label), ["December 2026", "January 2027"])
         XCTAssertEqual(TimelineGeometry.heads(from: dec1, to: dec1 + 40, scale: .weeks).map(\.label), ["2026", "2027"])
     }

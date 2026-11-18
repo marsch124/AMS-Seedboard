@@ -56,11 +56,14 @@ extension BoardSession {
     // MARK: The view
 
     /// Shows the whole timeline: the closest scale at which everything (with today) fits, from its first day.
-    func timelineFit() {
+    /// `opening`: the timeline is just being opened (nothing chosen by its owner yet): a plan longer than half a
+    /// year then opens in Months (`TimeScale.opening`). The Show-the-whole-timeline button fits as always.
+    func timelineFit(opening: Bool = false) {
         guard viewSize.width > 10 else { return }
         let today = Day.today()
         let bare = board.timelineRange(today: today, air: 0)
-        let scale = TimeScale.fitting(days: (bare.last - bare.first + 1) + 2 * TimeScale.weeks.air, width: Double(chartWidth))
+        var scale = TimeScale.fitting(days: (bare.last - bare.first + 1) + 2 * TimeScale.weeks.air, width: Double(chartWidth))
+        if opening { scale = TimeScale.opening(planDays: board.timelinePlanDays, fitting: scale, chosen: nil) }
         timeline.scale = scale
         timeline.pinch = 1
         let range = board.timelineRange(today: today, air: scale.air)
@@ -77,11 +80,14 @@ extension BoardSession {
     }
 
     /// Brings today into view, a third of the way in from the names.
-    func timelineShowToday() {
+    func timelineShowToday() { timelineShow(.today()) }
+
+    /// Brings a day into view, a third of the way in from the names.
+    func timelineShow(_ day: Day) {
         guard viewSize.width > 10 else { return }
         let g = timelineGeometry
         let lead = Double(chartWidth) / 3 - g.scale.pointsPerDay / 2
-        offset = CGSize(width: g.slide(showing: .today(), after: lead), height: offset.height)
+        offset = CGSize(width: g.slide(showing: day, after: lead), height: offset.height)
         // A step of zero: the board counts as moved by its owner, so it is not shown whole again by itself.
         pan(by: .zero)
     }

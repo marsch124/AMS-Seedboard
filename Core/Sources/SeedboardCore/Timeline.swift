@@ -171,6 +171,15 @@ public enum TimeScale: String, CaseIterable, Sendable {
         }
     }
 
+    /// 0.9: a plan longer than this many days (about half a year) opens in Months.
+    public static let longPlanDays = 183
+
+    /// The scale a timeline opens in: the one its owner chose for this board when there is one, otherwise
+    /// Months for a plan longer than half a year, otherwise the closest scale that shows the whole plan (`fitting`).
+    public static func opening(planDays: Int, fitting: TimeScale, chosen: TimeScale?) -> TimeScale {
+        chosen ?? (planDays > longPlanDays ? .months : fitting)
+    }
+
     /// The closest scale at which this many days still fit into the width; months when none does.
     public static func fitting(days: Int, width: Double) -> TimeScale {
         for scale in [TimeScale.days, .weeks, .months] where Double(days) * scale.pointsPerDay <= width { return scale }
@@ -272,7 +281,7 @@ public struct TimelineGeometry: Equatable, Sendable {
         case .months:
             var day = first.parts.day == 1 ? first : first.nextMonthStart
             while day <= last {
-                ticks.append(TimeTick(day: day, label: day.monthWord, strong: day.parts.month == 1))
+                ticks.append(TimeTick(day: day, label: "\(day.monthWord) \(day.parts.year)", strong: day.parts.month == 1))
                 day = day.nextMonthStart
             }
         }
@@ -635,6 +644,13 @@ public extension Board {
     }
 
     // MARK: What is seen
+
+    /// 0.9: how many days the plan spans, from its first bar's first day to its last bar's last day (0 without bars).
+    var timelinePlanDays: Int {
+        let spans = items.compactMap { $0.span }
+        guard let first = spans.map(\.start).min(), let last = spans.map(\.end).max() else { return 0 }
+        return last - first + 1
+    }
 
     /// The days a timeline shows when it is seen whole: from a few days before its first bar to a
     /// few days after its last, and always with today in it.

@@ -15,6 +15,46 @@ public extension Item {
 
     /// 0.8: the small grey label after a done bar or milestone: "18 Nov" ("3 Dec 2025" in another year).
     func doneLabel(today: Day) -> String? { doneOn?.words(seenFrom: today) }
+
+    /// 0.9: how the done day stands against the planned last day (a milestone's one day); nil when not done.
+    var doneTiming: DoneTiming? {
+        guard let done = doneOn, let span else { return nil }
+        return DoneTiming(daysAfterPlan: done - span.end)
+    }
+
+    /// 0.9: the done day with how it compares: "18 Nov", "18 Nov · 8 days late", "18 Nov · 3 days early".
+    func doneHint(today: Day) -> DoneHint? {
+        guard let day = doneOn, let timing = doneTiming else { return nil }
+        return DoneHint(date: day.words(seenFrom: today), timing: timing)
+    }
+}
+
+/// 0.9: a done day against the planned last day.
+public enum DoneTiming: Equatable, Sendable {
+    case onTime, late(Int), early(Int)
+
+    /// Positive = after the planned last day (late), negative = before it (early).
+    public init(daysAfterPlan days: Int) {
+        self = days > 0 ? .late(days) : (days < 0 ? .early(-days) : .onTime)
+    }
+
+    /// "8 days late", "1 day early"; nil when on time.
+    public var words: String? {
+        func days(_ n: Int) -> String { n == 1 ? "1 day" : "\(n) days" }
+        switch self {
+        case .onTime: return nil
+        case .late(let n): return "\(days(n)) late"
+        case .early(let n): return "\(days(n)) early"
+        }
+    }
+}
+
+/// 0.9: "18 Nov" and, when it was not on the planned day, " · 8 days late" / " · 3 days early".
+public struct DoneHint: Equatable, Sendable {
+    public var date: String
+    public var timing: DoneTiming
+
+    public var line: String { timing.words.map { "\(date) · \($0)" } ?? date }
 }
 
 /// How far a timeline is: "3 of 8 done · 1 late · ends 20 Feb".
@@ -95,10 +135,10 @@ public extension Board {
         return "Done \(day.words(seenFrom: today))"
     }
 
-    /// 0.7: the line on the Dates page of a bar or milestone marked done: "Done on 18 Nov"; nil otherwise.
+    /// 0.7: the line on the Dates page of a bar or milestone marked done: "Done on 18 Nov" (0.9: "Done on 18 Nov · 8 days late"); nil otherwise.
     func doneLine(of id: UUID, today: Day) -> String? {
-        guard let day = item(id)?.doneOn else { return nil }
-        return "Done on \(day.words(seenFrom: today))"
+        guard let hint = item(id)?.doneHint(today: today) else { return nil }
+        return "Done on \(hint.line)"
     }
 
     /// The Done button: when every chosen bar is done the mark comes off, otherwise all of them are done.

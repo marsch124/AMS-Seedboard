@@ -83,12 +83,18 @@ struct TimelinePainter {
         // The days: weekend shade, phase bands, date lines, arrows, bars, today.
         var days = ctx
         days.clip(to: Path(chart))
-        if g.scale == .days {
+        // 0.9: weekends and Swedish public holidays, shaded softly on the Days and Weeks scales (holidays a little
+        // stronger); the Months scale carries none.
+        if g.scale != .months {
+            let holidays = SwedishHolidays.names(from: first, to: last)
+            let weekend = g.scale == .days ? (paint.night ? 0.22 : 0.20) : (paint.night ? 0.18 : 0.15)
+            let holiday = paint.night ? 0.42 : 0.38
             var day = first
             while day <= last {
-                if day.isWeekend {
+                let isHoliday = holidays[day] != nil
+                if day.isWeekend || isHoliday {
                     let column = CGRect(x: g.x(of: day), y: Double(header), width: g.scale.pointsPerDay, height: Double(chart.height))
-                    days.fill(Path(column), with: .color(paint.edge.opacity(paint.night ? 0.22 : 0.20)))
+                    days.fill(Path(column), with: .color(paint.edge.opacity(isHoliday ? holiday : weekend)))
                 }
                 day = day + 1
             }
@@ -142,6 +148,11 @@ struct TimelinePainter {
             line.move(to: CGPoint(x: todayX, y: header))
             line.addLine(to: CGPoint(x: todayX, y: size.height))
             days.stroke(line, with: .color(red), lineWidth: 1.6)
+        }
+        // 0.9: the done-day words go over the Today line, on a soft plate, so the line never runs through them.
+        for (row, item) in rows.enumerated() {
+            guard let box = rect(of: item, row: row), box.maxX > names - 40, box.minX < size.width + 40 else { continue }
+            drawDoneLabel(item, box, &days)
         }
 
         drawChosen(byID, &days)

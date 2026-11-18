@@ -41,7 +41,7 @@ final class TimelineKeep {
                 new.timelineComeBack(scale: back.scale, slide: back.slide)
             } else if new.place.movedByOwner {
                 // Nothing of this timeline is written down here: it is shown whole, as a timeline opens.
-                new.timelineFit()
+                new.timelineFit(opening: true)
             }
         }
         guard remembers else { return }

@@ -162,6 +162,8 @@ struct TimelineView: View {
             session.setTimeScale(scale)
             session.timelineShowToday()
         }
+        // For pictures: `-goDay 2027-06-21` brings that day into view (after `-scale`).
+        if let word = LaunchOptions.value(for: "-goDay"), let day = Day(iso: word) { session.timelineShow(day) }
     }
 
     private func resetPress() {

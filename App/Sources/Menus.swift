@@ -127,6 +127,9 @@ struct SeedMenus: Commands {
             Button("Show the Whole Board") { session?.fit() }
                 .keyboardShortcut("1", modifiers: .command)
                 .disabled(session == nil)
+            // 0.9: on a timeline: brings today into view (the key T does the same while the timeline has the keys).
+            Button("Go to Today") { session?.timelineShowToday() }
+                .disabled(session?.board.isTimeline != true)
             Divider()
         }
 

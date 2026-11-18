@@ -95,7 +95,7 @@ struct TimelineZoomCluster: View {
             .buttonStyle(PressStyle(tint: .black))
             .help("Bring today into view (T)")
             .accessibilityLabel("Today")
-            .accessibilityIdentifier("timeline.today")
+            .accessibilityIdentifier("today.button")
             .padding(.leading, 3)
             // 0.5: Catch up, only while something is late (TimelineProgress.swift).
             if !session.readOnly, session.timelineLateCount > 0 { catchUp }

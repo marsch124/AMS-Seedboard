@@ -47,14 +47,7 @@ extension TimelinePainter {
             mark.addLine(to: CGPoint(x: c.x - 1.0, y: c.y + 3.0))
             mark.addLine(to: CGPoint(x: c.x + 3.8, y: c.y - 2.8))
             ctx.stroke(mark, with: .color(own), style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
-            // 0.8: the day it was done, small and grey, right after the bar (nothing for one ticked only in PARAGON).
-            if let words = item.doneLabel(today: today) {
-                // Always the same place, past the bar's end: clear of a "comes after" arrow leaving the end, and of
-                // the grip and the dot a chosen bar wears there, so the label never jumps when the bar is chosen.
-                let x = max(box.maxX + Self.dotGap + Self.dotRadius + 6, inside ? 0 : c.x + 9)
-                ctx.draw(Text(words).font(.system(size: 10, weight: .medium)).foregroundColor(paint.faint),
-                         at: CGPoint(x: x, y: box.midY), anchor: .leading)
-            }
+            // (The done day's words are drawn later, over the Today line: `drawDoneLabel`.)
             return
         }
         if item.kind == .milestone {
@@ -76,6 +69,37 @@ extension TimelinePainter {
         if isLate(item) {
             let wide = min(6, box.width / 2)
             inner.fill(Path(CGRect(x: box.maxX - wide, y: box.minY, width: wide, height: box.height)), with: .color(red))
+        }
+    }
+
+    /// 0.8: the day it was done, small, right after the bar (nothing for one ticked only in PARAGON).
+    /// 0.9: on a soft plate in the board's own background (day and night), so the red Today line never runs through
+    /// the words, and with how it stands against the plan: "18 Nov · 8 days late" (late faint red, early faint
+    /// green, the date grey).
+    func drawDoneLabel(_ item: Item, _ box: CGRect, _ ctx: inout GraphicsContext) {
+        guard isDone(item), let hint = item.doneHint(today: today) else { return }
+        let inside = item.kind == .bar && box.width >= 22
+        let tickX = inside ? box.maxX - 10 : box.maxX + 9
+        // Always the same place, past the bar's end: clear of a "comes after" arrow leaving the end, and of
+        // the grip and the dot a chosen bar wears there, so the label never jumps when the bar is chosen.
+        let x = max(box.maxX + Self.dotGap + Self.dotRadius + 6, inside ? 0 : tickX + 9)
+        let font = Font.system(size: 10, weight: .medium)
+        let date = ctx.resolve(Text(hint.date).font(font).foregroundColor(paint.faint))
+        var pieces = [date]
+        if let words = hint.timing.words {
+            var shade = Color.clear
+            if case .late = hint.timing { shade = paint.line("red").opacity(paint.night ? 0.95 : 0.85) }
+            if case .early = hint.timing { shade = paint.chosen.opacity(paint.night ? 0.95 : 0.9) }
+            pieces.append(ctx.resolve(Text(" · ").font(font).foregroundColor(paint.faint)))
+            pieces.append(ctx.resolve(Text(words).font(font).foregroundColor(shade)))
+        }
+        let widths = pieces.map { $0.measure(in: CGSize(width: 600, height: 40)).width }
+        let plate = CGRect(x: x - 4, y: box.midY - 8, width: widths.reduce(0, +) + 8, height: 16)
+        ctx.fill(Path(roundedRect: plate, cornerRadius: 8), with: .color((ground ?? paint.canvas).opacity(0.92)))
+        var left = x
+        for (text, wide) in zip(pieces, widths) {
+            ctx.draw(text, at: CGPoint(x: left, y: box.midY), anchor: .leading)
+            left += wide
         }
     }
 
