@@ -107,6 +107,8 @@ public enum ParagonExport {
     /// it finds `- [ ]` lines anywhere in the note and nests them by two spaces of indent). A main branch with no
     /// ideas under it is one task by itself, listed before the headings. Flow shapes in arrow order go under
     /// "### Steps", other to-do items under "### To do".
+    /// When at least one idea carries the To do tick, the ticks decide: only ticked ideas and ticked shapes
+    /// become tasks, the others stay as plain lines in the same places (see ProjectPlan.swift).
     public static func project(board: Board, title: String, picture: String?, now: Date) -> String {
         var out = frontMatter(title: title, type: "project", status: "active", now: now)
         out += "# \(title)\n\n"
@@ -115,33 +117,13 @@ public enum ParagonExport {
         let outcomeText = board.mapCentres.map { oneLine($0.text) }.first { !$0.isEmpty } ?? title
         out += "## Outcome\n\n\(outcomeText)\n\n"
 
-        var loose: [String] = []
-        var groups: [[String]] = []
-        for centre in board.mapCentres {
-            for branch in board.children(of: centre.id) {
-                let name = oneLine(branch.text)
-                let below = board.children(of: branch.id)
-                if below.isEmpty {
-                    loose.append("- [ ] \(name.isEmpty ? "(empty)" : name)")
-                } else {
-                    var group = ["### \(name.isEmpty ? "(empty)" : name)"]
-                    for idea in below { group.append(contentsOf: taskLines(of: idea, in: board, level: 0)) }
-                    groups.append(group)
-                }
-            }
-        }
-        var steps: [String] = []
-        for shape in flowOrder(board) {
-            let words = oneLine(shape.text)
-            if !words.isEmpty { steps.append("- [ ] \(words)") }
-        }
-        if !steps.isEmpty { groups.append(["### Steps"] + steps) }
-        let todo = board.items.filter { $0.todo && $0.kind != .idea && !$0.kind.isShape && !oneLine($0.text).isEmpty }
-            .map { "- [ ] \(oneLine($0.text))" }
-        if !todo.isEmpty { groups.append(["### To do"] + todo) }
+        let plan = projectPlan(board)
+        var groups = plan.groups
+        if !plan.steps.isEmpty { groups.append(["### Steps"] + plan.steps) }
+        if !plan.todo.isEmpty { groups.append(["### To do"] + plan.todo) }
 
         out += "## Tasks\n\n"
-        if !loose.isEmpty { out += loose.joined(separator: "\n") + "\n\n" }
+        if !plan.loose.isEmpty { out += plan.loose.joined(separator: "\n") + "\n\n" }
         for group in groups { out += group.joined(separator: "\n") + "\n\n" }
 
         out += "## Notes\n\n"
@@ -215,7 +197,7 @@ public enum ParagonExport {
             .map { "- \(oneLine($0.text))" }
     }
 
-    private static func label(_ item: Item) -> String {
+    static func label(_ item: Item) -> String {
         let words = oneLine(item.text)
         return words.isEmpty ? "(empty)" : words
     }
@@ -238,7 +220,7 @@ public enum ParagonExport {
         return lines
     }
 
-    private static func taskLines(of item: Item, in board: Board, level: Int, depth: Int = 0) -> [String] {
+    static func taskLines(of item: Item, in board: Board, level: Int, depth: Int = 0) -> [String] {
         guard depth < 200 else { return [] }
         var lines = [String(repeating: "  ", count: level) + "- [ ] " + label(item)]
         for child in board.children(of: item.id) {
@@ -248,7 +230,7 @@ public enum ParagonExport {
     }
 
     /// The flow shapes in arrow order: those nothing points at first, each followed along its arrows; any left over after.
-    private static func flowOrder(_ board: Board) -> [Item] {
+    static func flowOrder(_ board: Board) -> [Item] {
         let shapes = board.items.filter { $0.kind.isShape }
         let ids = Set(shapes.map(\.id))
         var pointedAt = Set<UUID>()

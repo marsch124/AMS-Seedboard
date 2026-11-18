@@ -56,6 +56,8 @@ final class AppModel: ObservableObject {
            let item = session.board.items.first(where: { $0.text.localizedCaseInsensitiveContains(word) }) {
             session.select(item.id)
         }
+        // For pictures: `-type` starts typing in the picked thing (the bar above the keyboard shows).
+        if LaunchOptions.arguments.contains("-type"), let session, let id = session.selection.first { session.beginEdit(id) }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         checkParagon()
         #if DEBUG
@@ -267,21 +269,23 @@ final class AppModel: ObservableObject {
     }
 
     /// Sends the open board. The board's picture is made here, the files are written off the main thread.
-    func send(kind: SendKind, title: String) async -> String? {
+    /// `branch`: only this idea and everything under it is sent, as a small map of its own.
+    func send(kind: SendKind, title: String, branch: UUID? = nil) async -> String? {
         guard let session, let place else { return SendProblem.notFound.errorDescription }
         session.commitEdit()
-        let board = session.board
+        let board = branch.flatMap { session.board.branchOnly($0) } ?? session.board
         let png = kind == .todos ? nil : BoardPicture.png(of: board)
         do {
             let result = try await Task.detached(priority: .userInitiated) {
                 try ParagonGate.send(board: board, kind: kind, title: title, png: png, place: place)
             }.value
             if self.session === session {
-                session.markSent(result.info, todos: result.todos)
+                // One branch is not the whole board: the board gets no "sent" mark for it.
+                session.markSent(branch == nil ? result.info : nil, todos: result.todos)
                 saveNow()
             } else if var other = boards.first(where: { $0.id == board.id }) {
                 // Another board was opened meanwhile: the sent mark goes onto the board itself.
-                if let info = result.info { other.sent = info }
+                if let info = result.info, branch == nil { other.sent = info }
                 other.sentTodos = Array(Set(other.sentTodos).union(result.todos))
                 other.touch()
                 write(other)

@@ -30,6 +30,8 @@ struct CanvasView: View {
     @State private var pressBegan = Date.distantPast
     /// The middle idea of the one map being dragged: it may be dropped on an idea of another map.
     @State private var hanging: UUID?
+    /// Where the idea being dragged will land among its sisters: a thin line is drawn there.
+    @State private var landing: Landing?
 
     /// Shift and Tab arrives as its own key on the Mac.
     private static let backTab = KeyEquivalent("\u{19}")
@@ -81,6 +83,7 @@ struct CanvasView: View {
                         line.addLine(to: rubber.to)
                         sheet.stroke(line, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2.2 / session.scale, lineCap: .round, dash: [7 / session.scale, 5 / session.scale]))
                     }
+                    if case .idea = drag, let landing { landing.draw(&sheet, colour: paint.chosen, scale: session.scale) }
                     if let marquee {
                         let box = Path(roundedRect: marquee, cornerRadius: 3)
                         ctx.fill(box, with: .color(paint.chosen.opacity(0.10)))
@@ -104,6 +107,7 @@ struct CanvasView: View {
                     .frame(width: 1, height: 1)
                     .allowsHitTesting(false)
                     .accessibilityIdentifier("board.count")
+                IdeaPlaceMark(session: session)
 
                 editor
             }
@@ -182,7 +186,7 @@ struct CanvasView: View {
             .textFieldStyle(.plain)
             .foregroundStyle(paint.ink)
             .focused($typing)
-            .id(session.editing)
+            .id(fieldIdentity(isIdea: isIdea))
             .accessibilityIdentifier("board.field")
             .onKeyPress(.return, phases: .down) { press in
                 // Shift or Option with Return makes a new line (in an idea too); Return alone ends the typing.
@@ -208,12 +212,7 @@ struct CanvasView: View {
             }
             #if os(iOS)
             .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { session.commitEdit() }
-                        .fontWeight(.semibold)
-                        .accessibilityIdentifier("board.fieldDone")
-                }
+                ToolbarItemGroup(placement: .keyboard) { keyboardBar(isIdea: isIdea) }
             }
             #endif
     }
@@ -393,12 +392,8 @@ struct CanvasView: View {
             if hanging != nil { dropTarget = session.board.idea(at: here, notIn: ids) }
         case .idea(let id):
             ghost = delta
-            if let over = session.board.hit(here), over != id, session.board.item(over)?.kind == .idea,
-               !session.board.descendants(of: id).contains(over) {
-                dropTarget = over
-            } else {
-                dropTarget = nil
-            }
+            // The idea it would hang under gets a ring; a place between two sisters gets a thin line.
+            (dropTarget, landing) = session.dropHints(for: id, at: here)
         case .sizing(let id, let base):
             session.live { $0.resize(id, to: CGRect(x: base.minX, y: base.minY, width: base.width + delta.width, height: base.height + delta.height)) }
         case .plus(let id, _), .joining(let id):
@@ -434,11 +429,7 @@ struct CanvasView: View {
         case .sizing:
             session.liveEnd(keep: true)
         case .idea(let id):
-            if let over = dropTarget {
-                session.hang(id, under: over)
-            } else if hypot(value.translation.width, value.translation.height) > 50 {
-                session.detach(id, at: here)
-            }
+            session.dropIdea(id, at: here)
         case .plus(let id, let d):
             guard let item = session.board.item(id) else { return }
             if item.kind == .idea {
@@ -556,6 +547,11 @@ struct CanvasView: View {
         let item = session.single
         if command {
             if press.characters == "a" { session.selectAll(); return .handled }
+            // ⌘↑ and ⌘↓: the chosen idea goes one place up or down among its sisters.
+            if press.key == .upArrow || press.key == .downArrow, let item, item.kind == .idea {
+                session.shiftIdea(item.id, down: press.key == .downArrow)
+                return .handled
+            }
             return .ignored
         }
         switch press.key {

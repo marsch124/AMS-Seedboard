@@ -279,17 +279,32 @@ public extension Board {
         return true
     }
 
-    /// Moves an idea one place up or down among its sisters.
-    mutating func shiftIdea(_ id: UUID, down: Bool) {
-        guard let me = item(id), let parentID = me.parent else { return }
+    /// Moves an idea one place up or down among its sisters. A main branch of a both-sides map
+    /// moves among the branches of its own side; at the end of a side it crosses to the other
+    /// side (down: to the bottom there, up: to the top). False when there is nowhere to go.
+    @discardableResult
+    mutating func shiftIdea(_ id: UUID, down: Bool) -> Bool {
+        guard let me = item(id), me.kind == .idea, let parentID = me.parent, let parent = item(parentID) else { return false }
+        let twoSided = parent.parent == nil && parent.bothSides
+        if twoSided { settleSides(of: parentID) }
         var order = children(of: parentID).map(\.id)
-        guard let at = order.firstIndex(of: id) else { return }
-        let to = at + (down ? 1 : -1)
-        guard order.indices.contains(to) else { return }
-        order.swapAt(at, to)
+        let mySide = side(of: id)
+        let column = order.filter { side(of: $0) == mySide }
+        guard let at = order.firstIndex(of: id), let place = column.firstIndex(of: id) else { return false }
+        let to = place + (down ? 1 : -1)
+        if column.indices.contains(to), let other = order.firstIndex(of: column[to]) {
+            order.swapAt(at, other)
+        } else if twoSided {
+            order.remove(at: at)
+            order.insert(id, at: down ? order.count : 0)
+            if let i = index(of: id) { items[i].side = mySide == .right ? .left : .right }
+        } else {
+            return false
+        }
         for (n, each) in order.enumerated() {
             if let i = index(of: each) { items[i].order = Double(n + 1) }
         }
+        return true
     }
 
     // MARK: Layout

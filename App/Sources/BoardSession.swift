@@ -389,6 +389,24 @@ final class BoardSession: ObservableObject {
         reveal(id)
     }
 
+    /// ⌘↑ / ⌘↓ and Move up / Move down: the idea goes one place up or down among its sisters
+    /// (a main branch round the middle idea, see `Board.shiftIdea`). It stays chosen, and typing
+    /// in it goes on. One step for Undo.
+    func shiftIdea(_ id: UUID, down: Bool) {
+        guard !readOnly else { return }
+        if editing == id {
+            var new = board
+            guard new.shiftIdea(id, down: down) else { return }
+            new.touch()
+            set(new, room: board)
+            onChange?(board)
+        } else {
+            if editing != nil { commitEdit() }
+            guard change({ $0.shiftIdea(id, down: down) }) else { return }
+        }
+        reveal(id)
+    }
+
     /// An idea dropped on another idea hangs under it, with everything below it. The middle of a
     /// map can be dropped on an idea of another map: the two maps become one.
     func hang(_ id: UUID, under target: UUID) {
