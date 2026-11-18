@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import SeedboardCore
 #if os(macOS)
 import AppKit
@@ -20,20 +21,41 @@ final class AppModel: ObservableObject {
     @Published var flash: String?
     /// The Send to PARAGON page is asked for.
     @Published var showSend = false
+    /// Boards whose newest change is on this device but not in iCloud yet (a small dot in the list).
+    @Published private(set) var notInCloud: Set<UUID> = []
+    /// Plain words when a board could not be saved; nil when all is well (shown in Settings).
+    @Published private(set) var saveWarning: String?
+    /// A link led to a board that was removed: which one, and when. The place for a "Bring back" button
+    /// (`bringBack`). Cleared when the board is back or another board is opened.
+    @Published private(set) var removedLink: RemovedBoard?
+
+    struct RemovedBoard: Equatable {
+        var id: UUID
+        var removed: Date
+    }
 
     let store: BoardStore
     private(set) var place: ParagonPlace?
     private var saveWork: DispatchWorkItem?
     private var pendingSave: Board?
     private var flashWork: DispatchWorkItem?
+    /// News from another device that arrived while the owner was typing or dragging in that board.
+    /// Not shown and not thrown away: offered again the moment he stops.
+    private var heldNews: [UUID: Board] = [:]
+    private var heldWatch: AnyCancellable?
+    /// A `seedboard://board/<id>` link that could not be followed yet (the boards were still loading,
+    /// or the board has not arrived on this device).
+    private var waitingLink: UUID?
+    private var sending = false
 
     init() {
         store = BoardStore(sample: LaunchOptions.sampleData)
-        store.onCloudChange = { [weak self] news in self?.cloudBrought(news) }
-        store.onCloudGone = { [weak self] ids in self?.cloudRemoved(ids) }
+        store.onCloudChange = { [weak self] news in self?.cloudBrought(news) ?? [] }
+        store.onCloudGone = { [weak self] gone in self?.cloudRemoved(gone) }
+        store.onState = { [weak self] in self?.storeStateChanged() }
         #if os(macOS)
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.leaving() }
+            MainActor.assumeIsolated { self?.leaving(closing: true) }
         }
         #endif
         Task { await load() }
@@ -61,6 +83,8 @@ final class AppModel: ObservableObject {
             session.selection = Set(session.board.items.filter { item in words.contains { item.text.localizedCaseInsensitiveContains($0) } }.map(\.id))
         }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
+        // A link that arrived before the boards were loaded is followed now.
+        if let id = waitingLink { follow(id) }
         checkParagon()
         #if DEBUG
         // For trying the hand-over without a press: `-sendNow note|project|todos` (with `-paragonFolder`).
@@ -74,40 +98,117 @@ final class AppModel: ObservableObject {
         #endif
     }
 
-    private func cloudBrought(_ news: [Board]) {
+    /// News from iCloud. Gives back the ids that are shown now; what is held or not needed is not "seen".
+    @discardableResult
+    private func cloudBrought(_ news: [Board]) -> Set<UUID> {
+        var taken = Set<UUID>()
         for board in news {
             if let i = boards.firstIndex(where: { $0.id == board.id }) {
-                guard board.changed > boards[i].changed else { continue }
-                // In the middle of typing or dragging the open board is left alone: the next save
-                // settles it (the newer change wins, the other is kept as a safety copy).
-                if openID == board.id, session?.busy == true { continue }
-                boards[i] = board
-                if openID == board.id { session?.replace(with: board) }
+                // In the middle of typing or dragging the open board is left alone, and the news is HELD:
+                // it is offered again the moment the typing ends (`offerHeld`).
+                let busy = openID == board.id && session?.busy == true
+                switch SafetyRules.news(incoming: board.changed, shown: boards[i].changed, busy: busy) {
+                case .ignore:
+                    continue
+                case .hold:
+                    heldNews[board.id] = board
+                    watchHeld()
+                case .take:
+                    heldNews[board.id] = nil
+                    boards[i] = board
+                    if openID == board.id { session?.replace(with: board) }
+                    taken.insert(board.id)
+                }
             } else {
                 boards.append(board)
+                taken.insert(board.id)
             }
         }
         boards.sort { $0.changed > $1.changed }
         safetyLine = store.safetyLine()
+        // A link was waiting for this board to arrive.
+        if let id = waitingLink, loaded, boards.contains(where: { $0.id == id }) {
+            waitingLink = nil
+            open(id)
+        }
+        return taken
+    }
+
+    /// While news is held, every change of the open board is a moment to look whether the typing has ended.
+    private func watchHeld() {
+        guard heldWatch == nil, let session else { return }
+        heldWatch = session.objectWillChange.sink { [weak self] _ in
+            // After the change has landed, not before.
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.offerHeld() } }
+        }
+    }
+
+    /// Offers the held news again. Typing ended without a change: the other device's version is shown now.
+    /// Typing ended with a change: mine is the newer one and stays; theirs is kept in SafetyCopies by the
+    /// save that follows, because it is not a version this board grew from.
+    private func offerHeld() {
+        guard !heldNews.isEmpty else {
+            heldWatch = nil
+            return
+        }
+        if let id = openID, heldNews[id] != nil, session?.busy == true { return }
+        let news = Array(heldNews.values)
+        heldNews = [:]
+        heldWatch = nil
+        let taken = cloudBrought(news)
+        store.took(news.filter { taken.contains($0.id) })
+        if news.contains(where: { !taken.contains($0.id) && heldNews[$0.id] == nil }) {
+            say("Another device changed this board while you were typing. Its version is kept as a safety copy.")
+        }
     }
 
     /// Another device removed these boards: they leave this device's list too.
-    private func cloudRemoved(_ ids: Set<UUID>) {
-        if let open = openID, ids.contains(open) {
-            session = nil
-            openID = nil
-            pendingSave = nil
-            saveWork?.cancel()
+    /// The open board stays when it was changed AFTER the removal (the owner was typing in it): that
+    /// change wins, the board is saved again and comes back on every device.
+    private func cloudRemoved(_ gone: [UUID: Date]) {
+        var ids = Set(gone.keys)
+        if let open = openID, let removedAt = gone[open], let session {
+            session.commitEdit()
+            if SafetyRules.removal(removedAt: removedAt, lastChange: session.board.changed) == .comesBack {
+                ids.remove(open)
+                keep(session.board)
+                saveNow()
+            } else {
+                self.session = nil
+                openID = nil
+                pendingSave = nil
+                saveWork?.cancel()
+            }
         }
+        for id in ids { heldNews[id] = nil }
         boards.removeAll { ids.contains($0.id) }
         safetyLine = store.safetyLine()
     }
 
+    private func storeStateChanged() {
+        if notInCloud != store.notInCloud { notInCloud = store.notInCloud }
+        let warning = store.warning
+        if saveWarning != warning {
+            // A board that cannot be saved on the device is said at once, not only in Settings.
+            if let warning, saveWarning == nil { say(warning) }
+            saveWarning = warning
+        }
+    }
+
     /// The app is being left or closed: what is being typed is kept and everything is written.
-    func leaving() {
+    /// The device copy is written before this returns; iCloud's copy gets background time to finish
+    /// (iPhone and iPad), or two more seconds when the Mac app closes for good.
+    func leaving(closing: Bool = false) {
         session?.commitEdit()
         saveNow()
+        #if os(macOS)
+        store.flush(cloudToo: closing)
+        #else
+        let time = BackgroundTime()
+        time.begin()
         store.flush()
+        store.afterCloud { time.end() }
+        #endif
     }
 
     /// The open board changed: the list shows it at once, the file follows half a second later.
@@ -149,7 +250,12 @@ final class AppModel: ObservableObject {
         guard id != openID || session == nil else { return }
         session?.commitEdit()
         saveNow()
+        // Leaving a board ends its typing: news that was held for it is offered now.
+        heldWatch = nil
         openID = id
+        if id != waitingLink { waitingLink = nil }
+        if id != removedLink?.id { removedLink = nil }
+        defer { offerHeld() }
         guard let id, let board = boards.first(where: { $0.id == id }) else {
             session = nil
             return
@@ -238,13 +344,59 @@ final class AppModel: ObservableObject {
     // MARK: Links in
 
     /// `seedboard://board/<id>` opens that board (the link PARAGON's notes carry).
+    /// A link that arrives before the boards are loaded (the app was started by it) is held and
+    /// followed once loading has finished.
     func open(url: URL) {
-        guard url.scheme == "seedboard", url.host == "board",
-              let id = UUID(uuidString: url.lastPathComponent) else { return }
+        guard let id = BoardLink.id(from: url) else { return }
+        guard loaded else {
+            waitingLink = id
+            return
+        }
+        follow(id)
+    }
+
+    private func follow(_ id: UUID) {
         if boards.contains(where: { $0.id == id }) {
+            waitingLink = nil
             open(id)
-        } else {
-            say("That board is not on this device yet.")
+            return
+        }
+        // Not here: removed, or not arrived yet. If iCloud brings it, it opens then (`cloudBrought`).
+        waitingLink = id
+        Task {
+            let removedAt = await store.removedDate(id)
+            guard waitingLink == id else { return }
+            let onDevice = boards.contains(where: { $0.id == id })
+            switch BoardLink.answer(loaded: loaded, onDevice: onDevice, removedAt: removedAt) {
+            case .hold:
+                break
+            case .open:
+                waitingLink = nil
+                open(id)
+            case .removed(let date):
+                waitingLink = nil
+                removedLink = RemovedBoard(id: id, removed: date)
+                say(BoardLink.removedLine(date))
+            case .missing:
+                say("That board is not on this device yet. It opens when it arrives.")
+            }
+        }
+    }
+
+    /// Brings a removed board back from the Removed folder (kept 30 days), under the same identity,
+    /// on every device, and opens it. The hook for a "Bring back" button.
+    func bringBack(_ id: UUID) {
+        Task {
+            guard let board = await store.bringBack(id: id) else {
+                say("That board could not be brought back: no copy of it is left.")
+                return
+            }
+            if let i = boards.firstIndex(where: { $0.id == id }) { boards[i] = board } else { boards.append(board) }
+            boards.sort { $0.changed > $1.changed }
+            removedLink = nil
+            safetyLine = store.safetyLine()
+            open(id)
+            say("“\(board.title)” is back.")
         }
     }
 
@@ -254,28 +406,54 @@ final class AppModel: ObservableObject {
         paragonLine = "Looking for PARAGON…"
         Task.detached(priority: .userInitiated) {
             let found = ParagonGate.find()
-            await MainActor.run {
-                self.place = found
-                self.paragonReady = found != nil
-                if LaunchOptions.sampleData {
-                    self.paragonLine = "Sample boards: nothing is sent anywhere."
-                } else if let found {
-                    self.paragonLine = found.outbox == nil
-                        ? "PARAGON's notes are found. Notes and projects can be sent; the Inbox cannot be reached from this device."
-                        : "PARAGON's notes are found. Boards can be sent as a note, a project, or tasks for the Inbox."
-                } else {
-                    self.paragonLine = "PARAGON's notes were not found on this device. Open PARAGON once with its own iCloud folder, then check again."
-                }
-            }
+            await MainActor.run { self.found(found) }
+        }
+    }
+
+    private func found(_ found: ParagonPlace?) {
+        place = found
+        paragonReady = found != nil
+        if LaunchOptions.sampleData {
+            paragonLine = "Sample boards: nothing is sent anywhere."
+        } else if let found {
+            paragonLine = found.outbox == nil
+                ? "PARAGON's notes are found. Notes and projects can be sent; the Inbox cannot be reached from this device."
+                : "PARAGON's notes are found. Boards can be sent as a note, a project, or tasks for the Inbox."
+        } else {
+            paragonLine = "PARAGON's notes were not found on this device. Open PARAGON once with its own iCloud folder, then check again."
         }
     }
 
     /// Sends the open board. The board's picture is made here, the files are written off the main thread.
     func send(kind: SendKind, title: String) async -> String? {
-        guard let session, let place else { return SendProblem.notFound.errorDescription }
+        guard let session else { return SendProblem.notFound.errorDescription }
+        // One hand-over at a time: a second press while the first is on its way does nothing.
+        guard !sending else { return "The board is on its way already." }
+        sending = true
+        defer { sending = false }
         session.commitEdit()
+        // PARAGON's folder is looked for again at every Send, not only when the app started:
+        // it may have appeared, gone or moved since.
+        let found = await Task.detached(priority: .userInitiated) { ParagonGate.find() }.value
+        self.found(found)
+        guard let place = found else { return SendProblem.notFound.errorDescription }
         let board = session.board
         let png = kind == .todos ? nil : BoardPicture.png(of: board)
+        // Inbox tasks: the "already sent" ticks are on the device BEFORE the tasks are handed over, so a
+        // stop in between can never send the same tasks twice. If the hand-over fails, the ticks come off again.
+        var ticked: Board?
+        if kind == .todos, board.canBeChanged {
+            let ids = ParagonExport.inboxTasks(board: board).map(\.id)
+            if !ids.isEmpty, place.outbox != nil {
+                saveNow()
+                var marked = board
+                marked.sentTodos = Array(Set(marked.sentTodos).union(ids))
+                marked.touch()
+                store.save(marked)
+                store.flush()
+                ticked = marked
+            }
+        }
         do {
             let result = try await Task.detached(priority: .userInitiated) {
                 try ParagonGate.send(board: board, kind: kind, title: title, png: png, place: place)
@@ -293,6 +471,12 @@ final class AppModel: ObservableObject {
             say(result.message)
             return nil
         } catch {
+            if let ticked {
+                // Nothing went to the Inbox: the board is stored again as it was, without the ticks.
+                var back = self.session === session ? session.board : (boards.first(where: { $0.id == board.id }) ?? board)
+                back.changed = max(Date(), back.changed, ticked.changed).addingTimeInterval(0.002)
+                store.save(back)
+            }
             return (error as? LocalizedError)?.errorDescription ?? "The board could not be sent. Nothing was changed."
         }
     }
@@ -341,3 +525,24 @@ final class AppModel: ObservableObject {
         #endif
     }
 }
+
+#if !os(macOS)
+/// Asks iOS for a little time after the app is left, so iCloud's copy of the last change can still be written.
+@MainActor
+private final class BackgroundTime {
+    private var task = UIBackgroundTaskIdentifier.invalid
+
+    func begin() {
+        task = UIApplication.shared.beginBackgroundTask(withName: "Seedboard saves") { [weak self] in
+            // Time is up: iOS is told at once. The device copy is long written by then.
+            MainActor.assumeIsolated { self?.end() }
+        }
+    }
+
+    func end() {
+        guard task != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(task)
+        task = .invalid
+    }
+}
+#endif
