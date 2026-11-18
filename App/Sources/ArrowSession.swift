@@ -43,14 +43,10 @@ extension BoardSession {
         change { $0.moveEnd(of: id, start: start, to: p) }
     }
 
-    /// Where the field for an arrow's words sits on screen: beside the line, where the words are drawn.
+    /// Where the field for an arrow's words sits on screen: at the middle of the line, where the words are drawn.
     func wordsField(for id: UUID) -> (centre: CGPoint, leading: Bool)? {
         guard let arrow = board.arrow(id) else { return nil }
-        let at = toScreen(arrow.words.at)
-        let half: CGFloat = 85 - 6
-        let tall = 13 * scale * 1.25 + 6
-        return (CGPoint(x: at.x + (arrow.words.leading ? half : -half),
-                        y: at.y + (arrow.words.above ? 3 - tall / 2 : tall / 2 - 3)), arrow.words.leading)
+        return (toScreen(arrow.middle), true)
     }
 
     // MARK: Keys of a flow

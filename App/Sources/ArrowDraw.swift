@@ -104,12 +104,17 @@ extension BoardPainter {
                 ctx.stroke(head, with: .color(colour), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
             }
 
-            // The words stand beside the line near its start, straight on the board: no patch behind them.
+            // 0.9: the words stand at the middle of the line, on a small patch of the board's colour,
+            // so the line does not run through them.
             if !link.text.isEmpty, editing != link.id {
                 let text = ctx.resolve(Text(link.text).font(.system(size: 13, weight: .medium))
                     .foregroundColor(link.colour.isEmpty ? paint.ink : colour))
-                ctx.draw(text, at: arrow.words.at,
-                         anchor: UnitPoint(x: arrow.words.leading ? 0 : 1, y: arrow.words.above ? 1 : 0))
+                let size = text.measure(in: CGSize(width: 200, height: CGFloat.greatestFiniteMagnitude))
+                let at = arrow.middle
+                let patch = CGRect(x: at.x - size.width / 2 - 4, y: at.y - size.height / 2 - 1,
+                                   width: size.width + 8, height: size.height + 2)
+                ctx.fill(Path(roundedRect: patch, cornerRadius: 5), with: .color(ground ?? paint.canvas))
+                ctx.draw(text, at: at, anchor: .center)
             }
         }
     }

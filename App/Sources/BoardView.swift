@@ -268,6 +268,14 @@ struct BoardView: View {
                         .disabled(session.board.isEmpty)
                         .accessibilityIdentifier("more.makeTimeline")
                 }
+                // 0.9: the shapes of a flowchart get a number each, in the order the arrows run.
+                if !session.board.placesItself, !session.readOnly {
+                    Button(session.board.numberSteps == true ? "Stop numbering the steps" : "Number the steps") {
+                        session.toggleNumberSteps()
+                        session.takeKeys()
+                    }
+                    .accessibilityIdentifier("more.numberSteps")
+                }
                 if !session.board.isEmpty {
                     // "Share…" (and "Print…" on iPhone and iPad): SharePlate.swift.
                     ShareLines(session: session)
@@ -489,6 +497,7 @@ struct BoardCommands: Commands {
             Button("Even Gaps") { session?.evenGaps() }.disabled((session?.tidyCount ?? 0) < 3)
             Button("Same Size") { session?.sameSize() }.disabled((session?.sizeCount ?? 0) < 2)
             IdeaOrderCommands()
+            MapCommands()
             Button(session?.board.isTimeline == true ? "Paste a List as Bars" : "Paste a List as a Mind Map") {
                 #if os(macOS)
                 let text = NSPasteboard.general.string(forType: .string)

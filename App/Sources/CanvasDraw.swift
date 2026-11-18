@@ -174,6 +174,10 @@ struct MapFacts {
     var colour: [UUID: String] = [:]
     var hidden: Set<UUID> = []
     var children: [UUID: Int] = [:]
+    /// 0.9: how many ideas hang below each idea, at any depth (the "+5" of a folded idea).
+    var below: [UUID: Int] = [:]
+    /// 0.9: the number of each flowchart shape, when the board numbers its steps.
+    var numbers: [UUID: Int] = [:]
 
     init() {}
 
@@ -186,6 +190,18 @@ struct MapFacts {
             kids[key]?.sort { ($0.order, $0.id.uuidString) < ($1.order, $1.id.uuidString) }
         }
         for (key, list) in kids { children[key] = list.count }
+        if board.items.contains(where: { $0.kind == .idea && $0.folded }) {
+            var memo: [UUID: Int] = [:]
+            func weight(_ id: UUID, _ guardDepth: Int) -> Int {
+                if let known = memo[id] { return known }
+                guard guardDepth < 200 else { return 0 }
+                let total = (kids[id] ?? []).reduce(0) { $0 + 1 + weight($1.id, guardDepth + 1) }
+                memo[id] = total
+                return total
+            }
+            for item in board.items where item.kind == .idea && item.folded { below[item.id] = weight(item.id, 0) }
+        }
+        if board.numberSteps == true, !board.placesItself { numbers = board.stepNumbers() }
 
         func walk(_ item: Item, depth d: Int, side s: Side, colour c: String, hidden h: Bool) {
             depth[item.id] = d
@@ -405,13 +421,23 @@ struct BoardPainter {
             TodoMark.draw(todo, at: c, paint: paint, ground: ground ?? paint.canvas, &ctx)
         }
 
-        if item.kind == .idea, item.folded, let count = facts.children[item.id], count > 0 {
-            // Folded: a small dot with the number of ideas hidden under it.
+        if item.kind == .idea, item.folded, let count = facts.below[item.id], count > 0 {
+            // Folded: a small badge "+5" with the number of ideas hidden under it, at the outer edge. A press on it opens the fold.
             let right = (facts.side[item.id] ?? .right) == .right || depth == 0
-            let c = CGPoint(x: right ? f.maxX + 14 : f.minX - 14, y: f.midY)
+            let box = MindMap.badge(for: f, right: right, count: count)
             let name = depth == 0 ? "grey" : (facts.colour[item.id] ?? "pink")
-            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 9, y: c.y - 9, width: 18, height: 18)), with: .color(paint.line(name)))
-            let n = ctx.resolve(Text("\(count)").font(.system(size: 11, weight: .bold)).foregroundColor(.white))
+            ctx.fill(Path(roundedRect: box, cornerRadius: 9), with: .color(paint.line(name)))
+            let n = ctx.resolve(Text("+\(count)").font(.system(size: 11, weight: .bold)).foregroundColor(.white))
+            ctx.draw(n, at: CGPoint(x: box.midX, y: box.midY), anchor: .center)
+        }
+
+        if let number = facts.numbers[item.id], item.kind.isShape {
+            // A flowchart's step number: a small round badge at the shape's top-left corner.
+            let c = CGPoint(x: f.minX + 3, y: f.minY + 3)
+            let ring = Path(ellipseIn: CGRect(x: c.x - 10, y: c.y - 10, width: 20, height: 20))
+            ctx.fill(ring, with: .color(ground ?? paint.canvas))
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 8.5, y: c.y - 8.5, width: 17, height: 17)), with: .color(paint.line("blue")))
+            let n = ctx.resolve(Text("\(number)").font(.system(size: number > 9 ? 9 : 11, weight: .bold)).foregroundColor(.white))
             ctx.draw(n, at: c, anchor: .center)
         }
     }
