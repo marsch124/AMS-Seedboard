@@ -259,7 +259,7 @@ public enum ParagonExport {
     private static func noteBullets(_ board: Board, picture: Bool = true) -> [String] {
         // A drawing has no words: one plain line stands in its place.
         board.items.filter { (($0.kind == .note || $0.kind == .text) && !oneLine($0.text).isEmpty) || $0.kind == .drawing || $0.kind == .picture }
-            .map { $0.kind == .drawing ? "- " + sketchLine(picture: picture) : ($0.kind == .picture ? "- " + pictureLine(picture: picture) : "- \(oneLine($0.text))") }
+            .map { $0.kind == .drawing ? "- " + sketchLine(picture: picture) : ($0.kind == .picture ? "- " + pictureLine(for: $0, picture: picture) : "- \(oneLine($0.text))") }
     }
 
     /// What a note or project says where a drawing is.
@@ -272,10 +272,23 @@ public enum ParagonExport {
         picture ? "A picture (see the picture)" : "A picture (on the board)"
     }
 
+    /// "A picture", or "A picture: After the makeover" when it has a caption.
+    static func pictureName(of item: Item) -> String {
+        let words = oneLine(item.text)
+        return words.isEmpty ? "A picture" : "A picture: " + words
+    }
+
+    /// The picture's line in a note or project: today's line, with the caption after the name when there is one.
+    static func pictureLine(for item: Item, picture: Bool) -> String {
+        let words = oneLine(item.text)
+        guard !words.isEmpty else { return pictureLine(picture: picture) }
+        return "A picture: " + words + (picture ? " (see the picture)" : " (on the board)")
+    }
+
     static func label(_ item: Item) -> String {
         let words = oneLine(item.text)
         if item.kind == .drawing { return "A sketch" }
-        if item.kind == .picture { return "A picture" }
+        if item.kind == .picture { return pictureName(of: item) }
         return words.isEmpty ? "(empty)" : words
     }
 

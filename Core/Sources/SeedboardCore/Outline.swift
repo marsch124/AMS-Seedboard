@@ -172,7 +172,7 @@ public extension Board {
 
         let arrows = links.compactMap { link -> String? in
             guard let a = item(link.from), let b = item(link.to) else { return nil }
-            func name(_ i: Item) -> String { i.kind == .picture ? "A picture" : one(i.text) }
+            func name(_ i: Item) -> String { i.kind == .picture ? ParagonExport.pictureName(of: i) : one(i.text) }
             var line = "\(name(a)) → \(name(b))"
             let words = link.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if !words.isEmpty { line += " (\(one(words)))" }
@@ -180,7 +180,7 @@ public extension Board {
         }
         if !arrows.isEmpty { sections.append((["Flow:"] + arrows).joined(separator: "\n")) }
 
-        let notes = items.filter { $0.kind == .note || $0.kind == .text || $0.kind == .picture }.map { "- " + ($0.kind == .picture ? "A picture" : one($0.text)) }
+        let notes = items.filter { $0.kind == .note || $0.kind == .text || $0.kind == .picture }.map { "- " + ($0.kind == .picture ? ParagonExport.pictureName(of: $0) : one($0.text)) }
         if !notes.isEmpty { sections.append((["Notes:"] + notes).joined(separator: "\n")) }
 
         let joined = Set(links.flatMap { [$0.from, $0.to] })

@@ -117,11 +117,11 @@ public extension Board {
             var pushed: [(id: UUID, from: CGRect, direction: Direction)] = []
             for thing in items where thing.kind != .idea && thing.kind != .frame {
                 guard let old = wasItem[thing.id], old.frame == thing.frame,
-                      Board.overlaps([thing.frame], now), !Board.overlaps([old.frame], then) else { continue }
-                let (direction, amount) = wayOut([thing.frame])
+                      Board.overlaps([thing.reach], now), !Board.overlaps([old.reach], then) else { continue }
+                let (direction, amount) = wayOut([thing.reach])
                 guard amount > 0, amount.isFinite else { continue }
                 move([thing.id], by: Board.delta(direction, amount))
-                pushed.append((thing.id, thing.frame, direction))
+                pushed.append((thing.id, thing.reach, direction))
             }
             // What a pushed thing now runs into goes the same way.
             var done = Set(pushed.map(\.id))
@@ -129,12 +129,12 @@ public extension Board {
                 let (id, from, direction) = pushed.removeFirst()
                 guard let mover = item(id) else { continue }
                 for other in items where other.kind != .idea && other.kind != .frame && !done.contains(other.id) {
-                    guard Board.overlaps(other.frame, mover.frame), !Board.overlaps(other.frame, from) else { continue }
-                    let amount = Board.step([other.frame], clearOf: [mover.frame], direction, gap: gap)
+                    guard Board.overlaps(other.reach, mover.reach), !Board.overlaps(other.reach, from) else { continue }
+                    let amount = Board.step([other.reach], clearOf: [mover.reach], direction, gap: gap)
                     guard amount > 0 else { continue }
                     move([other.id], by: Board.delta(direction, amount))
                     done.insert(other.id)
-                    pushed.append((other.id, other.frame, direction))
+                    pushed.append((other.id, other.reach, direction))
                     budget -= 1
                 }
             }

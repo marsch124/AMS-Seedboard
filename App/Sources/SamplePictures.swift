@@ -22,6 +22,7 @@ extension Sample {
         let two = board.addPicture(name: after, pixelSize: CGSize(width: 1200, height: 800), centre: CGPoint(x: 460, y: 0))
         let herbs = board.add(.note, centre: CGPoint(x: 0, y: 250), text: "Herbs along\nthe railing", colour: "green")
         let planters = board.add(.note, centre: CGPoint(x: 460, y: 250), text: "Order planters\nand a small table", colour: "yellow")
+        if let two, let i = board.index(of: two) { board.items[i].text = "After: herbs and a small table" }
         _ = herbs
         _ = planters
         if let one, let two { board.link(from: one, to: two, text: "becomes") }

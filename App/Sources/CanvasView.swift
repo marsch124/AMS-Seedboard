@@ -286,6 +286,9 @@ struct CanvasView: View {
         case .frame:
             align = .topLeading; textAlign = .leading
             pad = 12 * s; topPad = 6 * s
+        case .picture:
+            // A caption: centred under the picture, as wide as the picture.
+            align = .top; pad = 0
         case .diamond:
             pad = r.width * 0.22
         case .oval:
@@ -293,11 +296,12 @@ struct CanvasView: View {
         default:
             pad = 12 * s
         }
-        let size = item.kind == .frame ? 13 : look.size
+        let size = item.kind == .frame ? 13 : (item.kind == .picture ? PictureCaption.size : look.size)
         return field(isIdea: item.kind == .idea)
             .font(Lettering.font(size: size * s, bold: look.bold))
             .multilineTextAlignment(textAlign)
             .foregroundStyle(item.kind == .frame ? paint.line(item.colour.isEmpty ? "teal" : item.colour)
+                             : item.kind == .picture ? paint.faint
                              : (darkInk ? Color(red: 0.12, green: 0.14, blue: 0.19) : paint.ink))
             .padding(.horizontal, pad)
             .padding(.top, topPad)
@@ -550,7 +554,7 @@ struct CanvasView: View {
             } else if double(id), session.beginLaneName(of: id, at: p) {
                 // Two presses on a lane's name band: its name is typed in place (LanesView.swift).
             } else if double(id) {
-                session.beginEdit(id)
+                if session.board.item(id)?.kind == .picture { session.beginCaption(id) } else { session.beginEdit(id) }
             } else if shiftDown || session.choosingMore {
                 session.select(id, adding: true)
             } else {

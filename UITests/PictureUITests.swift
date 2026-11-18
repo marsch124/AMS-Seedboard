@@ -40,4 +40,33 @@ final class PictureUITests: XCTestCase {
         XCTAssertFalse(element(app, "sel.colour").exists, "a picture has no colour")
         XCTAssertFalse(element(app, "sel.todo").exists, "a picture has no to-do tick")
     }
+
+    /// 0.4: a chosen picture has Caption and Crop in its bar; Crop opens "Crop the picture", Cancel closes it.
+    func testCropOpensItsPageAndCancelClosesIt() {
+        let app = XCUIApplication()
+        var arguments = ["-sampleData", "-board", "balcony", "-pickPicture"]
+        #if os(macOS)
+        arguments += ["-ApplePersistenceIgnoreState", "YES"]
+        #endif
+        app.launchArguments = arguments
+        app.launch()
+        #if os(macOS)
+        if !app.windows.firstMatch.waitForExistence(timeout: 5) { app.activate() }
+        #endif
+
+        XCTAssertTrue(element(app, "sel.caption").waitForExistence(timeout: 15), "the Caption button did not appear")
+        let crop = element(app, "sel.crop")
+        XCTAssertTrue(crop.waitForExistence(timeout: 10), "the Crop button did not appear")
+        crop.tap()
+
+        XCTAssertTrue(element(app, "crop.page").waitForExistence(timeout: 10), "the crop page did not open")
+        XCTAssertTrue(element(app, "crop.save").exists, "Save is missing")
+        XCTAssertTrue(element(app, "crop.whole").exists, "Whole picture is missing")
+        let cancel = element(app, "crop.cancel")
+        XCTAssertTrue(cancel.exists, "Cancel is missing")
+        cancel.tap()
+
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: element(app, "crop.page"))
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 10), .completed, "the crop page did not close")
+    }
 }

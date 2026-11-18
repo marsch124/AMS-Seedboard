@@ -184,6 +184,9 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var strokes: [Stroke]?
     /// A picture only: the name of its file in the Pictures folder, e.g. "3F2A….jpg". The file is written once and never changed.
     public var picture: String?
+    /// A picture only (format 4): the part of the picture that is shown, as x, y, width, height, each 0 to 1 of the
+    /// whole picture. nil = all of it. Always clean (see `Item.cleanCrop`). The file itself is never changed.
+    public var crop: [Double]?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -211,6 +214,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case from, to, answer
         case strokes
         case picture
+        case crop
     }
 
     public init(from decoder: Decoder) throws {
@@ -241,6 +245,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         answer = try? c.decode(Bool.self, forKey: .answer)
         strokes = (try? c.decode([Lenient<Stroke>].self, forKey: .strokes))?.compactMap(\.value)
         picture = try? c.decode(String.self, forKey: .picture)
+        crop = Item.cleanCrop(try? c.decode([Double].self, forKey: .crop))
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -269,6 +274,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(answer, forKey: .answer)
         try c.encodeIfPresent(strokes, forKey: .strokes)
         try c.encodeIfPresent(picture, forKey: .picture)
+        try c.encodeIfPresent(crop, forKey: .crop)
     }
 
     public var frame: CGRect {
@@ -391,7 +397,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// 2 (Seedboard 0.2): the timeline board — `kind` on the board; bars, milestones and phases with
     /// `start`, `end` and `row`; a main branch's `side`. An app that only knows 1 shows such a board without letting it be changed.
     /// 3 (Seedboard 0.3): pictures on a board — the kind `picture` and the field `picture` on an item.
-    public static let currentFormat = 3
+    /// 4 (Seedboard 0.4): a cropped picture — the field `crop` on an item (the part of the picture that is shown).
+    public static let currentFormat = 4
 
     public var id: UUID
     public var title: String

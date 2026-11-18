@@ -208,6 +208,9 @@ public extension Board {
             return dx * dx + dy * dy <= 1.03
         case .idea, .text:
             return f.insetBy(dx: -5, dy: -4).contains(p)
+        case .picture:
+            // The caption under it belongs to it.
+            return f.contains(p) || (item.captionFrame?.contains(p) ?? false)
         case .drawing:
             // Only on its lines (2 points to either side), never anywhere in its box.
             return f.insetBy(dx: -2, dy: -2).contains(p) && (item.inkDistance(to: p) ?? .infinity) <= 2
@@ -245,7 +248,7 @@ public extension Board {
         if isSequence { return isEmpty ? nil : CGRect(origin: .zero, size: sequenceLayout().size) }
         var all: CGRect?
         for item in items where !isHidden(item.id) {
-            all = all.map { $0.union(item.frame) } ?? item.frame
+            all = all.map { $0.union(item.reach) } ?? item.reach
         }
         return all
     }

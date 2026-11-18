@@ -252,6 +252,11 @@ final class StoredFieldsTests: XCTestCase {
                   item: ["answer", "bothSides", "colour", "end", "folded", "from", "h", "id", "kind", "lanes", "order", "parent", "picture", "row", "side", "start", "strokes", "text", "to", "todo", "w", "x", "y"],
                   link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
                   sent: ["kind", "path", "title", "when"]),
+        // 0.4: a picture can show only a part of itself.
+        4: Fields(board: ["changed", "colour", "created", "format", "id", "items", "kind", "links", "pinned", "sent", "sentTodos", "title"],
+                  item: ["answer", "bothSides", "colour", "crop", "end", "folded", "from", "h", "id", "kind", "lanes", "order", "parent", "picture", "row", "side", "start", "strokes", "text", "to", "todo", "w", "x", "y"],
+                  link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
+                  sent: ["kind", "path", "title", "when"]),
     ]
 
     func testAStoredFieldIsNeverAddedWithoutANewFormatNumber() throws {

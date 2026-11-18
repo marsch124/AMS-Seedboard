@@ -30,6 +30,9 @@ extension Item {
         switch kind {
         case .person, .document, .slanted, .store:
             return ShapeOutline.textBox(kind, frame).insetBy(dx: -12, dy: 0)
+        case .picture:
+            // The caption's place under the picture (one line high while it is still empty).
+            return captionFrame ?? CGRect(x: x, y: y + h + Item.captionGap, width: w, height: Item.captionLine + 2)
         default:
             return frame
         }
