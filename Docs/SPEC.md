@@ -252,7 +252,7 @@ Two rules protect the owner's notes: Seedboard only ever adds new files to PARAG
 - Only the to-do boxes: one task per unsent to-do item that has words, in board order. Message: "1 task is on the way to the PARAGON Inbox. They show the next time PARAGON opens." (or "N tasks are…"). Errors: "No to-do boxes are waiting to be sent." / "This device cannot reach PARAGON's Inbox. Send the board as a note or a project instead."
 - Afterwards (`markSent`): for a note or project the board's `sent` is set (when, kind, title, path "<Folder>/<Title>.md") and EVERY to-do item (also ones whose words are empty) is added to `sentTodos`; for to-do boxes only the sent ones are added. The board is saved at once. Taking the To do off a box (`toggleTodo`, all chosen ticked → cleared) removes it from `sentTodos`, so ticking it again sends it again. Copies of a board start with `sentTodos` empty.
 - Open in PARAGON: opens `amspara://<title, percent-encoded>`.
-- Board link: `seedboard://board/<board UUID>`.
+- Board link: `seedboard://board/<board UUID>`. In PARAGON it opens from the reading view, and since PARAGON build 339 also while the note is edited (iPhone and iPad: a tap on its words; Mac: ⌘-click).
 
 ### 5.4 Text of a note (`Resources/`)
 

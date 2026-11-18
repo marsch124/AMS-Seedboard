@@ -163,7 +163,7 @@ enum Guide {
             "The picture is the board in daylight colours on white.",
             "Seedboard only adds. It never opens, changes or replaces a note you already have. Sending again makes a second note.",
             "If the name is taken, the new note is called, for example, Summer cabin (board 2).",
-            "Every note has a line, Open the board in Seedboard. In PARAGON, press it while you read the note. It does not work while you are editing the note.",
+            "Every note has a line, Open the board in Seedboard. In PARAGON (build 339 or later), tap it on the iPhone and iPad, or hold ⌘ and click it on the Mac, and the board opens here. It works while you read the note and while you write in it.",
             "If that board is not on the device yet, Seedboard tells you so.",
             "After a note or a project, the board moves to Sent to PARAGON (unless it is pinned).",
             "The Send page then says when and how it was last sent, and has Open in PARAGON. You also find Open in PARAGON in the board's menu in the list.",
