@@ -153,14 +153,15 @@ struct TimelineSelectionBar: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
                         chip("To do", .control(.ticked), "sel.todo", .paragon) { session.toggleTodo() }
-                        chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.timelineDuplicate() }
+                        chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
                     }
                     #if !os(macOS)
                     if link == nil {
-                        chip("Choose more", .control(.addCircle), "sel.more", .boards, on: session.choosingMore) { session.choosingMore.toggle() }
+                        chip("Choose more", .control(.addCircle), "sel.more", .timeline, on: session.choosingMore) { session.choosingMore.toggle() }
                     }
                     #endif
-                    chip("Remove", .app(.bin), "sel.remove", .arrows) { session.deleteSelection() }
+                    // One tint per bar, as on the other boards: only "To do" is purple and "Remove" red.
+                    chip("Remove", .app(.bin), "sel.remove", .kept) { session.deleteSelection() }
                 }
                 .padding(5)
                 .background(Theme.plate, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -205,7 +206,7 @@ struct TimelineSelectionBar: View {
                 .padding(.horizontal, 6)
                 .accessibilityIdentifier("sel.days")
         }
-        chip("Name", .control(.edit), "sel.name", .text) { session.beginEdit(item.id) }
+        chip("Name", .control(.edit), "sel.name", .timeline) { session.beginEdit(item.id) }
         chip("Colour", .app(.palette), "sel.colour", .timeline, on: showColours) { showColours.toggle() }
         if item.span != nil {
             chip("Dates", .new(.calendar), "sel.dates", .timeline) {
@@ -214,7 +215,7 @@ struct TimelineSelectionBar: View {
             }
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
         }
-        chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.timelineDuplicate() }
+        chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
     }
 
     private func chip(_ word: String, _ glyph: Glyph, _ id: String, _ part: Part, on: Bool = false, action: @escaping () -> Void) -> some View {

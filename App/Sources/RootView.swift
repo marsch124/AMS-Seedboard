@@ -111,6 +111,8 @@ struct BoardList: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
+                    // The way back to the home page (on the iPhone the list itself is the home).
+                    if !phone { homeRow }
                     section("Pinned", BoardSearch.find(search, in: model.pinned))
                     section("Recent", BoardSearch.find(search, in: model.recent))
                     section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
@@ -175,6 +177,29 @@ struct BoardList: View {
         } message: {
             Text("It is kept for 30 days in the Removed folder.")
         }
+    }
+
+    /// "Home": closes the open board and shows the home page beside the list (Mac and iPad).
+    private var homeRow: some View {
+        let chosen = model.openID == nil
+        return Button { model.open(nil) } label: {
+            HStack(spacing: 8) {
+                AppMarkView(.seedSprout, size: 15, colour: Part.boards.text)
+                    .frame(width: 9, alignment: .center)
+                Text("Home")
+                    .font(.body.weight(chosen ? .bold : .regular))
+                    .foregroundStyle(chosen ? Part.boards.text : Color.primary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(chosen ? Look.chosenRow : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 4)
+        .help("The home page: starters and all your boards")
+        .accessibilityIdentifier("boards.home")
     }
 
     private var settingsLabel: some View {

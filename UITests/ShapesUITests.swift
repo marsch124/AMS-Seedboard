@@ -44,6 +44,18 @@ final class ShapesUITests: XCTestCase {
         XCTAssertEqual(result, .completed, "count line was \(count.label)\(String(describing: count.value)), expected \(words)", file: file, line: line)
     }
 
+    /// Ends the typing in the thing just made. (0.2: on the Mac and the iPad the bar beside a
+    /// thing is out of the way while its words are typed, and comes back afterwards.)
+    private func endTyping(_ app: XCUIApplication) {
+        #if os(macOS)
+        element(app, "board.field").typeText("\n")
+        #else
+        // The Done button above the screen keyboard; with a real keyboard there is none: Return ends it.
+        let done = element(app, "board.fieldDone")
+        if done.waitForExistence(timeout: 5) { done.tap() } else { element(app, "board.field").typeText("\n") }
+        #endif
+    }
+
     // MARK: Tests
 
     func testTheShapePlateAddsAPersonAndAFrameHasLanes() {
@@ -70,10 +82,13 @@ final class ShapesUITests: XCTestCase {
         XCTAssertTrue(element(app, "board.field").waitForExistence(timeout: 10), "the new Person is not ready to type in")
 
         // The bar of the chosen shape has ONE Shape button (it opens the same plate).
+        endTyping(app)
         XCTAssertTrue(element(app, "sel.shape").waitForExistence(timeout: 10), "sel.shape did not appear")
 
         // A frame's bar has Lanes.
         press(app, "tool.frame")
+        XCTAssertTrue(element(app, "board.field").waitForExistence(timeout: 10), "the new frame is not ready to type in")
+        endTyping(app)
         XCTAssertTrue(element(app, "sel.lanes").waitForExistence(timeout: 10), "sel.lanes did not appear")
         waitForCount(app, "1 shape")
     }

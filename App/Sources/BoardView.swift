@@ -83,7 +83,8 @@ struct BoardView: View {
                     .background(Theme.plate, in: Capsule())
                     .overlay(Capsule().stroke(Part.arrows.text.opacity(0.35)))
                 } else {
-                    SelectionBar(session: session)
+                    // The iPhone's one-row bar; on the Mac and the iPad the bar floats beside the chosen thing (ChosenBar.swift).
+                    ChosenBarTop(session: session)
                 }
                 Spacer(minLength: 0)
                 if let notice = session.notice {
@@ -299,6 +300,7 @@ struct ToolPill: View {
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("board.tools")
+        .modifier(BoardShield("tools"))
     }
 
     private func tool(_ mark: AppMark, _ part: Part, _ id: String, _ help: String, on: Bool = false, action: @escaping () -> Void) -> some View {
@@ -342,6 +344,7 @@ struct ZoomCluster: View {
         .padding(4)
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.primary.opacity(0.10)))
+        .modifier(BoardShield("zoom"))
     }
 
     private func button(_ glyph: Glyph, _ id: String, _ help: String, action: @escaping () -> Void) -> some View {
@@ -357,198 +360,6 @@ struct ZoomCluster: View {
         .buttonStyle(.plain)
         .help(help)
         .accessibilityLabel(help)
-        .accessibilityIdentifier(id)
-    }
-}
-
-/// What can be done with the chosen thing. Shown only while something is chosen.
-struct SelectionBar: View {
-    @ObservedObject var session: BoardSession
-    @Environment(\.colorScheme) private var scheme
-    /// For pictures: `-colours` (with `-pick`) opens the colour dots.
-    @State private var showColours = LaunchOptions.arguments.contains("-colours")
-
-    var body: some View {
-        // A timeline board has its own bar for the chosen bar, at the bottom (TimelineBars.swift).
-        if session.board.isTimeline { EmptyView() } else { ordinary }
-    }
-
-    @ViewBuilder
-    private var ordinary: some View {
-        let item = session.single
-        let link = session.selectedLink.flatMap { id in session.board.links.first { $0.id == id } }
-        if session.readOnly || (session.selection.isEmpty && link == nil) {
-            EmptyView()
-        } else {
-            VStack(spacing: 5) {
-                chips(item, link)
-                .background(Theme.plate, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Color.primary.opacity(0.10)))
-                .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
-                // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("board.selectionBar")
-
-                if showColours {
-                    colourRow(for: item, link: link)
-                }
-            }
-            .onChange(of: session.selection) { _, _ in showColours = false }
-        }
-    }
-
-    private func chips(_ item: Item?, _ link: SeedboardCore.Link?) -> some View {
-        // The buttons wrap onto a second row on a narrow screen: none is ever cut off.
-        WrapRow(spacing: Finger.chipGap) {
-            if let item {
-                itemChips(item)
-            } else if let link {
-                linkChips(link)
-            } else {
-                Text("\(session.selection.count) chosen")
-                    .font(Txt.pill)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                chip("To do", .control(.ticked), "sel.todo", .paragon) { session.toggleTodo() }
-                chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-                if session.tidyCount >= 2 { chip("Line up", .new(.lineUp), "sel.lineUp", .shapes) { session.lineUp() } }
-                if session.tidyCount >= 3 { chip("Even gaps", .new(.evenGaps), "sel.evenGaps", .shapes) { session.evenGaps() } }
-                if session.sizeCount >= 2 { chip("Same size", .new(.sameSize), "sel.sameSize", .shapes) { session.sameSize() } }
-            }
-            #if !os(macOS)
-            chip("Choose more", .control(.addCircle), "sel.more", .boards, on: session.choosingMore) { session.choosingMore.toggle() }
-            #endif
-            chip("Remove", .app(.bin), "sel.remove", .arrows) { session.deleteSelection() }
-        }
-        .padding(5)
-    }
-
-    @ViewBuilder
-    private func itemChips(_ item: Item) -> some View {
-        switch item.kind {
-        case .idea:
-            chip("Idea under", .control(.add), "sel.child", .mindMap) { session.addChild(of: item.id) }
-            if item.parent != nil {
-                chip("Next idea", .control(.add), "sel.sister", .mindMap) { session.addSister(of: item.id) }
-                #if !os(macOS)
-                // Another place among its sisters (the Mac has ⌘↑ and ⌘↓ and the Board menu).
-                let up = session.board.canShiftIdea(item.id, down: false), down = session.board.canShiftIdea(item.id, down: true)
-                chip("Move up", .new(.moveUp), "sel.moveUp", .mindMap) { session.shiftIdea(item.id, down: false) }
-                    .disabled(!up).opacity(up ? 1 : 0.4)
-                chip("Move down", .new(.moveDown), "sel.moveDown", .mindMap) { session.shiftIdea(item.id, down: true) }
-                    .disabled(!down).opacity(down ? 1 : 0.4)
-                #endif
-            }
-            if (session.facts.children[item.id] ?? 0) > 0 {
-                chip(item.folded ? "Unfold" : "Fold", .control(.chevron), "sel.fold", .mindMap) { session.toggleFold() }
-            }
-            if item.parent == nil {
-                chip(item.bothSides ? "One side" : "Both sides", .app(.seedMindMap), "sel.sides", .mindMap) { session.toggleBothSides() }
-            } else {
-                chip("Colour", .app(.palette), "sel.colour", .mindMap, on: showColours) { showColours.toggle() }
-            }
-            chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-        case .box, .round, .diamond, .oval, .person, .document, .slanted, .store:
-            ShapeChip(session: session, item: item)
-            chip("Colour", .app(.palette), "sel.colour", .shapes, on: showColours) { showColours.toggle() }
-            chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-        case .note:
-            chip("Colour", .app(.palette), "sel.colour", .notes, on: showColours) { showColours.toggle() }
-            chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-        case .text:
-            chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-        case .frame:
-            LanesChip(session: session, item: item)
-            chip("Colour", .app(.palette), "sel.colour", .frames, on: showColours) { showColours.toggle() }
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-        case .bar, .milestone, .phase:
-            // A timeline's rows have their own bar (TimelineBars.swift).
-            EmptyView()
-        }
-        chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }
-    }
-
-    @ViewBuilder
-    private func linkChips(_ link: SeedboardCore.Link) -> some View {
-        chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(link.id) }
-        ForEach(LinkStyle.allCases, id: \.self) { style in
-            chip(style.word, .app(.seedArrow), "sel.style.\(style.rawValue)", .arrows, on: link.style == style) { session.setLinkStyle(style) }
-        }
-        ForEach(LinkEnds.allCases, id: \.self) { ends in
-            chip(ends.word, .new(ends.mark), "sel.ends.\(ends.rawValue)", .arrows, on: link.ends == ends) { session.setLinkEnds(ends) }
-        }
-        chip("Dashed", .new(.dashed), "sel.dashed", .arrows, on: link.isDashed) { session.toggleLinkDashed() }
-        chip("Turn round", .app(.repeat), "sel.turn", .arrows) { session.turnLinkRound() }
-        chip("Colour", .app(.palette), "sel.colour", .arrows, on: showColours) { showColours.toggle() }
-    }
-
-    private func chip(_ word: String, _ glyph: Glyph, _ id: String, _ part: Part, on: Bool = false, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-            session.takeKeys()
-        } label: {
-            HStack(spacing: 4) {
-                GlyphView(glyph: glyph, size: 15, colour: on ? .white : part.text)
-                Text(word)
-                    .font(Txt.pill)
-                    .foregroundStyle(on ? Color.white : Color.primary)
-            }
-            .padding(.horizontal, 8)
-            .frame(height: Finger.chipHeight)
-            .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .contentShape(Rectangle())
-            .pressRoom(0, 4)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(id)
-    }
-
-    private func colourRow(for item: Item?, link: SeedboardCore.Link?) -> some View {
-        let paint = Paint(scheme)
-        let isNote = item?.kind == .note
-        let names = isNote ? Palette.notes : Palette.names
-        let plain = item.map { $0.kind.isShape } ?? (link != nil)
-        let inUse = (item?.id ?? link?.id).flatMap { session.board.colourInUse(of: $0) }
-        // iPhone and iPad: bigger dots, well apart; on a narrow screen they take a second row.
-        let row = Finger.on ? AnyLayout(WrapRow(spacing: Finger.dotGap)) : AnyLayout(HStackLayout(spacing: Finger.dotGap))
-        let plate = Finger.on ? AnyShape(RoundedRectangle(cornerRadius: 21, style: .continuous)) : AnyShape(Capsule())
-        return row {
-            if plain {
-                dot(paint.plate, edge: paint.edge, id: "colour.none", label: "No colour") { session.setColour("") }
-                    .modifier(InUseRing(on: inUse == ""))
-            }
-            ForEach(names, id: \.self) { name in
-                dot(isNote ? paint.note(name) : paint.line(name), edge: nil, id: "colour.\(name)", label: name.capitalized) { session.setColour(name) }
-                    .modifier(InUseRing(on: inUse == name))
-            }
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(Theme.plate, in: plate)
-        .overlay(plate.stroke(Color.primary.opacity(0.10)))
-        .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
-        // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("board.colours")
-    }
-
-    private func dot(_ colour: Color, edge: Color?, id: String, label: String, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-            session.takeKeys()
-        } label: {
-            Circle()
-                .fill(colour)
-                .overlay(Circle().stroke(edge ?? .clear, lineWidth: 1.5))
-                .frame(width: Finger.dot, height: Finger.dot)
-                .pressRoom(7, 7)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
         .accessibilityIdentifier(id)
     }
 }

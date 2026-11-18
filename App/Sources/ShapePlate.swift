@@ -264,9 +264,10 @@ struct BarChip: View {
                 .foregroundStyle(on ? Color.white : Color.primary)
         }
         .padding(.horizontal, 8)
-        .frame(height: 28)
+        .frame(height: Finger.chipHeight)
         .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .contentShape(Rectangle())
+        .pressRoom(0, 4)
     }
 }
 

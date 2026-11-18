@@ -32,6 +32,7 @@ struct SeedboardApp: App {
         .commands {
             SeedMenus(model: model)
             BoardCommands()
+            ClipCommands()
         }
 
         Settings {
@@ -44,6 +45,7 @@ struct SeedboardApp: App {
             .commands {
                 SeedMenus(model: model)
                 BoardCommands()
+                ClipCommands()
             }
         #endif
     }

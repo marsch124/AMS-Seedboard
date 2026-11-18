@@ -45,7 +45,7 @@ struct CanvasView: View {
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
     private enum Target {
-        case item(UUID), link(UUID), plus(UUID, Direction), size(UUID), empty
+        case item(UUID), link(UUID), plus(UUID, Direction), size(UUID, Corner), empty
         /// An end dot of the chosen arrow (true: its start).
         case end(UUID, Bool)
     }
@@ -55,7 +55,7 @@ struct CanvasView: View {
         case waiting(Target)
         case moving(Set<UUID>)
         case idea(UUID)
-        case sizing(UUID, CGRect)
+        case sizing(UUID, CGRect, Corner)
         case plus(UUID, Direction)
         case joining(UUID)
         /// An end of an arrow is dragged to another side or another shape (true: its start).
@@ -126,15 +126,12 @@ struct CanvasView: View {
 
                 editor
                 LaneOverlay(session: session)
+                // The frame round what is chosen, the bar beside it, the press-and-hold menu (ChosenBar.swift).
+                BoardExtras(session: session)
             }
             #if os(macOS)
             .background(ScrollCatcher(session: session))
-            .onPasteCommand(of: [.plainText]) { providers in
-                providers.first?.loadObject(ofClass: NSString.self) { text, _ in
-                    guard let text = text as? String else { return }
-                    Task { @MainActor in session.paste(text) }
-                }
-            }
+            .background(PointerCatcher(session: session))
             #endif
             .onAppear { session.placeIfNeeded(geo.size) }
             .onChange(of: geo.size) { _, new in session.resized(new) }
@@ -146,6 +143,8 @@ struct CanvasView: View {
         .onKeyPress(phases: .down) { press in handleKey(press) }
         // The menus' side of the keys: Delete, Select All, Space with a drag (Menus.swift).
         .modifier(BoardKeys(session: session, has: keys))
+        // Cut, Copy and Paste from the menu, and words dropped on the board (ClipBoard.swift).
+        .modifier(ClipKeys(session: session))
         // A press the system took away (an edge swipe, a call, leaving the app) never ends by itself.
         .onChange(of: phase) { _, _ in resetPress() }
         .onDisappear { resetPress() }
@@ -176,6 +175,7 @@ struct CanvasView: View {
         pinchBase = nil
         pinched = false
         pressing = false
+        BarDesk.shared.dragging = false
     }
 
     // MARK: Typing in place
@@ -308,17 +308,12 @@ struct CanvasView: View {
     private func target(at p: CGPoint) -> Target {
         if let end = session.linkEnd(at: p) { return .end(end.link, end.start) }
         let board = session.board
-        if !session.readOnly, session.editing == nil, session.selection.count == 1,
-           let id = session.selection.first, let item = board.item(id), !session.linking {
-            // Press areas are counted on screen: 9 points round each control, for a finger at least
-            // 32 points at every zoom; the nearest control wins.
-            let handles = BoardPainter.handles(for: item, side: session.facts.side[id] ?? .right, scale: session.scale)
-            if let i = Fingers.control(at: session.toScreen(p), boxes: handles.map { session.toScreen($0.rect) },
-                                       onThing: board.hit(p) != nil, least: byFinger ? Fingers.control : 0) {
-                switch handles[i].kind {
-                case .plus(let d): return .plus(id, d)
-                case .size: return .size(id)
-                }
+        // Press areas are counted on screen: 9 points round each control, for a finger at least
+        // 32 points at every zoom; the nearest control wins (ChosenFrame.swift).
+        if let id = session.selection.first, let control = session.control(at: session.toScreen(p), finger: byFinger, onThing: board.hit(p) != nil) {
+            switch control {
+            case .plus(let d): return .plus(id, d)
+            case .size(let corner): return .size(id, corner)
             }
         }
         if let id = board.hit(p, scale: Double(session.scale), least: byFinger ? Fingers.button : 0) { return .item(id) }
@@ -360,6 +355,7 @@ struct CanvasView: View {
     /// The press was lifted.
     private func pressEnded(_ value: Press) {
                 defer {
+                    BarDesk.shared.dragging = false
                     snap = SnapShow()
                     drag = .idle
                     marquee = nil
@@ -379,6 +375,8 @@ struct CanvasView: View {
 
     private func begin(_ t: Target, _ value: Press) {
         let board = session.board
+        // The bar beside the chosen thing is out of the way until the drag ends (it stays while the board slides).
+        defer { if case .panning = drag {} else { BarDesk.shared.dragging = true } }
         switch t {
         case .item(let id):
             guard !session.readOnly else { drag = .panning(session.offset); return }
@@ -404,18 +402,19 @@ struct CanvasView: View {
             }
         case .plus(let id, let d):
             drag = .plus(id, d)
-        case .size(let id):
+        case .size(let id, let corner):
             guard let item = board.item(id) else { drag = .idle; return }
             session.liveStart()
-            drag = .sizing(id, item.frame)
+            drag = .sizing(id, item.frame, corner)
         case .end(let id, let start):
             drag = .end(id, start)
         case .link, .empty:
             #if os(macOS)
             drag = .marquee
             #else
-            // A mouse or a trackpad draws the choosing box, as on the Mac; a finger slides the board.
-            drag = value.pointer ? .marquee : .panning(session.offset)
+            // A mouse or a trackpad draws the choosing box, as on the Mac; a finger slides the board —
+            // unless "Choose more" is on: then the finger draws the choosing box too.
+            drag = value.pointer || session.choosingMore ? .marquee : .panning(session.offset)
             #endif
         }
     }
@@ -433,8 +432,9 @@ struct CanvasView: View {
             ghost = delta
             // The idea it would hang under gets a ring; a place between two sisters gets a thin line.
             (dropTarget, landing) = session.dropHints(for: id, at: here)
-        case .sizing(let id, let base):
-            snap.guides = session.liveResize(id, to: CGRect(x: base.minX, y: base.minY, width: base.width + delta.width, height: base.height + delta.height), reach: SnapShow.reach(s))
+        case .sizing(let id, let base, let corner):
+            // The corner that is dragged follows; the opposite corner stays where it is.
+            snap.guides = session.liveSize(id, corner: corner, from: base, by: delta, reach: SnapShow.reach(s))
         case .plus(let id, _):
             // The new shape lands in line with its neighbours: the outline and the guides show where.
             let land = session.board.landing(from: id, at: here, reach: SnapShow.reach(s))
@@ -449,6 +449,7 @@ struct CanvasView: View {
             let p0 = session.toBoard(box.origin)
             session.selectedLink = nil
             session.selection = session.board.items(in: CGRect(x: p0.x, y: p0.y, width: box.width / s, height: box.height / s))
+                .union(session.choosingMore ? notes.selection : [])
         case .panning(let base):
             // The same step as every other way of moving the view, so the board knows the owner moved it.
             session.slide(from: base, by: value.translation)
@@ -468,7 +469,9 @@ struct CanvasView: View {
         case .waiting(let t):
             tap(t, at: here)
         case .moving:
-            if let centre = hanging, let over = dropTarget {
+            if session.dropCopy() {
+                // Option was held (the Mac): a copy landed here, the things themselves went back.
+            } else if let centre = hanging, let over = dropTarget {
                 // Dropped on an idea of another map: the map goes back to where it was and hangs there.
                 session.liveEnd(keep: false)
                 session.hang(centre, under: over)
@@ -632,6 +635,8 @@ struct CanvasView: View {
         let item = session.single
         if command {
             if press.characters == "a" { session.selectAll(); return .handled }
+            // ⌘C, ⌘X, ⌘V when no menu line took them.
+            if session.clipKey(press.characters) { return .handled }
             // ⌘↑ and ⌘↓: the chosen idea goes one place up or down among its sisters.
             if press.key == .upArrow || press.key == .downArrow, let item, item.kind == .idea {
                 session.shiftIdea(item.id, down: press.key == .downArrow)

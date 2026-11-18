@@ -219,9 +219,6 @@ struct BoardPainter {
     /// What lies behind the board (white for a picture). Not needed since 0.2: the words on an arrow have no patch behind them.
     var ground: Color?
 
-    static let handleGap: CGFloat = 17
-    static let handleSize: CGFloat = 18
-
     func draw(_ ctx: inout GraphicsContext) {
         // A timeline is drawn by its own painter (TimelineDraw.swift), whole, from the corner of its box.
         if board.isTimeline { TimelinePainter.whole(board, paint: paint, ground: ground).draw(&ctx); return }
@@ -263,67 +260,7 @@ struct BoardPainter {
             ctx.stroke(box, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2.5 / scale, dash: [6 / scale, 4 / scale]))
         }
 
-        for id in selection {
-            guard let item = byID[id], !facts.hidden.contains(id) else { continue }
-            let box = Path(roundedRect: item.frame.insetBy(dx: -5, dy: -4), cornerRadius: 9)
-            ctx.stroke(box, with: .color(paint.chosen), lineWidth: 2 / scale)
-        }
-
-        if handles, selection.count == 1, let id = selection.first, let item = byID[id], editing == nil {
-            for handle in BoardPainter.handles(for: item, side: facts.side[id] ?? .right, scale: scale) {
-                switch handle.kind {
-                case .plus:
-                    let circle = Path(ellipseIn: handle.rect)
-                    ctx.fill(circle, with: .color(paint.chosen))
-                    let c = CGPoint(x: handle.rect.midX, y: handle.rect.midY)
-                    let arm = handle.rect.width * 0.26
-                    var plus = Path()
-                    plus.move(to: CGPoint(x: c.x - arm, y: c.y)); plus.addLine(to: CGPoint(x: c.x + arm, y: c.y))
-                    plus.move(to: CGPoint(x: c.x, y: c.y - arm)); plus.addLine(to: CGPoint(x: c.x, y: c.y + arm))
-                    ctx.stroke(plus, with: .color(.white), style: StrokeStyle(lineWidth: 1.9 / scale, lineCap: .round))
-                case .size:
-                    let knob = Path(roundedRect: handle.rect, cornerRadius: 3 / scale)
-                    ctx.fill(knob, with: .color(paint.plate))
-                    ctx.stroke(knob, with: .color(paint.chosen), lineWidth: 2 / scale)
-                }
-            }
-        }
-    }
-
-    // MARK: Handles
-
-    enum HandleKind: Equatable { case plus(Direction), size }
-    struct Handle { let kind: HandleKind; let rect: CGRect }
-
-    /// The little controls round one chosen item, in board points.
-    static func handles(for item: Item, side: Side, scale: CGFloat) -> [Handle] {
-        // Their size on screen stays the same when zoomed in and shrinks a little when zoomed out.
-        let k = min(1, max(scale, 0.55))
-        let s = handleSize * k / scale
-        let gap = handleGap * k / scale
-        let f = item.frame
-        func plus(_ d: Direction) -> Handle {
-            let c: CGPoint
-            switch d {
-            case .right: c = CGPoint(x: f.maxX + gap, y: f.midY)
-            case .left: c = CGPoint(x: f.minX - gap, y: f.midY)
-            case .down: c = CGPoint(x: f.midX, y: f.maxY + gap)
-            case .up: c = CGPoint(x: f.midX, y: f.minY - gap)
-            }
-            return Handle(kind: .plus(d), rect: CGRect(x: c.x - s / 2, y: c.y - s / 2, width: s, height: s))
-        }
-        let knob = Handle(kind: .size, rect: CGRect(x: f.maxX - s * 0.2, y: f.maxY - s * 0.2, width: s * 0.7, height: s * 0.7))
-        switch item.kind {
-        case .idea:
-            if item.parent == nil { return [plus(.right)] }
-            return [plus(side == .right ? .right : .left)]
-        case .frame:
-            return [knob]
-        case .text:
-            return [plus(.right), plus(.down)]
-        default:
-            return [plus(.right), plus(.down), plus(.left), plus(.up), knob]
-        }
+        // The frame round what is chosen and its small controls lie over this drawing (ChosenFrame.swift).
     }
 
     // MARK: Pieces

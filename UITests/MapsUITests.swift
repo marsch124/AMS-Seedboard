@@ -75,6 +75,8 @@ final class MapsUITests: XCTestCase {
         // The Mac has no Move buttons in the bar: ⌘↓ (the Board menu's key) does it.
         app.typeKey(.downArrow, modifierFlags: .command)
         #else
+        // 0.2: the bar is one row; on the iPhone Move down is in its "…" list.
+        if !element(app, "sel.moveDown").waitForExistence(timeout: 5) { press(app, "sel.overflow") }
         press(app, "sel.moveDown")
         #endif
         waitFor(app, "board.chosenPlace", toSay: "2 of 2")
