@@ -218,7 +218,8 @@ final class MindMapTests: XCTestCase {
 
     func testShiftIdeaMovesOnePlace() {
         var board = Board()
-        let c = board.addCentre(at: .zero, text: "C")
+        // One side: plain sisters. (On both sides a main branch stays on its side, see MapsTests.)
+        let c = board.addCentre(at: .zero, text: "C", bothSides: false)
         let k = kids(&board, c, 3)
         board.shiftIdea(k[1], down: true)
         XCTAssertEqual(board.children(of: c).map(\.id), [k[0], k[2], k[1]])

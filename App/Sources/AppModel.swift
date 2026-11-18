@@ -82,6 +82,8 @@ final class AppModel: ObservableObject {
         if let words = LaunchOptions.value(for: "-pickAll")?.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }), let session {
             session.selection = Set(session.board.items.filter { item in words.contains { item.text.localizedCaseInsensitiveContains($0) } }.map(\.id))
         }
+        // For pictures: `-type` starts typing in the picked thing (the bar above the keyboard shows).
+        if LaunchOptions.arguments.contains("-type"), let session, let id = session.selection.first { session.beginEdit(id) }
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // A link that arrived before the boards were loaded is followed now.
         if let id = waitingLink { follow(id) }
@@ -425,7 +427,8 @@ final class AppModel: ObservableObject {
     }
 
     /// Sends the open board. The board's picture is made here, the files are written off the main thread.
-    func send(kind: SendKind, title: String) async -> String? {
+    /// `branch`: only this idea and everything under it is sent, as a small map of its own.
+    func send(kind: SendKind, title: String, branch: UUID? = nil) async -> String? {
         guard let session else { return SendProblem.notFound.errorDescription }
         // One hand-over at a time: a second press while the first is on its way does nothing.
         guard !sending else { return "The board is on its way already." }
@@ -437,7 +440,7 @@ final class AppModel: ObservableObject {
         let found = await Task.detached(priority: .userInitiated) { ParagonGate.find() }.value
         self.found(found)
         guard let place = found else { return SendProblem.notFound.errorDescription }
-        let board = session.board
+        let board = branch.flatMap { session.board.branchOnly($0) } ?? session.board
         let png = kind == .todos ? nil : BoardPicture.png(of: board)
         // Inbox tasks: the "already sent" ticks are on the device BEFORE the tasks are handed over, so a
         // stop in between can never send the same tasks twice. If the hand-over fails, the ticks come off again.
@@ -459,11 +462,12 @@ final class AppModel: ObservableObject {
                 try ParagonGate.send(board: board, kind: kind, title: title, png: png, place: place)
             }.value
             if self.session === session {
-                session.markSent(result.info, todos: result.todos)
+                // One branch is not the whole board: the board gets no "sent" mark for it.
+                session.markSent(branch == nil ? result.info : nil, todos: result.todos)
                 saveNow()
             } else if var other = boards.first(where: { $0.id == board.id }) {
                 // Another board was opened meanwhile: the sent mark goes onto the board itself.
-                if let info = result.info { other.sent = info }
+                if let info = result.info, branch == nil { other.sent = info }
                 other.sentTodos = Array(Set(other.sentTodos).union(result.todos))
                 other.touch()
                 write(other)

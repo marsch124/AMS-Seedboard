@@ -12,14 +12,23 @@ struct SendSheet: View {
     @State private var title = ""
     @State private var busy = false
     @State private var problem: String?
+    /// Only the chosen idea and everything under it is sent.
+    @State private var branchOnly = false
 
-    private var waiting: Int { ParagonExport.inboxTasks(board: session.board).count }
-    private var todoCount: Int { session.board.items.filter(\.todo).count }
+    /// The one chosen idea, when there is one: the page then offers to send just that branch.
+    private var branch: Item? { session.branchToSend }
+    /// What is sent: the whole board, or the chosen branch as a small map of its own.
+    private var subject: Board {
+        guard branchOnly, let branch, let part = session.board.branchOnly(branch.id) else { return session.board }
+        return part
+    }
+    private var waiting: Int { ParagonExport.inboxTasks(board: subject).count }
+    private var todoCount: Int { subject.items.filter(\.todo).count }
 
     private var canSend: Bool {
         guard model.paragonReady, !busy, !session.readOnly else { return false }
         if kind == .todos { return waiting > 0 && model.place?.outbox != nil }
-        return !session.board.isEmpty
+        return !subject.isEmpty
     }
 
     var body: some View {
@@ -64,10 +73,20 @@ struct SendSheet: View {
             choice(.project, "As a project",
                    session.board.isTimeline
                    ? "The phases become headings, the bars become tasks with their start and due day. It goes to Projects."
-                   : "The branches become headings, the ideas under them become tasks. It goes to Projects.")
+                   : "The branches become headings. The ideas you ticked To do become tasks; with nothing ticked, all of them do. It goes to Projects.")
             choice(.todos, "Only the to-do boxes",
                    waiting == 0 ? "No to-do boxes are waiting. Choose a box and press To do first."
                    : (waiting == 1 ? "1 to-do box goes to the Inbox as a task." : "\(waiting) to-do boxes go to the Inbox as tasks."))
+
+            if let branch {
+                BranchSwitch(words: session.branchSwitchWords(branch), on: $branchOnly)
+                if branchOnly {
+                    Text("Just this idea and what hangs under it is sent, with a picture of it alone. The board is not marked as sent.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
             if kind != .todos {
                 HStack(spacing: 8) {
@@ -78,7 +97,14 @@ struct SendSheet: View {
                         .textFieldStyle(.roundedBorder)
                         .accessibilityIdentifier("send.title")
                 }
-                if todoCount > 0 {
+                if kind == .project, let line = ParagonExport.projectLine(board: subject) {
+                    // What becomes a task and what stays a plain line, with the counts.
+                    Text(line)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("send.projectLine")
+                } else if todoCount > 0 {
                     Text(todoCount == 1 ? "The 1 to-do box becomes a task in it." : "The \(todoCount) to-do boxes become tasks in it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -128,6 +154,15 @@ struct SendSheet: View {
         .onAppear {
             title = ParagonExport.noteTitle(for: session.board.title)
             if session.board.mapCentres.isEmpty, waiting > 0, session.board.items.allSatisfy({ $0.todo }) { kind = .todos }
+            // For pictures: `-sendAs note|project|todos` chooses the row, `-branchOnly` switches the branch switch on.
+            if let word = LaunchOptions.value(for: "-sendAs"), let wanted = SendKind(rawValue: word) { kind = wanted }
+            if LaunchOptions.arguments.contains("-branchOnly"), branch != nil { branchOnly = true }
+        }
+        .onChange(of: branchOnly) { _, on in
+            // The name follows the switch, unless the owner has typed a name of their own.
+            let whole = ParagonExport.noteTitle(for: session.board.title)
+            let part = branch.map { ParagonExport.noteTitle(for: session.board.branchName($0.id)) } ?? whole
+            if title.isEmpty || title == (on ? whole : part) { title = on ? part : whole }
         }
     }
 
@@ -164,7 +199,7 @@ struct SendSheet: View {
         busy = true
         problem = nil
         Task {
-            let failure = await model.send(kind: kind, title: title)
+            let failure = await model.send(kind: kind, title: title, branch: branchOnly ? branch?.id : nil)
             busy = false
             if let failure {
                 problem = failure

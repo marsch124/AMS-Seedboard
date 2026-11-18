@@ -421,6 +421,14 @@ struct SelectionBar: View {
             chip("Idea under", .control(.add), "sel.child", .mindMap) { session.addChild(of: item.id) }
             if item.parent != nil {
                 chip("Next idea", .control(.add), "sel.sister", .mindMap) { session.addSister(of: item.id) }
+                #if !os(macOS)
+                // Another place among its sisters (the Mac has ⌘↑ and ⌘↓ and the Board menu).
+                let up = session.board.canShiftIdea(item.id, down: false), down = session.board.canShiftIdea(item.id, down: true)
+                chip("Move up", .new(.moveUp), "sel.moveUp", .mindMap) { session.shiftIdea(item.id, down: false) }
+                    .disabled(!up).opacity(up ? 1 : 0.4)
+                chip("Move down", .new(.moveDown), "sel.moveDown", .mindMap) { session.shiftIdea(item.id, down: true) }
+                    .disabled(!down).opacity(down ? 1 : 0.4)
+                #endif
             }
             if (session.facts.children[item.id] ?? 0) > 0 {
                 chip(item.folded ? "Unfold" : "Fold", .control(.chevron), "sel.fold", .mindMap) { session.toggleFold() }
@@ -606,6 +614,7 @@ struct BoardCommands: Commands {
             Button("Line Up") { session?.lineUp() }.disabled((session?.tidyCount ?? 0) < 2)
             Button("Even Gaps") { session?.evenGaps() }.disabled((session?.tidyCount ?? 0) < 3)
             Button("Same Size") { session?.sameSize() }.disabled((session?.sizeCount ?? 0) < 2)
+            IdeaOrderCommands()
             Button("Paste a List as a Mind Map") {
                 #if os(macOS)
                 let text = NSPasteboard.general.string(forType: .string)
