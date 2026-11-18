@@ -687,6 +687,9 @@ final class BoardSession: ObservableObject {
         place.fit(board.bounds)
     }
 
+    /// The board is reopened: the zoom and the spot the owner left it at come back (pick 26).
+    func comeBack(to left: LeftView) { place.comeBack(to: left) }
+
     /// The first time the board's place on screen is known, it is shown whole — and again whenever its
     /// room changes (a window still settling, a page opening over it), until the owner has moved or zoomed it.
     func placeIfNeeded(_ size: CGSize) {

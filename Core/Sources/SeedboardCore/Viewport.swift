@@ -13,6 +13,8 @@ public struct Viewport: Equatable, Sendable {
     public private(set) var movedByOwner = false
     /// A small screen zoomed in for typing: the zoom before, to go back to afterwards.
     public private(set) var scaleBeforeTyping: Double?
+    /// A reopened board holds the spot it was left at while its room settles (pick 26, Remember.swift).
+    public internal(set) var pin: ViewPin?
 
     public init() {}
 
@@ -62,6 +64,7 @@ public struct Viewport: Equatable, Sendable {
     /// `readableAround`: on a small screen, the main thing — the board then opens readable (see `open`).
     public mutating func resized(to newSize: CGSize, showing all: CGRect?, readableAround main: CGRect? = nil) {
         size = newSize
+        if holdPin() { return }
         // While the view is zoomed in for typing, the keyboard coming up does not show the board whole again.
         guard !movedByOwner, scaleBeforeTyping == nil, newSize.width > 10 else { return }
         if let main { open(all, around: main) } else { fit(all) }

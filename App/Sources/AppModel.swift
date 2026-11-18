@@ -78,6 +78,8 @@ final class AppModel: ObservableObject {
            let match = all.first(where: { $0.title.localizedCaseInsensitiveContains(word) }) {
             open(match.id)
         }
+        // With no launch words of its own, the board that was open last comes back (pick 26, Remember.swift).
+        if session == nil, waitingLink == nil, let id = Remember.boardToReopen(among: all) { open(id) }
         // For pictures: `-pick <word>` chooses the first thing whose words hold it.
         if let word = LaunchOptions.value(for: "-pick"), let session,
            let item = session.board.items.first(where: { $0.text.localizedCaseInsensitiveContains(word) }) {
@@ -281,8 +283,13 @@ final class AppModel: ObservableObject {
     }
 
     @discardableResult
-    func newBoard(_ starter: Starter) -> UUID {
-        var board = starter.board()
+    func newBoard(_ starter: Starter) -> UUID { add(starter.board()) }
+
+    /// A board made by a starter or handed in from outside (a Shortcuts action) joins the list:
+    /// its own colour, a name of its own, saved and opened.
+    @discardableResult
+    func add(_ made: Board) -> UUID {
+        var board = made
         board.colour = Palette.boards[boards.count % Palette.boards.count]
         // Two boards never share a name: "Mind map", "Mind map 2" …
         let names = Set(boards.map { $0.title.lowercased() })

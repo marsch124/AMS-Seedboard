@@ -19,7 +19,7 @@ enum LaunchOptions {
 
 @main
 struct SeedboardApp: App {
-    @StateObject private var model = AppModel()
+    @StateObject private var model = AppModel.shared
     @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
@@ -28,9 +28,9 @@ struct SeedboardApp: App {
             root.frame(minWidth: 640, minHeight: 480)
         }
         .defaultSize(width: 1100, height: 760)
-        // One window: no "New Window" in the File menu.
+        // One window: no "New Window" in the File menu (`SeedMenus` fills File, Edit, View and Insert).
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            SeedMenus(model: model)
             BoardCommands()
         }
 
@@ -39,9 +39,12 @@ struct SeedboardApp: App {
         }
         #else
         WindowGroup { root }
-            // With a keyboard on the iPad (or iPhone): ⌘Z, ⇧⌘Z, ⌘D, ⌘+, ⌘-, ⌘0 and the rest of the
-            // Board menu work, and show when ⌘ is held.
-            .commands { BoardCommands() }
+            // With a keyboard on the iPad (or iPhone): ⌘Z, ⇧⌘Z, ⌘N, ⌘D, ⌘+, ⌘-, ⌘0, ⌘1 and the rest of
+            // the menus work, and show when ⌘ is held.
+            .commands {
+                SeedMenus(model: model)
+                BoardCommands()
+            }
         #endif
     }
 
@@ -54,6 +57,8 @@ struct SeedboardApp: App {
             // For pictures: `-night` shows the app by night whatever the device is set to.
             .preferredColorScheme(LaunchOptions.arguments.contains("-night") ? .dark : nil)
             .onOpenURL { model.open(url: $0) }
+            // File ▸ New Board's starter choice, a board found in Spotlight, and remembering where the owner left.
+            .modifier(OutsideDoors(model: model))
             // Leaving the app keeps what is being typed and writes everything at once.
             .onChange(of: phase) { _, new in
                 if new != .active { model.leaving() }
