@@ -2,10 +2,14 @@ import Foundation
 import Combine
 import CoreSpotlight
 import UniformTypeIdentifiers
+import ImageIO
+import AppIntents
 import SeedboardCore
 
 // Pick 26: the device's own search (Spotlight) finds a board by its name and its first words, and
 // opens it. Only on this device; with `-sampleData` nothing is told to the search.
+// 0.5: the search knows EVERY word of a board (it knew only the first 300 letters), shows the board's small
+// picture, and — on iOS 18 / macOS 15 and later — knows the board as a thing ("Open board" on the result).
 
 /// Tells the device's search which boards there are. Cheap: it runs a moment after the boards were
 /// saved, tells only what changed since last time, and does its work off the main thread.
@@ -14,7 +18,9 @@ final class SpotlightIndex {
     static let shared = SpotlightIndex()
 
     /// What the search was told last: each board's id with the time of its last change.
-    private static let key = "seedboard.searchTold"
+    /// 0.5 renamed the key once, so every board is told again — now with all its words and its picture.
+    private static let key = "seedboard.searchTold.2"
+    private static let oldKey = "seedboard.searchTold"
     private var watch: AnyCancellable?
     private var titles: [String] = []
     private var busy = false
@@ -22,6 +28,7 @@ final class SpotlightIndex {
 
     func watch(_ model: AppModel) {
         guard watch == nil, !LaunchOptions.sampleData, CSSearchableIndex.isIndexingAvailable() else { return }
+        UserDefaults.standard.removeObject(forKey: SpotlightIndex.oldKey)
         watch = model.$boards
             .combineLatest(model.$loaded)
             .filter { $0.1 }
@@ -60,14 +67,40 @@ final class SpotlightIndex {
         }
         let plan = Outside.searchPlan(known: told(), boards: Dictionary(boards.map { ($0.id, $0.changed) }, uniquingKeysWith: max))
         guard !plan.learn.isEmpty || !plan.forget.isEmpty else { return }
+        // Never while he is typing or dragging: the small pictures are drawn on the main thread.
+        if AppModel.shared.session?.busy == true {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.tell(AppModel.shared.boards) }
+            return
+        }
         let learn = boards.filter { plan.learn.contains($0.id) }
         let forget = plan.forget.map(\.uuidString)
         busy = true
+        Task { @MainActor in
+            // Only for boards that changed, one picture at a time, the screen gets its turn in between.
+            var pictures: [UUID: Data] = [:]
+            for board in learn where !board.isEmpty {
+                pictures[board.id] = SpotlightIndex.smallPicture(of: board)
+                await Task.yield()
+            }
+            self.index(learn, pictures: pictures, forget: forget, plan: plan)
+        }
+    }
+
+    /// The board's small picture as the search shows it: the one the home page draws (by day), as a JPEG.
+    private static func smallPicture(of board: Board) -> Data? {
+        guard let image = Thumbs.picture(of: board, name: board.id.uuidString, night: false) else { return nil }
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, image, [kCGImageDestinationLossyCompressionQuality: 0.7] as CFDictionary)
+        return CGImageDestinationFinalize(dest) ? out as Data : nil
+    }
+
+    private func index(_ learn: [Board], pictures: [UUID: Data], forget: [String], plan: (learn: Set<UUID>, forget: Set<UUID>)) {
         Task.detached(priority: .utility) {
             let index = CSSearchableIndex.default()
             var learned = false, forgotten = false
             if !learn.isEmpty {
-                let items = learn.map { SpotlightIndex.item(for: $0) }
+                let items = learn.map { SpotlightIndex.item(for: $0, picture: pictures[$0.id]) }
                 learned = (try? await index.indexSearchableItems(items)) != nil
             }
             if !forget.isEmpty {
@@ -89,19 +122,28 @@ final class SpotlightIndex {
         }
     }
 
-    /// One board as the search shows it: its name, and the first words on it.
-    nonisolated private static func item(for board: Board) -> CSSearchableItem {
+    /// One board as the search shows it: its name, the first words on it and its small picture. Every word
+    /// of the board is searched (never shown).
+    nonisolated private static func item(for board: Board, picture: Data?) -> CSSearchableItem {
         let about = CSSearchableItemAttributeSet(contentType: .content)
         about.title = board.title
         about.displayName = board.title
         let words = Outside.searchWords(of: board)
         about.contentDescription = words.isEmpty ? board.countLine : words
+        about.textContent = Outside.searchText(of: board)
+        about.thumbnailData = picture
         about.keywords = ["Seedboard", "board"]
         about.contentCreationDate = board.created
         about.contentModificationDate = board.changed
         let item = CSSearchableItem(uniqueIdentifier: board.id.uuidString, domainIdentifier: "board", attributeSet: about)
         // A board stays findable for as long as it is there (the default would drop it after a month).
         item.expirationDate = .distantFuture
+        // The result is also the board as Siri and Shortcuts know it.
+        if #available(iOS 18.0, macOS 15.0, *) { item.associateAppEntity(BoardEntity(board)) }
         return item
     }
 }
+
+/// iOS 18 / macOS 15 and later: Siri and the device's search know a board as a thing, not only by a phrase.
+@available(iOS 18.0, macOS 15.0, *)
+extension BoardEntity: IndexedEntity {}
