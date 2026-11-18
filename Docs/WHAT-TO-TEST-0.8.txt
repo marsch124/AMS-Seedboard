@@ -1,0 +1,25 @@
+AMS Seedboard 0.8 (build 8) - what to test
+
+This is a small version: the day a bar was done is now drawn on the board, and one fix in the course.
+
+1. The day on the board (iPhone, iPad, Mac)
+- Open a timeline board. Choose a bar and press Done. A little past its end a small grey label appears: "18 Nov" (today's day and month).
+- Do the same with a milestone. The label stands a little past it, and does not move when you choose the bar.
+- Press Done again to take the mark off: the label goes away.
+- A bar done in another year (for example marked done last December) reads "3 Dec 2025", with the year. One from this year has no year.
+- Try a very short bar and a bar at the right edge of the board: the label should stay readable and not run over the next thing.
+- Scroll and zoom the board: the label stays next to its bar.
+
+2. A bar ticked off only in PARAGON
+- Send a timeline to PARAGON, tick one task there and come back. The bar is drawn done, but has no label. This is right: no day is kept for it.
+
+3. The picture of the board
+- Share the board as Picture and as PDF: the labels are in it too.
+- Send the board to PARAGON with its picture: the labels are in the picture.
+
+4. The course
+- Open the course from the app's docs. On the iPhone picture, choose a timeline row: the bar for it now stands at the bottom, just above the tools, as in the real app (before it stood at the top).
+
+Also look at: Settings, What's new (the 0.8 entry) and How it works (Timeline board, the line about the day on the board).
+
+Tell us: anything that looks wrong in day or night, on iPhone, iPad or Mac, for example a label too dark, too close to the tick, or cut off at the edge of the board.

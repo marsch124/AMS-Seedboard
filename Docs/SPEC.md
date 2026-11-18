@@ -1,4 +1,6 @@
-# AMS Seedboard — specification, version 0.7 (build 7)
+# AMS Seedboard — specification, version 0.8 (build 8)
+
+**Version 0.8 (build 8, 2026-11-18)** is a small version on top of 0.7: the day a bar or milestone was done is now also drawn on the timeline board itself, and the course puts the chosen row's bar at the bottom (part **14**). Where part 14 and an older part disagree about a thing 0.8 changed, part 14 is right. Everything of 0.7 that 0.8 does not name is as it was. The board format is still 5.
 
 **Version 0.7 (build 7, 2026-11-18)** is a small version on top of 0.6: the day a bar or milestone was marked done is now shown (part **13**), and the course shows the iPad and the Mac too (13.3). Where part 13 and an older part disagree about a thing 0.7 changed, part 13 is right. Everything of 0.6 that 0.7 does not name is as it was. The board format is still 5.
 
@@ -1379,3 +1381,26 @@ Version 0.7 (build 7, 2026-11-18). `project.yml`: `MARKETING_VERSION` 0.7, `CURR
 
 - `Guide.swift`: a new 0.7 entry in What's new (six lines, above 0.6); How it works changed in Timeline board (a new line after Done: the day it was done).
 - `Docs/WHAT-TO-TEST-0.7.txt` is new.
+
+## 14. New in 0.8
+
+Version 0.8 (build 8, 2026-11-18). `project.yml`: `MARKETING_VERSION` 0.8, `CURRENT_PROJECT_VERSION` 8. The board format stays 5 (`doneDay` is stored since 0.5). Texts: `Guide.swift`; course: `Docs/intro/index.html`.
+
+### 14.1 The day it was done, drawn on the board
+
+- Before (0.7): the day was shown only when a done bar or milestone was chosen (Done button, 13.1; Dates page, 13.2). Now: it is also drawn on the board, as a small label a little past the end of the bar or milestone.
+- Text: Core `Item.doneLabel(today:)` in `TimelinePlan.swift` returns `doneOn?.words(seenFrom: today)`: day and short month, for example "18 Nov"; the year is added when it is not the current year, for example "3 Dec 2025". It is the same wording as the Done button and the Dates page. The result is `nil` for a thing that is not done and for one drawn done only because its task is ticked off in PARAGON (`todoStates`; no `doneDay` is kept), and then nothing is drawn.
+- Drawing: `TimelinePainter.drawState` (`TimelineProgress.swift`), in the branch that draws the tick of a done item. Size 10 points, medium weight, in the app's faint grey (`paint.faint`), left-aligned, centred on the row's middle line. Place: always 31 points after the end (`dotGap` 20 + `dotRadius` 5 + 6), or 9 points after the tick's centre when that is further (a milestone or a narrow bar, whose tick is behind the end). So it is clear of a "comes after" arrow leaving the end (out 8) and of the grip and the dot a chosen bar wears there, and it never jumps when the bar is chosen. The red Today line may cross it.
+- Taking the Done mark off removes `doneDay` and so the label. Nothing else about the tick, the bar's colour or the late mark changes.
+- The label is part of the board drawing, so the board's picture shows it too: the picture that goes to PARAGON (12.1) and Share as Picture and PDF.
+- Nothing about the data, the Done button, the Dates page or what goes to PARAGON changes.
+
+### 14.2 The course
+
+- `Docs/intro/index.html`: on the pretend iPhone, the bar for a chosen timeline row now stands at the bottom, just above the tools, as in the real app (11.x, 2.9). Before: it stood at the top.
+
+### 14.3 Texts and tests
+
+- `Guide.swift`: a new 0.8 entry in What's new (four lines, above 0.7); How it works, Timeline board: a new line after "The day it was done" (the day on the board).
+- Data test: `DoneDay07Tests` (`Core/Tests/SeedboardCoreTests/`) checks `doneLabel(today:)`: "18 Nov" for this year, "3 Dec 2025" for another year, `nil` for a thing not done.
+- `Docs/WHAT-TO-TEST-0.8.txt` is new.

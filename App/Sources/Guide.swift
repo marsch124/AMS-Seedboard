@@ -300,6 +300,7 @@ enum Guide {
             "The bar for a chosen row shows its dates in words and offers Name, Colour (nine colours), Dates, Done, To do, Duplicate and Remove. It is orange, with Remove in red. A phase has no Done.",
             "Done: marks the bar or milestone done today. The bar turns paler, a tick in its own colour stands at its end, and its name in the left column turns grey. Done is then in full colour; press it again to take the mark off. With several rows chosen, Done marks them all, or takes the mark off all when all were done. A copy of a done bar is not done.",
             "The day it was done: choose a done bar or milestone and the Done button says the day, for example Done 18 Nov, with the year when it is not this year, for example Done 3 Dec 2025. With several rows chosen it just says Done. The Dates page of a done bar or milestone has one more line under the dates, for example Done on 18 Nov. A bar that was ticked off only in PARAGON shows no day, because Seedboard keeps none for it.",
+            "The day on the board: a done bar or milestone also shows its day as a small grey label a little past its end, for example 18 Nov (with the year when it is not this year). Taking the Done mark off removes it; a bar ticked off only in PARAGON has none. The board's picture, in PARAGON and in Share as Picture and PDF, shows it too.",
             "A done bar goes to PARAGON already ticked, with the day it was done. It never goes to the Inbox as a new to-do, has no Start: reminder and is not offered by Add what is new. See Send to PARAGON.",
             "Late: a bar whose last day is before today and that is not done has a red end and a red name. A late milestone has a red edge and a red name.",
             "The part of a bar that lies before the red Today line and is not done is darker, so a bar in work is dark up to today.",
@@ -752,6 +753,12 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.8", date: "2026-11-18", items: [
+            "The day it was done is drawn on the board. Before: a bar or milestone marked Done showed its day only when you chose it (the Done button, or the Dates page). Now: it is a small grey label a little past its end, for example 18 Nov. It stays in the same place when you choose the bar. When the day is not in this year, the year is added, for example 3 Dec 2025.",
+            "Taking the Done mark off removes the label again. A bar that you ticked off only in PARAGON gets no label, because Seedboard keeps no day for it.",
+            "The board's picture shows the label too, in the picture that goes to PARAGON and in Share as Picture and PDF.",
+            "The course: on the pretend iPhone, the bar for a chosen timeline row now stands at the bottom, just above the tools, as in the real app. Before: it stood at the top.",
+        ]),
         Release(version: "0.7", date: "2026-11-18", items: [
             "Done shows its day. Before: a bar or milestone marked Done kept the day it was done, but you never saw it; only PARAGON got it. Now: when you choose a done bar or milestone, the Done button in the bar below says the day, for example Done 18 Nov. When the day is not in this year, the year is added, for example Done 3 Dec 2025.",
             "Several chosen: with more than one bar or milestone chosen, the button just says Done, as before, because they can have been done on different days.",

@@ -47,6 +47,14 @@ extension TimelinePainter {
             mark.addLine(to: CGPoint(x: c.x - 1.0, y: c.y + 3.0))
             mark.addLine(to: CGPoint(x: c.x + 3.8, y: c.y - 2.8))
             ctx.stroke(mark, with: .color(own), style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+            // 0.8: the day it was done, small and grey, right after the bar (nothing for one ticked only in PARAGON).
+            if let words = item.doneLabel(today: today) {
+                // Always the same place, past the bar's end: clear of a "comes after" arrow leaving the end, and of
+                // the grip and the dot a chosen bar wears there, so the label never jumps when the bar is chosen.
+                let x = max(box.maxX + Self.dotGap + Self.dotRadius + 6, inside ? 0 : c.x + 9)
+                ctx.draw(Text(words).font(.system(size: 10, weight: .medium)).foregroundColor(paint.faint),
+                         at: CGPoint(x: x, y: box.midY), anchor: .leading)
+            }
             return
         }
         if item.kind == .milestone {

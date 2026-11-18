@@ -26,6 +26,11 @@ final class DoneDay07Tests: XCTestCase {
         XCTAssertEqual(board.doneWord(for: [permit, walls], today: today), "Done")
         XCTAssertEqual(board.doneWord(for: [roof], today: today), "Done")
 
+        // 0.8: the label after the bar says the same day, the year only in another year.
+        XCTAssertEqual(board.item(permit)?.doneLabel(today: today), "18 Nov")
+        XCTAssertEqual(board.item(walls)?.doneLabel(today: today), "3 Dec 2025")
+        XCTAssertNil(board.item(roof)?.doneLabel(today: today))
+
         // Mark taken off: the day goes with it.
         board.setDone([permit], false, on: today)
         XCTAssertEqual(board.doneWord(for: [permit], today: today), "Done")

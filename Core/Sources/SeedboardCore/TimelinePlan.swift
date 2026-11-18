@@ -12,6 +12,9 @@ public extension Item {
 
     /// The day it was marked done; nil when it is not done.
     var doneOn: Day? { isDone ? doneDay.flatMap { Day(iso: $0) } : nil }
+
+    /// 0.8: the small grey label after a done bar or milestone: "18 Nov" ("3 Dec 2025" in another year).
+    func doneLabel(today: Day) -> String? { doneOn?.words(seenFrom: today) }
 }
 
 /// How far a timeline is: "3 of 8 done · 1 late · ends 20 Feb".

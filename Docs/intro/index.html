@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Seedboard Tour: chapter rail on the left, coach card + a pretend iPhone, iPad or Mac on the right. Same engine as the other AMS tours.
-   Based on AMS Seedboard 0.7. Update this tour in the release that changes a taught screen. */
+   Based on AMS Seedboard 0.8. Update this tour in the release that changes a taught screen. */
 :root {
   --bg: #F2F7F6; --panel: #FFFFFF; --fg: #14292A; --muted: #587070; --line: #D9E5E3;
   --accent: #17797A; --accent-soft: #DDF0EE; --good: #2F7D32; --good-soft: #E6F3E6; --warn: #A8431A;
@@ -205,6 +205,7 @@ svg.g { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .tlEnd { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; border-radius: 0 5px 5px 0; background: var(--red) }
 .tlTick { position: absolute; right: -15px; top: 1px; color: var(--c); display: grid }
 .tlTick svg { width: 14px; height: 14px; stroke-width: 3 }
+.tlDay { position: absolute; top: 9px; font-size: 10px; font-weight: 500; color: var(--pmuted); white-space: nowrap; pointer-events: none }
 .tlToday { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); pointer-events: none; z-index: 2 }
 .tlBtns { position: absolute; left: 12px; right: 12px; bottom: 112px; display: flex; align-items: center; gap: 6px; z-index: 10 }
 .pill { border: 1.4px solid var(--teal); color: var(--teal); background: none; border-radius: 16px; min-height: 32px; padding: 0 14px; font-weight: 600; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 4px }
@@ -520,7 +521,7 @@ function listHTML() {
   return `<div class="scr" data-keep="list"><div class="hd"><h1>Seedboard</h1></div>
     ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON')}
     ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}</div>
-    <button class="setl" data-act="soon">Settings <span>0.7</span></button>
+    <button class="setl" data-act="soon">Settings <span>0.8</span></button>
     <div class="lbar"><label class="sfield" data-t="search-field">${icon('search', 'g')}<input data-in="q" placeholder="Search boards" value="${esc(S.q)}" autocomplete="off" aria-label="Search boards"></label>
       <button class="plusb" data-act="plus" data-t="plus" aria-label="New board">${icon('plus', 'g')}</button></div>`;
 }
@@ -601,7 +602,7 @@ function tlHTML() {
   const rows = B.map(b => {
     const late = isLate(b), dark = b.done ? 0 : Math.max(0, Math.min(b.e, T.today) - b.s + 1) * PX;
     return `<button class="tlRow${T.sel === b.id ? ' isSel' : ''}" data-act="tl-sel" data-id="${b.id}" data-t="tl-row-${b.id}"><span class="tlName${late ? ' isLate' : ''}${b.done ? ' isGrey' : ''}">${esc(b.name)}${b.todo ? `<span class="mk mk-${b.done ? 'sent' : 'ring'}" style="position:static;display:inline-grid">${b.done ? icon('check', 'g') : ''}</span>` : ''}</span>
-      <span class="tlTrack"><span class="tlBar" data-t="tl-bar-${b.id}" style="--c:var(${b.col});left:${(b.s - 1) * PX}px;width:${(b.e - b.s + 1) * PX}px"><i class="tlPale"></i>${dark ? `<i class="tlDark" style="width:${dark}px"></i>` : ''}${late ? '<i class="tlEnd"></i>' : ''}${b.done ? `<span class="tlTick">${icon('check', 'g')}</span>` : ''}</span></span></button>`;
+      <span class="tlTrack"><span class="tlBar" data-t="tl-bar-${b.id}" style="--c:var(${b.col});left:${(b.s - 1) * PX}px;width:${(b.e - b.s + 1) * PX}px"><i class="tlPale"></i>${dark ? `<i class="tlDark" style="width:${dark}px"></i>` : ''}${late ? '<i class="tlEnd"></i>' : ''}${b.done ? `<span class="tlTick">${icon('check', 'g')}</span>` : ''}</span>${b.done && b.dd ? `<span class="tlDay" data-t="tl-day-${b.id}" style="left:${b.e * PX + 18}px">${dayWords(b.dd)}</span>` : ''}</span></button>`;
   }).join('');
   const sel = B.find(b => b.id === T.sel);
   const doneBtn = sel ? `<button class="cb${sel.done ? ' fillb' : ''}" style="--cc:var(--teal)" data-act="tl-done" data-t="tl-done">${icon('check', 'g')}${doneWord(sel)}</button>` : '';
@@ -611,7 +612,7 @@ function tlHTML() {
     ? `<div class="ctx" data-t="tl-bar" style="top:auto;bottom:72px;left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:center;row-gap:3px"><span class="cd" style="flex:none" data-t="tl-days">${fmt(sel.s)} – ${fmt(sel.e)} 2027 · ${sel.e - sel.s + 1} days</span>
       <button class="cb" style="--cc:var(--teal)" data-act="soon">${icon('pen', 'g')}Name</button><button class="cb" style="--cc:var(--teal)" data-act="soon">${icon('palette', 'g')}Colour</button><button class="cb" style="--cc:var(--teal)" data-act="soon">${icon('calendar', 'g')}Dates</button>
       ${doneBtn}${todoBtn}<button class="cb" style="--cc:var(--teal)" data-act="soon">${icon('copy', 'g')}Duplicate</button>${DEV === 'pad' ? `<button class="cb" style="--cc:var(--teal)" data-act="soon">${icon('plus', 'g')}Choose more</button>` : ''}<button class="cb" style="--cc:var(--red)" data-act="soon">${icon('bin', 'g')}Remove</button></div>`
-    : `<div class="ctx" data-t="tl-bar"><span class="cd">${esc(sel.name)}</span>${doneBtn}${todoBtn}<button class="cb" data-act="soon" aria-label="More">${icon('more', 'g')}</button></div>`;
+    : `<div class="ctx" data-t="tl-bar" style="top:auto;bottom:208px"><span class="cd">${esc(sel.name)}</span>${doneBtn}${todoBtn}<button class="cb" data-act="soon" aria-label="More">${icon('more', 'g')}</button></div>`;
   const body = `<div class="tlWrap"${W ? ' style="left:24px;top:62px;width:700px"' : ''}><div class="tlLine" data-t="tl-line">${line}</div>
     <div class="tlHead"><span style="left:0">Jan</span><span style="left:${31 * PX}px">Feb</span></div>
     <div class="tlBody">${rows}<i class="tlToday" data-t="tl-today" style="left:${92 + (T.today - 1) * PX + 2}px"></i></div></div>`;
@@ -719,7 +720,7 @@ function sideHTML() {
     <div class="wlist"><button class="wrow${S.screen === 'list' ? ' isOn' : ''}" data-act="back" data-t="back-btn" style="margin-top:4px"><span style="width:9px">${icon('sprout', 'g')}</span><span class="bn" style="margin-left:4px">Home</span></button>
     ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON', 'pg')}
     ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}</div>
-    <div class="wfoot"><button data-act="set-open" data-t="settings-btn">${icon('gear', 'g')}Settings</button><span data-t="version">0.7</span></div></div>`;
+    <div class="wfoot"><button data-act="set-open" data-t="settings-btn">${icon('gear', 'g')}Settings</button><span data-t="version">0.8</span></div></div>`;
 }
 function homeWide() {
   const shown = BOARDS.filter(matches), grp = (g, cls) => { const l = shown.filter(b => b.group === g); return l.length ? `<div class="hsec ${cls || ''}">${g}</div><div class="cgrid">${l.map(b => `<button class="bcard" data-act="open-board" data-id="${b.id}" data-t="card-${b.id}"><span class="pic">${icon(b.bt === 'tl' ? 'timeline' : 'mind', 'g')}</span><span><span class="bn">${esc(b.n)}</span><span class="bi">${esc(b.cnt)}</span></span></button>`).join('')}</div>` : ''; };
@@ -733,7 +734,7 @@ function wideWeb() {
     <div style="padding:64px 40px 0;max-width:640px"><h3>Roof ideas for a small cabin</h3><div class="gl"></div><div class="gl" style="width:80%"></div><div class="webimg">${icon('picture', 'g')}</div><div class="gl"></div><div class="gl" style="width:60%"></div></div></div>`;
 }
 function settingsHTML() {
-  const rows = [['Help', ['How it works', 'What’s new']], ['PARAGON', ['Check again']], ['Your boards', ['Removed and earlier versions', 'Export all boards', 'Import boards'].concat(DEV === 'mac' ? ['Show the boards folder'] : [])], ['About', ['Version  0.7']]];
+  const rows = [['Help', ['How it works', 'What’s new']], ['PARAGON', ['Check again']], ['Your boards', ['Removed and earlier versions', 'Export all boards', 'Import boards'].concat(DEV === 'mac' ? ['Show the boards folder'] : [])], ['About', ['Version  0.8']]];
   const list = rows.map(([h, l]) => `<div class="hd2">${h}</div><div class="card">${l.map(x => `<div class="shrow" style="cursor:default">${esc(x)}</div>`).join('')}</div>`).join('');
   const done = `<button class="hb fill" data-act="set-close" data-t="settings-done">Done</button>`;
   if (DEV === 'mac') return `<div class="mset" data-t="win-settings"><div class="mtitle"><i class="d1"></i><i class="d2"></i><i class="d3"></i><span class="mtn">Settings</span><span style="margin-left:auto;position:relative">${done}</span></div><div class="scr" data-keep="set">${list}</div></div>`;
@@ -867,8 +868,8 @@ const LESSONS = [
   { title: 'Home and starters', icon: 'home', steps: [
     { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the title they stand in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and when you last changed it. A board that went to PARAGON also says how far it is there, for example 5 of 13 done.', target: 'row-cabin', setup: () => set({}),
       wide: { text: 'No board is open, so the home page shows. At the side stands the list of your boards in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and what is on the board, for example 6 ideas · 2 notes. The list stays there when a board is open. Press Home at the top of the list to come back to this page.' } },
-    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.7, is in the last line.', target: 'plus', setup: () => set({}),
-      wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.7, are at the bottom of the list.' } },
+    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.8, is in the last line.', target: 'plus', setup: () => set({}),
+      wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.8, are at the bottom of the list.' } },
     { kind: 'try', head: 'Find a board by a word', text: 'Tap the search field and type "timber". It is not in any board’s name. It is written on a board.', target: 'search-field', setup: () => set({}), wait: 'search', when: d => d.q.length >= 5 && d.n === 1, ok: 'Only "Summer cabin" is left. Search finds a board by its name and by every word written on it. Type two words and only boards with both are shown.' },
     { kind: 'try', head: 'Start a new board', text: 'Tap the round green +.', target: 'plus', setup: () => set({}), wait: 'starters', ok: 'The starters come up from the bottom, two in a row.',
       wide: { text: 'Press the green "New board" button at the top of the list.', ok: 'The starters come up in a small pop-up under the button.' } },
@@ -892,7 +893,7 @@ const LESSONS = [
     { kind: 'try', head: 'Choose a bar', text: 'Tap the bar "Walls".', target: 'tl-bar-5', setup: () => tlb(), wait: 'tl-sel', when: d => d === 'Walls', ok: 'The bar for the chosen row offers Name, Colour, Dates, Done, To do, Duplicate, Choose more and Remove. On the iPhone it is one row, so some buttons show only a mark or wait behind the … button. The dates are not in the bar there: they show while you drag and on the Dates page.',
       wide: { ok: 'The bar above the tools shows the dates of the chosen bar in words, for example "14 Jan – 24 Jan 2027 · 11 days" (the iPhone has no room for that). It offers Name, Colour, Dates, Done, To do, Duplicate and Remove, and on the iPad Choose more.' }, mac: { ok: 'The bar above the tools shows the dates of the chosen bar in words, for example "14 Jan – 24 Jan 2027 · 11 days" (the iPhone has no room for that). It offers Name, Colour, Dates, Done, To do, Duplicate and Remove.' } },
     { kind: 'try', head: 'Mark a bar Done', text: 'Tap the late bar "Plans", then press "Done" in the bar.', target: 'tl-bar-4', setup: () => tlb(), wait: 'tl-done', when: d => d === 'Plans', on: { 'tl-sel': 'tl-done' }, ok: () => `The bar turns paler, a tick stands at its end, and its name turns grey. The line now says "4 of 8 done · ends 20 Feb": the late bar is gone from the count. New in 0.7: the Done button now says the day you pressed it, "Done ${dayWords(ymd(new Date()))}". Press Done again to take the mark off.` },
-    { kind: 'look', head: 'New in 0.7: the day it was done', text: 'Choose a bar or milestone that is done and the Done button says its day, for example "Done 18 Nov". When the day is not in this year the year is added, for example "Done 3 Dec 2025". Choose several rows and it just says "Done". The Dates page of a done bar has one more line under the dates, for example "Done on 18 Nov". It is only to read. A bar that was ticked off only in PARAGON shows no day, because Seedboard keeps none for it, so its button just says "Done".', target: 'tl-done', setup: () => { tlb({ tl: mkTL({ sel: 4 }) }); const b = S.tl.bars[3]; b.done = true; b.dd = ymd(new Date()); } },
+    { kind: 'look', head: 'New in 0.7: the day it was done', text: 'Choose a bar or milestone that is done and the Done button says its day, for example "Done 18 Nov". When the day is not in this year the year is added, for example "Done 3 Dec 2025". Choose several rows and it just says "Done". The Dates page of a done bar has one more line under the dates, for example "Done on 18 Nov". It is only to read. New in 0.8: the day also stands on the board itself, small and grey a little past the end of each done bar. A bar that was ticked off only in PARAGON shows no day, because Seedboard keeps none for it, so its button just says "Done".', target: 'tl-done', setup: () => { tlb({ tl: mkTL({ sel: 4 }) }); const b = S.tl.bars[3]; b.done = true; b.dd = ymd(new Date()); } },
     { kind: 'try', head: 'Catch up', text: 'While something is late, a red button stands right after Today (on the iPhone only its mark, on the iPad and the Mac with the words Catch up). Press the red Catch up.', target: 'catchup', setup: () => tlb(), wait: 'catchup', ok: 'It stretches the late bar to end today and pushes along what comes after it. A line says "5 bars moved. The plan now ends 22 Feb (was 20 Feb)." Done bars are not touched. One Undo takes it all back.' },
     { kind: 'look', head: 'Done in PARAGON counts too', text: 'A bar whose task is ticked off in PARAGON is drawn done here too. It counts as done in the line, it is never late, and Catch up leaves it alone.', target: 'tl-line', setup: () => tlb() },
     { kind: 'check', head: 'Quick check', text: 'A bar’s last day was last week and it is not done. How does it look?', answers: ['A red end and a red name', 'Paler, with a tick at its end', 'A grey name and nothing else'], right: 0, ok: 'Right. Done turns a bar paler with a tick. Late is red.' },
@@ -1010,7 +1011,7 @@ function renderRail() {
     ${LESSONS.map((l, i) => `<button class="chap ${i === ci ? 'cur' : ''} ${doneChapters.has(i) ? 'done' : ''}" data-ch="${i}">${icon(l.icon)}<span>${l.title}</span><span class="n">${doneChapters.has(i) ? '✓' : arrs[i].length ? arrs[i].length + ' steps' : 'iPad, Mac'}</span></button>`).join('')}
     <button class="chap ${ci === LESSONS.length ? 'cur' : ''}" data-ch="${LESSONS.length}">${icon('todo')}<span>Now on your ${DEVS[DEV].name}</span></button>
     <div class="bar"><i style="width:${Math.round(100 * Math.min(before, total) / total)}%"></i></div>
-    <p class="railnote">Practice copy, nothing changes on your ${DEVS[DEV].name}. Based on AMS Seedboard 0.7.</p>`;
+    <p class="railnote">Practice copy, nothing changes on your ${DEVS[DEV].name}. Based on AMS Seedboard 0.8.</p>`;
 }
 document.getElementById('rail').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) goChapter(+b.dataset.ch); });
 
@@ -1054,7 +1055,7 @@ function renderFinish() {
   const fin = document.getElementById('finish'); fin.hidden = false;
   S = START(); curTarget = null; renderStage();
   const dn = DEVS[DEV].name;
-  const items = DEV === 'phone' ? ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and the version 0.7 in the last line.',
+  const items = DEV === 'phone' ? ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and the version 0.8 in the last line.',
     'Press the green +, pick Mind map, type a middle idea, press Return for a branch and Tab for an idea under it. Look at where the words sit on the line.',
     'Choose an idea and press To do. The hollow purple ring appears at its corner.',
     'Press the green +, pick Timeline. Choose a bar and press Done. Check the line at the top, for example "3 of 8 done · 1 late · ends 20 Feb", and the Done button: with that bar chosen it says the day, for example "Done 18 Nov". If a bar is late, press the red Catch up.',
@@ -1063,7 +1064,7 @@ function renderFinish() {
     'In another app press Share, choose Seedboard, pick a board and press Send. Open Seedboard: the words, the link or the picture are on that board.',
     'In a board press the … button, then Share…. Choose PDF and press Share.',
     'Press and hold the Seedboard icon on your Home Screen. Check the four lines: New board, New board from the clipboard and your two pinned boards.']
-  : [`Open Seedboard on your ${dn}. At the side stand the green New board, the field "Search boards" and your boards in three groups (Pinned, Recent, Sent to PARAGON). Settings and the version 0.7 are at the bottom of the list. Press Home to see the home page with the starters.`,
+  : [`Open Seedboard on your ${dn}. At the side stand the green New board, the field "Search boards" and your boards in three groups (Pinned, Recent, Sent to PARAGON). Settings and the version 0.8 are at the bottom of the list. Press Home to see the home page with the starters.`,
     'Press New board and pick Mind map. Choose an idea and press To do. The bar floats just above the idea. The hollow purple ring appears at its corner.',
     'Press New board and pick Timeline. Choose a bar: the bar above the tools shows its dates in words. Press Done: with that bar chosen the button says the day, for example "Done 18 Nov". If a bar is late, press the red Catch up.',
     'Send the timeline to PARAGON as a project. Switch to PARAGON and check that the bar you marked Done is already ticked, with its words struck through.',
