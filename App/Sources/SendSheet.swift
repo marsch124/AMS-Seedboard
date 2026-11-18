@@ -67,10 +67,12 @@ struct SendSheet: View {
             }
 
             choice(.note, "As a note",
+                   session.board.isSequence ? SequenceWords.sendNote :
                    session.board.isTimeline
                    ? "The timeline's picture and its bars with their dates. It goes to Resources, and one line in the Inbox points to it."
                    : "The board's picture and its words as a tidy outline. It goes to Resources, and one line in the Inbox points to it.")
             choice(.project, "As a project",
+                   session.board.isSequence ? SequenceWords.sendProject :
                    session.board.isTimeline
                    ? "The phases become headings, the bars become tasks with their start and due day. It goes to Projects."
                    : "The branches become headings. The ideas you ticked To do become tasks; with nothing ticked, all of them do. It goes to Projects.")

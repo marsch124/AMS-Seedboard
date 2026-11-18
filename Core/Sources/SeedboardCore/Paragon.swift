@@ -76,6 +76,7 @@ public enum ParagonExport {
     /// a line that links back to the board, then Outline, Flow, Notes and Tasks (a section with nothing in it is left out).
     public static func note(board: Board, title: String, picture: String?, now: Date) -> String {
         if board.isTimeline { return timelineNote(board: board, title: title, picture: picture, now: now) }
+        if board.isSequence { return sequenceNote(board: board, title: title, picture: picture, now: now) }
         var out = frontMatter(title: title, type: "resource", status: nil, now: now)
         out += "# \(title)\n\n"
         out += head(board: board, picture: picture)
@@ -112,6 +113,7 @@ public enum ParagonExport {
     /// become tasks, the others stay as plain lines in the same places (see ProjectPlan.swift).
     public static func project(board: Board, title: String, picture: String?, now: Date) -> String {
         if board.isTimeline { return timelineProject(board: board, title: title, picture: picture, now: now) }
+        if board.isSequence { return sequenceProject(board: board, title: title, picture: picture, now: now) }
         var out = frontMatter(title: title, type: "project", status: "active", now: now)
         out += "# \(title)\n\n"
         out += head(board: board, picture: picture)

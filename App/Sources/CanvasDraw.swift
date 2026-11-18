@@ -147,6 +147,11 @@ enum Lettering {
                 break
             case .bar, .milestone, .phase:
                 break
+            case .who, .message, .band, .section:
+                // Who does what: the room of the words; the app places everything (SequenceDraw.swift).
+                let size = SequenceLook.wordsSize(of: item)
+                board.items[i].w = Double(size.width)
+                board.items[i].h = Double(size.height)
             }
         }
         board.layoutMaps()
@@ -223,6 +228,8 @@ struct BoardPainter {
     func draw(_ ctx: inout GraphicsContext) {
         // A timeline is drawn by its own painter (TimelineDraw.swift), whole, from the corner of its box.
         if board.isTimeline { TimelinePainter.whole(board, paint: paint, ground: ground).draw(&ctx); return }
+        // So is a "Who does what" board (SequenceDraw.swift).
+        if board.isSequence { SequencePainter.whole(board, paint: paint, ground: ground).draw(&ctx); return }
         let byID = board.items.reduce(into: [UUID: Item]()) { $0[$1.id] = $1 }
 
         for item in board.items where item.kind == .frame { drawFrame(item, &ctx) }
@@ -391,6 +398,8 @@ struct BoardPainter {
         case .frame:
             return
         case .bar, .milestone, .phase:
+            return
+        case .who, .message, .band, .section:
             return
         }
 

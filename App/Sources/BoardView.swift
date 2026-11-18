@@ -46,9 +46,10 @@ struct BoardView: View {
         ZStack {
             // The board's own colour runs to every edge of the screen, also under the home bar.
             Paint(scheme).canvas.ignoresSafeArea()
+            if session.board.isSequence { SequenceView(session: session) } else
             if session.board.isTimeline { TimelineView(session: session) } else { CanvasView(session: session) }
 
-            if session.board.isEmpty && !session.board.isTimeline {
+            if session.board.isEmpty && !session.board.placesItself {
                 VStack(spacing: 4) {
                     Text("An empty board")
                         .font(Txt.sectionTitle)
@@ -67,7 +68,8 @@ struct BoardView: View {
                     banner("This board was made by a newer Seedboard. Update the app to change it.", part: .notes)
                 } else if session.linking {
                     HStack(spacing: 8) {
-                        Text(session.board.isTimeline ? TimelineWords.linking(first: session.linkFrom == nil)
+                        Text(session.board.isSequence ? SequenceWords.linking(first: session.linkFrom == nil) :
+                             session.board.isTimeline ? TimelineWords.linking(first: session.linkFrom == nil)
                              : (session.linkFrom == nil ? "Press the first shape, then the second." : "Now press the shape the arrow goes to."))
                             .font(Txt.label)
                         Button("Cancel") {
@@ -113,6 +115,7 @@ struct BoardView: View {
                     .accessibilityIdentifier("board.notice")
                 }
                 if session.board.isTimeline && !session.linking { TimelineSelectionBar(session: session) }
+                if session.board.isSequence && !session.linking { SequenceSelectionBar(session: session) }
                 if let flash = model.flash {
                     Text(flash)
                         .font(Txt.label)
@@ -221,7 +224,7 @@ struct BoardView: View {
                     if let text = model.clipboardText() { session.paste(text) } else { model.say("Nothing to paste.") }
                     session.takeKeys()
                 }
-                .disabled(session.board.isTimeline)
+                .disabled(session.board.placesItself)
                 Button("Copy the board as text") {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
@@ -266,6 +269,7 @@ struct ToolPill: View {
 
     var body: some View {
         // A timeline board has its own tools (TimelineBars.swift).
+        if session.board.isSequence { SequenceToolPill(session: session) } else
         if session.board.isTimeline { TimelineToolPill(session: session) } else { ordinary }
     }
 
@@ -360,8 +364,9 @@ struct SelectionBar: View {
     @State private var showColours = false
 
     var body: some View {
-        // A timeline board has its own bar for the chosen bar, at the bottom (TimelineBars.swift).
-        if session.board.isTimeline { EmptyView() } else { ordinary }
+        // A timeline board has its own bar for the chosen bar, at the bottom (TimelineBars.swift);
+        // so has a "Who does what" board (SequenceBars.swift).
+        if session.board.placesItself { EmptyView() } else { ordinary }
     }
 
     @ViewBuilder
@@ -460,6 +465,9 @@ struct SelectionBar: View {
             chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
         case .bar, .milestone, .phase:
             // A timeline's rows have their own bar (TimelineBars.swift).
+            EmptyView()
+        case .who, .message, .band, .section:
+            // So have the things of a "Who does what" board (SequenceBars.swift).
             EmptyView()
         }
         chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }

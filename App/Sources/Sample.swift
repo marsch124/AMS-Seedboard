@@ -114,6 +114,7 @@ enum Sample {
         return [
             cabin,
             timeline(now: now),
+            loanSteps(now: now),
             ideas,
             made(.steps, "Garage shelves", "orange", daysAgo: 2),
             made(.prosCons, "Trip to Spain", "blue", daysAgo: 4),
