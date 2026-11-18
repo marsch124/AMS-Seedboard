@@ -698,6 +698,7 @@ struct CanvasView: View {
         if session.selectedLink == nil {
             switch typed.lowercased() {
             case "m": session.add(.idea)
+            case "p": PictureDesk.shared.ask.send(nil)
             case "b", "r": session.add(.box)
             case "u": session.add(.round)
             case "d": session.add(.diamond)

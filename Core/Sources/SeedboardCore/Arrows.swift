@@ -712,7 +712,7 @@ public extension Board {
 
         // What an arrow goes round: shapes, sticky notes and ideas. Free text and frames are passed over.
         let blocks: [(id: UUID, rect: CGRect)] = items
-            .filter { ($0.kind.isShape || $0.kind == .note || $0.kind == .idea) && seen($0) }
+            .filter { ($0.kind.isShape || $0.kind == .note || $0.kind == .idea || $0.kind == .picture) && seen($0) }
             .map { ($0.id, $0.frame) }
         var all: [UUID: Route.Arrow] = [:]
         for w in wires {

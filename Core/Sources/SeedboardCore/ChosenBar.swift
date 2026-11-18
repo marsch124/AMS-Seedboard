@@ -142,10 +142,10 @@ public enum Controls {
         }
     }
 
-    /// The corners of a thing that carry a size knob: all four of a shape, a note, a frame and a sketch.
+    /// The corners of a thing that carry a size knob: all four of a shape, a note, a frame, a sketch and a picture.
     /// Ideas and free text take the size of their words.
     public static func knobCorners(of kind: ItemKind) -> [Corner] {
-        kind.isShape || kind == .note || kind == .frame || kind == .drawing ? Corner.allCases : []
+        kind.isShape || kind == .note || kind == .frame || kind == .drawing || kind == .picture ? Corner.allCases : []
     }
 
     private static func square(_ c: CGPoint, _ side: CGFloat) -> CGRect {

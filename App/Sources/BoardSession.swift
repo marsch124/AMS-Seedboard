@@ -203,8 +203,8 @@ final class BoardSession: ObservableObject {
 
     func beginEdit(_ id: UUID, isNew: Bool = false) {
         guard !readOnly else { return }
-        // A drawing has no words.
-        guard board.item(id)?.kind != .drawing else { return }
+        // A drawing and a picture have no words.
+        guard board.item(id)?.kind != .drawing, board.item(id)?.kind != .picture else { return }
         if editing != nil { commitEdit() }
         if let item = board.item(id) {
             draft = item.text
@@ -524,7 +524,7 @@ final class BoardSession: ObservableObject {
     func toggleTodo() {
         if board.isSequence { sequenceToggleTodo(); return }
         // A drawing carries no tick, nor does a timeline's phase heading.
-        let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .phase }
+        let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .picture && board.item($0)?.kind != .phase }
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
         change { board in
@@ -545,7 +545,7 @@ final class BoardSession: ObservableObject {
                 // In a mind map the colour belongs to the whole branch.
                 if board.items[i].kind == .idea {
                     if let branch = board.mainBranch(of: id), let b = board.index(of: branch) { board.items[b].colour = name }
-                } else if board.items[i].kind != .drawing {
+                } else if board.items[i].kind != .drawing && board.items[i].kind != .picture {
                     // (A sketch's lines keep their own colours.)
                     board.items[i].colour = name
                 }

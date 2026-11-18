@@ -258,8 +258,8 @@ public enum ParagonExport {
 
     private static func noteBullets(_ board: Board, picture: Bool = true) -> [String] {
         // A drawing has no words: one plain line stands in its place.
-        board.items.filter { (($0.kind == .note || $0.kind == .text) && !oneLine($0.text).isEmpty) || $0.kind == .drawing }
-            .map { $0.kind == .drawing ? "- " + sketchLine(picture: picture) : "- \(oneLine($0.text))" }
+        board.items.filter { (($0.kind == .note || $0.kind == .text) && !oneLine($0.text).isEmpty) || $0.kind == .drawing || $0.kind == .picture }
+            .map { $0.kind == .drawing ? "- " + sketchLine(picture: picture) : ($0.kind == .picture ? "- " + pictureLine(picture: picture) : "- \(oneLine($0.text))") }
     }
 
     /// What a note or project says where a drawing is.
@@ -267,9 +267,15 @@ public enum ParagonExport {
         picture ? "A sketch (see the picture)" : "A sketch (on the board)"
     }
 
+    /// What a note or project says where a picture laid on the board is.
+    public static func pictureLine(picture: Bool = true) -> String {
+        picture ? "A picture (see the picture)" : "A picture (on the board)"
+    }
+
     static func label(_ item: Item) -> String {
         let words = oneLine(item.text)
         if item.kind == .drawing { return "A sketch" }
+        if item.kind == .picture { return "A picture" }
         return words.isEmpty ? "(empty)" : words
     }
 

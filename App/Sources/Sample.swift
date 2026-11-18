@@ -125,6 +125,8 @@ enum Sample {
             lanes(now: now),
             // Drawing by hand (0.2), for pictures: `-board Sketch` (SampleSketch.swift).
             sketch(now: now),
+            // Pictures on a board (0.3), for pictures: `-board balcony` (SamplePictures.swift).
+            balcony(now: now),
         ]
     }
 

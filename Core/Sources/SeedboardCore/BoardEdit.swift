@@ -162,6 +162,8 @@ public extension Board {
         guard let i = index(of: id) else { return }
         // A drawing's lines stretch with its box (Ink.swift).
         if items[i].kind == .drawing { scaleDrawing(id, to: rect); return }
+        // A picture keeps its shape (Pictures.swift).
+        if items[i].kind == .picture { scalePicture(id, to: rect); return }
         let least: CGSize = items[i].kind == .frame ? items[i].leastFrameSize : CGSize(width: 44, height: 28)
         var r = rect.standardized
         if r.width < least.width { r.size.width = least.width }
@@ -259,11 +261,13 @@ public extension Board {
         let shapes = items.filter { $0.kind.isShape }.count
         let notes = items.filter { $0.kind == .note }.count
         let sketches = items.filter { $0.kind == .drawing }.count
+        let pictures = pictureCount
         var parts: [String] = []
         if ideas > 0 { parts.append(ideas == 1 ? "1 idea" : "\(ideas) ideas") }
         if shapes > 0 { parts.append(shapes == 1 ? "1 shape" : "\(shapes) shapes") }
         if notes > 0 { parts.append(notes == 1 ? "1 note" : "\(notes) notes") }
         if sketches > 0 { parts.append(sketches == 1 ? "1 sketch" : "\(sketches) sketches") }
+        if pictures > 0 { parts.append(pictures == 1 ? "1 picture" : "\(pictures) pictures") }
         return parts.isEmpty ? "Empty" : parts.joined(separator: " · ")
     }
 }

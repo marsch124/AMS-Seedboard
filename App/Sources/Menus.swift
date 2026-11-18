@@ -127,6 +127,8 @@ struct SeedMenus: Commands {
             Divider()
             // Two shapes that have a letter but no button of their own.
             ForEach(MenuRules.moreShapes, id: \.letter) { tool($0) }
+            Divider()
+            PictureInsertLine(enabled: canChange && session?.board.placesItself != true, letter: lettersAreTools)
         }
     }
 

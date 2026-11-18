@@ -65,7 +65,7 @@ public extension Board {
     /// The chosen things whose size can be set: shapes, sticky notes and frames
     /// (an idea and free text are as big as their words).
     func sizeable(_ ids: Set<UUID>) -> [Item] {
-        tidyable(ids).filter { $0.kind != .idea && $0.kind != .text && $0.kind != .drawing }
+        tidyable(ids).filter { $0.kind != .idea && $0.kind != .text && $0.kind != .drawing && $0.kind != .picture }
     }
 
     /// Same size: every thing takes the width and height of the largest; its middle stays where it is.
