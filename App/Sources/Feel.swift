@@ -129,8 +129,12 @@ final class ParagonEcho: ObservableObject {
         return marks
     }
 
+    /// 0.9: board → thing → the due day PARAGON has for its task ("2026-12-05"). Read each time, never in a board.
+    @Published private(set) var due: [UUID: [UUID: String]] = [:]
+
     /// Keeps what was read for one board (replacing what was kept before).
-    func keep(_ states: [UUID: TodoState], for board: UUID) {
+    func keep(_ states: [UUID: TodoState], due days: [UUID: String] = [:], for board: UUID) {
         if read[board] != states { read[board] = states }
+        if (due[board] ?? [:]) != days { due[board] = days.isEmpty ? nil : days }
     }
 }

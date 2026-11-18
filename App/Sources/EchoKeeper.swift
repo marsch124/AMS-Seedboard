@@ -75,7 +75,7 @@ final class EchoKeeper: ObservableObject {
         kept = read.reduce(into: [:]) { out, pair in
             if let id = UUID(uuidString: pair.key) { out[id] = pair.value }
         }
-        for (id, echo) in kept where echo.standing == .found { ParagonEcho.shared.keep(echo.reading.states, for: id) }
+        for (id, echo) in kept where echo.standing == .found { ParagonEcho.shared.keep(echo.reading.states, due: echo.reading.due, for: id) }
     }
 
     // MARK: When it looks
@@ -193,8 +193,8 @@ final class EchoKeeper: ObservableObject {
         }
         if new != kept {
             let open = model?.session
-            for id in Set(new.keys).union(kept.keys) where new[id]?.reading.states != kept[id]?.reading.states {
-                ParagonEcho.shared.keep(new[id]?.reading.states ?? [:], for: id)
+            for id in Set(new.keys).union(kept.keys) where new[id]?.reading.states != kept[id]?.reading.states || new[id]?.reading.due != kept[id]?.reading.due {
+                ParagonEcho.shared.keep(new[id]?.reading.states ?? [:], due: new[id]?.reading.due ?? [:], for: id)
                 // The open board is drawn again with its new marks.
                 if open?.board.id == id { open?.objectWillChange.send() }
             }

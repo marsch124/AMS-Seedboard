@@ -11,6 +11,7 @@ import AppKit
 //   -marks                with `-sampleData`: adds the sample board "To-do marks" (`-board marks`) and fills
 //                         `ParagonEcho` with made-up states, so all four marks show; the sample timeline
 //                         (`-board timeline`) and "Loan steps" (`-board Loan`) show the four as well
+//   -dueDays              with `-marks`: the tasks in PARAGON also have a due day (in 3 days, today, yesterday)
 //   -zoom 1.5 | most      the opened board at this zoom, round its middle; `most` = as big as the whole board
 //                         still fits (for pictures)
 //   -window 1280x800      the Mac window at this size (for pictures)
@@ -28,7 +29,18 @@ enum LooksLaunch {
         guard marks else { return }
         let made = marksBoard(now: now)
         boards.append(made.board)
-        ParagonEcho.shared.keep(made.read, for: made.board.id)
+        // 0.9: `-dueDays` also gives the tasks that are in PARAGON their due days: in 3 days, today, yesterday (past due).
+        var days: [UUID: String] = [:]
+        if LaunchOptions.arguments.contains("-dueDays") {
+            let today = Day.today(now)
+            var nth = 0
+            for item in made.board.items where made.read[item.id] == .inParagon {
+                days[item.id] = [today + 3, today, today - 1][nth % 3].iso
+                nth += 1
+            }
+            for item in made.board.items where made.read[item.id] == .done { days[item.id] = (today - 2).iso }
+        }
+        ParagonEcho.shared.keep(made.read, due: days, for: made.board.id)
         for i in boards.indices where boards[i].isTimeline || boards[i].isSequence {
             let words = boards[i].isTimeline ? ["Foundation", "Find builder", "Permit", "Windows"]
                                              : ["Order the build", "Ask for loan", "Ask for permit", "Ask again"]

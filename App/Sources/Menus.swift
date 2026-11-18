@@ -77,6 +77,11 @@ struct SeedMenus: Commands {
             }
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(session == nil || session?.starterDraft == true)
+            // 0.9: the Send page for the chosen frame alone, and Today's three (ParagonNine.swift).
+            Button("Send This Frame to PARAGON…") { if let session { ParagonDesk.shared.sendFrame(session) } }
+                .disabled(session?.frameToSend == nil || session?.starterDraft == true)
+            Button("Today's Three to PARAGON…") { if let session { ParagonDesk.shared.askToday(session) } }
+                .disabled(session?.todayThreeOffered != true)
             Button("Share…") { if let session { ShareDesk.shared.ask(session) } }
                 .disabled(session?.board.isEmpty ?? true)
             // 0.5: a new timeline board from this board's ideas and shapes (TimelineOfIt.swift).

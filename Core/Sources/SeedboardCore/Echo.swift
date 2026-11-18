@@ -25,6 +25,17 @@ public enum ParagonRead {
     public struct TaskLine: Equatable, Sendable {
         public var mark: Mark
         public var words: String
+        /// 0.9: the task's due day as PARAGON has it now ("2026-12-05"); nil when it has none.
+        public var due: String? = nil
+    }
+
+    /// 0.9: the day written in a task line's words as PARAGON writes it: `>2026-12-05`, also with a time
+    /// (`>2026-12-05T09:00`). Only the first one counts, as in PARAGON. nil: no day, or a day that is none.
+    public static func dueDay(_ line: String) -> String? {
+        let ns = line as NSString
+        guard let match = dayRule.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) else { return nil }
+        let iso = ns.substring(with: match.range(at: 1))
+        return Day(iso: iso) == nil ? nil : iso
     }
 
     private static func regex(_ pattern: String) -> NSRegularExpression {
@@ -94,7 +105,7 @@ public enum ParagonRead {
             guard let match = lineRule.firstMatch(in: ns as String, range: NSRange(location: 0, length: ns.length)) else { continue }
             let box = ns.substring(with: match.range(at: 3)).lowercased()
             let rest = match.range(at: 4).location == NSNotFound ? "" : ns.substring(with: match.range(at: 4))
-            found.append(TaskLine(mark: box == "x" ? .done : (box == "-" ? .cancelled : .open), words: words(rest)))
+            found.append(TaskLine(mark: box == "x" ? .done : (box == "-" ? .cancelled : .open), words: words(rest), due: dueDay(rest)))
         }
         return found
     }
@@ -140,15 +151,19 @@ public enum ParagonRead {
         public var found: Int
         /// How many of those are ticked off.
         public var done: Int
+        /// 0.9: thing → the due day of its task as PARAGON has it now ("2026-12-05"). Read each time, never
+        /// stored in the board.
+        public var due: [UUID: String]
 
-        public init(states: [UUID: TodoState] = [:], found: Int = 0, done: Int = 0) {
+        public init(states: [UUID: TodoState] = [:], found: Int = 0, done: Int = 0, due: [UUID: String] = [:]) {
             self.states = states
             self.found = found
             self.done = done
+            self.due = due
         }
 
         // Kept on the device as plain words: thing id → "inParagon", "done" or "cancelled".
-        enum CodingKeys: String, CodingKey { case states, found, done }
+        enum CodingKeys: String, CodingKey { case states, found, done, due }
 
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -158,6 +173,10 @@ public enum ParagonRead {
             }
             found = (try? c.decode(Int.self, forKey: .found)) ?? 0
             done = (try? c.decode(Int.self, forKey: .done)) ?? 0
+            let days = (try? c.decode([String: String].self, forKey: .due)) ?? [:]
+            due = days.reduce(into: [:]) { out, pair in
+                if let id = UUID(uuidString: pair.key) { out[id] = pair.value }
+            }
         }
 
         public func encode(to encoder: Encoder) throws {
@@ -165,6 +184,7 @@ public enum ParagonRead {
             try c.encode(states.reduce(into: [String: String]()) { $0[$1.key.uuidString] = $1.value.rawValue }, forKey: .states)
             try c.encode(found, forKey: .found)
             try c.encode(done, forKey: .done)
+            try c.encode(due.reduce(into: [String: String]()) { $0[$1.key.uuidString] = $1.value }, forKey: .due)
         }
     }
 
@@ -176,8 +196,8 @@ public enum ParagonRead {
     /// - Two things with the same words take the lines with those words in the note's order.
     /// - Only things that are still on the board count.
     public static func reading(board: Board, note: String, kind: String? = nil) -> Reading {
-        var lines: [String: [Mark]] = [:]
-        for line in taskLines(in: note) where !line.words.isEmpty { lines[line.words, default: []].append(line.mark) }
+        var lines: [String: [(mark: Mark, due: String?)]] = [:]
+        for line in taskLines(in: note) where !line.words.isEmpty { lines[line.words, default: []].append((line.mark, line.due)) }
         let here = Set(board.items.map(\.id))
         let inNote = board.sentTasks.filter { $0.place == SentTask.note }
         var asked: [(id: UUID, words: String)] = (inNote + board.sentTasks.filter { $0.place != SentTask.note })
@@ -190,8 +210,9 @@ public enum ParagonRead {
         for thing in asked where here.contains(thing.id) && reading.states[thing.id] == nil {
             let key = words(thing.words)
             guard var waiting = lines[key], !waiting.isEmpty else { continue }
-            let mark = waiting.removeFirst()
+            let (mark, due) = waiting.removeFirst()
             lines[key] = waiting
+            if let due, mark != .cancelled { reading.due[thing.id] = due }
             switch mark {
             case .open:
                 reading.states[thing.id] = .inParagon
