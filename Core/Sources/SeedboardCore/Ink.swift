@@ -42,6 +42,8 @@ public struct Stroke: Codable, Equatable, Sendable {
     public var points: [Double]
     /// How hard the Pencil was pressed at each point, 0 … 1, to a hundredth. nil: a finger or the mouse drew it.
     public var pressure: [Double]?
+    /// 0.9 (format 6): the pen: "highlighter" (wide, see-through). nil = the ordinary pen.
+    public var pen: String?
     /// Fields in the file this version does not know: carried through a load and a save untouched.
     public private(set) var extra: [String: JSONValue] = [:]
 
@@ -54,6 +56,7 @@ public struct Stroke: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case colour, width, points, pressure
+        case pen
     }
 
     public init(from decoder: Decoder) throws {
@@ -64,6 +67,7 @@ public struct Stroke: Codable, Equatable, Sendable {
         points = read.count % 2 == 0 ? read : Array(read.dropLast())
         let force = try? c.decode([Double].self, forKey: .pressure)
         pressure = force?.count == points.count / 2 ? force : nil
+        pen = try? c.decode(String.self, forKey: .pen)
         extra = unknownFields(of: decoder, known: CodingKeys.allCases.map(\.rawValue))
     }
 
@@ -74,6 +78,7 @@ public struct Stroke: Codable, Equatable, Sendable {
         try c.encode(width, forKey: .width)
         try c.encode(points, forKey: .points)
         try c.encodeIfPresent(pressure, forKey: .pressure)
+        try c.encodeIfPresent(pen, forKey: .pen)
     }
 
     public var thickness: InkWidth { InkWidth(rawValue: width) ?? .medium }

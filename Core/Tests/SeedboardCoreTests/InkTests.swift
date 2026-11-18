@@ -171,7 +171,7 @@ final class InkTests: XCTestCase {
         XCTAssertEqual(ItemKind.drawing.rawValue, "drawing")
         let stroke = (item["strokes"] as! [[String: Any]])[0]
         XCTAssertEqual(stroke.keys.sorted(), ["colour", "points", "pressure", "width"])
-        XCTAssertEqual(Stroke.CodingKeys.allCases.map(\.rawValue).sorted(), ["colour", "points", "pressure", "width"])
+        XCTAssertEqual(Stroke.CodingKeys.allCases.map(\.rawValue).sorted(), ["colour", "pen", "points", "pressure", "width"])
         XCTAssertEqual(stroke["colour"] as? String, "red")
         XCTAssertEqual(stroke["width"] as? String, "thin")
         XCTAssertEqual(stroke["points"] as? [Double], [16, 16, 26.3, 36, 46, 16])

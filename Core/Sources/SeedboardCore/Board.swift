@@ -195,6 +195,14 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var door: UUID?
     /// A timeline bar or milestone only (format 5): the day it was marked done, as "2026-12-01". nil = not done.
     public var doneDay: String?
+    /// 0.9 (format 6): vote dots given to this thing. nil = none.
+    public var votes: Int?
+    /// 0.9 (format 6): pinned in place — it cannot be moved or resized by accident. nil = free.
+    public var locked: Bool?
+    /// 0.9 (format 6): the title of the web page whose address is in the words, once it was fetched. nil = not fetched.
+    public var linkTitle: String?
+    /// 0.9 (format 6): a picture only — the words read inside it (for search). nil = not read yet; "" = none found.
+    public var pictureWords: String?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -224,6 +232,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case picture
         case crop
         case door, doneDay
+        case votes, locked, linkTitle, pictureWords
     }
 
     public init(from decoder: Decoder) throws {
@@ -257,6 +266,10 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         crop = Item.cleanCrop(try? c.decode([Double].self, forKey: .crop))
         door = try? c.decode(UUID.self, forKey: .door)
         doneDay = try? c.decode(String.self, forKey: .doneDay)
+        votes = try? c.decode(Int.self, forKey: .votes)
+        locked = try? c.decode(Bool.self, forKey: .locked)
+        linkTitle = try? c.decode(String.self, forKey: .linkTitle)
+        pictureWords = try? c.decode(String.self, forKey: .pictureWords)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -288,6 +301,10 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(crop, forKey: .crop)
         try c.encodeIfPresent(door, forKey: .door)
         try c.encodeIfPresent(doneDay, forKey: .doneDay)
+        try c.encodeIfPresent(votes, forKey: .votes)
+        try c.encodeIfPresent(locked, forKey: .locked)
+        try c.encodeIfPresent(linkTitle, forKey: .linkTitle)
+        try c.encodeIfPresent(pictureWords, forKey: .pictureWords)
     }
 
     public var frame: CGRect {
@@ -455,7 +472,10 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// 4 (Seedboard 0.4): a cropped picture — the field `crop` on an item (the part of the picture that is shown).
     /// 5 (Seedboard 0.5): a door to another board — the kind `door` and the field `door` on an item; the day a
     /// timeline bar was done — `doneDay` on an item; every thing that became a PARAGON task — `sentTasks` on the board.
-    public static let currentFormat = 5
+    /// 6 (Seedboard 0.9): vote dots, pinned in place, a web page's title, the words inside a picture (`votes`,
+    /// `locked`, `linkTitle`, `pictureWords` on an item); the board's colour legend, background, numbered steps and
+    /// "put away" (`legend`, `backdrop`, `numberSteps`, `putAway` on the board); a highlighter stroke (`pen` on a stroke).
+    public static let currentFormat = 6
 
     public var id: UUID
     public var title: String
@@ -477,6 +497,14 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public private(set) var extra: [String: JSONValue] = [:]
     /// What kind of board this is: "timeline", "sequence" (Who does what), or nothing for an ordinary board.
     public var kind: String?
+    /// 0.9 (format 6): what each sticky-note colour means on this board, colour name → words. nil = no legend.
+    public var legend: [String: String]?
+    /// 0.9 (format 6): the board's background: "dots" or "squares". nil = plain.
+    public var backdrop: String?
+    /// 0.9 (format 6): the steps of a flowchart are numbered. nil = not.
+    public var numberSteps: Bool?
+    /// 0.9 (format 6): the day the board was put away (out of the list, never deleted). nil = in the list.
+    public var putAway: Date?
 
     public init(id: UUID = UUID(), title: String = "New board", created: Date = Date(), changed: Date? = nil,
                 pinned: Bool = false, colour: String = "green", items: [Item] = [], links: [Link] = []) {
@@ -497,6 +525,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         case id, title, created, changed, format, pinned, colour, items, links, sent, sentTodos
         case kind
         case sentTasks
+        case legend, backdrop, numberSteps, putAway
     }
 
     public init(from decoder: Decoder) throws {
@@ -516,6 +545,10 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         extra = unknownFields(of: decoder, known: CodingKeys.allCases.map(\.rawValue))
         kind = try? c.decode(String.self, forKey: .kind)
         sentTasks = ((try? c.decode([Lenient<SentTask>].self, forKey: .sentTasks)) ?? []).compactMap(\.value)
+        legend = try? c.decode([String: String].self, forKey: .legend)
+        backdrop = try? c.decode(String.self, forKey: .backdrop)
+        numberSteps = try? c.decode(Bool.self, forKey: .numberSteps)
+        putAway = try? c.decode(Date.self, forKey: .putAway)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -535,6 +568,10 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(kind, forKey: .kind)
         // Written only when it holds something, so a board nothing was sent from stays as small as before.
         if !sentTasks.isEmpty { try c.encode(sentTasks, forKey: .sentTasks) }
+        try c.encodeIfPresent(legend, forKey: .legend)
+        try c.encodeIfPresent(backdrop, forKey: .backdrop)
+        try c.encodeIfPresent(numberSteps, forKey: .numberSteps)
+        try c.encodeIfPresent(putAway, forKey: .putAway)
     }
 
     /// True when this version of the app may change the board: it was not written by a newer one, and
