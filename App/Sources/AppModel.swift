@@ -91,6 +91,8 @@ final class AppModel: ObservableObject {
 
     private func load() async {
         var all = LaunchOptions.sampleData ? Sample.boards() : await store.loadAll()
+        // For pictures: the sample boards of `-garden` and `-marks` (LooksLaunch.swift).
+        LooksLaunch.addBoards(to: &all)
         all.sort { $0.changed > $1.changed }
         boards = all
         loaded = true
@@ -123,6 +125,8 @@ final class AppModel: ObservableObject {
         if LaunchOptions.arguments.contains("-send") { showSend = true }
         // For pictures: `-makeTimeline` makes the timeline of the opened board (TimelineOfIt.swift).
         makeTimelineAtLaunch()
+        // For pictures: `-zoom <number>` and `-window <width>x<height>` (LooksLaunch.swift).
+        LooksLaunch.afterLoad(session)
         // For pictures: `-removed` opens "Removed and earlier versions", `-clash` shows the clash notice.
         bringBackLaunch()
         // A link that arrived before the boards were loaded is followed now.

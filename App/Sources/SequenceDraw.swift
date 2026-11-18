@@ -251,7 +251,9 @@ struct SequencePainter {
             // The number and the words stand on a patch of the board's colour, so a dashed line
             // they cross does not run through the letters.
             var patch = row.box.insetBy(dx: -4, dy: -1)
-            if item.todo { patch.size.width += 20 }
+            // 0.5: the to-do mark by how it stands (TodoMark.swift).
+            let todo = TodoMark.state(of: item, in: TodoMark.marks(for: board))
+            if todo != nil { patch.size.width += 20 }
             ctx.fill(Path(roundedRect: patch, cornerRadius: 6), with: .color(back))
             if let centre = row.badge {
                 let r = CGFloat(m.badge) / 2
@@ -260,9 +262,9 @@ struct SequencePainter {
                     .foregroundColor(paint.night ? Color(red: 0.09, green: 0.09, blue: 0.11) : .white))
                 ctx.draw(number, at: centre, anchor: .center)
             }
-            words(paint.ink)
-            if item.todo, let centre = row.badge {
-                tick(at: CGPoint(x: row.box.maxX + 11, y: centre.y), &ctx)
+            words(TodoMark.greysWords(todo) ? paint.faint : paint.ink)
+            if let todo, let centre = row.badge {
+                TodoMark.draw(todo, at: CGPoint(x: row.box.maxX + 11, y: centre.y), radius: 7, paint: paint, ground: back, &ctx)
             }
         case .band:
             let name = item.colour.isEmpty ? "yellow" : item.colour
@@ -282,17 +284,6 @@ struct SequencePainter {
         default:
             break
         }
-    }
-
-    /// The small PARAGON ring with a tick: this message goes to PARAGON as a task.
-    private func tick(at c: CGPoint, _ ctx: inout GraphicsContext) {
-        let r: CGFloat = 7
-        ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(Part.paragon.fill))
-        var mark = Path()
-        mark.move(to: CGPoint(x: c.x - 3.2, y: c.y + 0.2))
-        mark.addLine(to: CGPoint(x: c.x - 0.9, y: c.y + 2.6))
-        mark.addLine(to: CGPoint(x: c.x + 3.4, y: c.y - 2.4))
-        ctx.stroke(mark, with: .color(.white), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
     }
 
     private func ring(_ box: CGRect, radius: CGFloat, dashed: Bool = false, _ ctx: inout GraphicsContext) {

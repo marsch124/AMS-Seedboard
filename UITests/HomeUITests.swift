@@ -39,7 +39,7 @@ final class HomeUITests: XCTestCase {
     }
 
     /// The home page shows the starters and the boards as cards; the search field finds a board by a word
-    /// that is written on it; the home page's New board button opens the choice of starters.
+    /// that is written on it; a starter card on the home page begins a board.
     func testHomeShowsCardsAndSearchFindsABoardByAWordOnIt() {
         let app = launch()
         let search = element(app, "boards.search")
@@ -71,11 +71,9 @@ final class HomeUITests: XCTestCase {
         press(app, "boards.searchClear")
         XCTAssertTrue(element(app, "boards.row.Trip to Spain").waitForExistence(timeout: 10), "clearing did not bring the boards back")
 
-        // The home page's own New board button opens the same choice of starters as the list's.
+        // 0.5: the home page's header has no New board button any more; a card of the starters strip begins a board.
         if hasHome {
-            press(app, "empty.newBoard")
-            XCTAssertTrue(element(app, "starter.mindMap").waitForExistence(timeout: 10), "the starters did not open")
-            press(app, "starter.flow")
+            press(app, "home.starter.flow")
             XCTAssertTrue(element(app, "board.canvas").waitForExistence(timeout: 15), "the new board did not open")
         }
     }
