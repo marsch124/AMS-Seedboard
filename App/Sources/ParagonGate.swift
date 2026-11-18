@@ -231,6 +231,15 @@ enum ParagonGate {
         }
     }
 
+    /// 0.9: Inbox tasks written as they are (the lines are already made: "Today's three"). One write, all or none.
+    static func sendLines(_ lines: [String], place: ParagonPlace, message: String, tasks: [MadeTask], goesTo: String,
+                          now: Date = Date()) throws -> SendResult {
+        guard !lines.isEmpty else { throw SendProblem.nothingToSend }
+        guard let outbox = place.outbox else { throw SendProblem.noInbox }
+        do { try append(ParagonExport.waitingLines(lines, notePath: nil, now: now), to: outbox) } catch { throw SendProblem.noInbox }
+        return SendResult(info: nil, todos: tasks.map(\.id), message: message, tasks: tasks, place: goesTo)
+    }
+
     // MARK: PARAGON's waiting list
 
     /// The lines are made in SeedboardCore (`ParagonExport.WaitingLine`), exactly the way PARAGON's own

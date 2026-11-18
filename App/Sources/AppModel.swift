@@ -523,8 +523,9 @@ final class AppModel: ObservableObject {
 
     /// Sends the open board. The board's picture is made here, the files are written off the main thread.
     /// `branch`: only this idea and everything under it is sent, as a small map of its own.
+    /// `frame` (0.9): only what lies inside this frame is sent, with a picture of the frame alone.
     /// `choices`: the switches of the Send page ("Say where they come from", "Also remind me when a bar starts").
-    func send(kind: SendKind, title: String, branch: UUID? = nil, choices: SendChoices = SendChoices()) async -> String? {
+    func send(kind: SendKind, title: String, branch: UUID? = nil, frame: UUID? = nil, choices: SendChoices = SendChoices()) async -> String? {
         guard let session else { return SendProblem.notFound.errorDescription }
         // One hand-over at a time: a second press while the first is on its way does nothing.
         guard !sending else { return "The board is on its way already." }
@@ -536,10 +537,12 @@ final class AppModel: ObservableObject {
         let found = await Task.detached(priority: .userInitiated) { ParagonGate.find() }.value
         self.found(found)
         guard let place = found else { return SendProblem.notFound.errorDescription }
-        let board = branch.flatMap { session.board.branchOnly($0) } ?? session.board
+        let board = frame.flatMap { session.board.frameOnly($0) } ?? branch.flatMap { session.board.branchOnly($0) } ?? session.board
+        let partOnly = branch != nil || frame != nil
         // A look at the note the board became (reading only): is it at its place, and what stands in it?
         let look = await Task.detached(priority: .userInitiated) { ParagonGate.look(at: board.sent, in: place) }.value
-        let png = kind == .todos || kind == .add ? nil : BoardPicture.png(of: board)
+        let pictureBoard = frame.flatMap { session.board.frameOnly($0, keepFrame: true) } ?? board
+        let png = kind == .todos || kind == .add ? nil : BoardPicture.png(of: pictureBoard)
         // Inbox tasks: the "already sent" ticks are on the device BEFORE the tasks are handed over, so a
         // stop in between can never send the same tasks twice. If the hand-over fails, the ticks come off again.
         // The same for "Add what is new", whose lines go to the same waiting list.
@@ -567,11 +570,11 @@ final class AppModel: ObservableObject {
             }.value
             if self.session === session {
                 // One branch is not the whole board: the board gets no "sent" mark for it.
-                session.markSent(branch == nil ? result.info : nil, todos: result.todos, tasks: result.tasks, place: result.place)
+                session.markSent(!partOnly ? result.info : nil, todos: result.todos, tasks: result.tasks, place: result.place)
                 saveNow()
             } else if var other = boards.first(where: { $0.id == board.id }) {
                 // Another board was opened meanwhile: the sent mark goes onto the board itself.
-                if let info = result.info, branch == nil { other.sent = info }
+                if let info = result.info, !partOnly { other.sent = info }
                 other.sentTodos = Array(Set(other.sentTodos).union(result.todos))
                 other.noteSent(result.tasks, place: result.place)
                 other.touch()
@@ -587,6 +590,54 @@ final class AppModel: ObservableObject {
                 store.save(back)
             }
             return (error as? LocalizedError)?.errorDescription ?? "The board could not be sent. Nothing was changed."
+        }
+    }
+
+    /// 0.9 (pick 42), "Today's three": the chosen things go to the Inbox as tasks due today, through the waiting
+    /// list (`ParagonGate.sendLines`), and are remembered as sent. As with "Only the to-do boxes", the ticks are
+    /// saved BEFORE the lines are handed over (so a stop in between never sends them twice) and come off again
+    /// when the hand-over fails. Returns a problem in words, or nil.
+    func sendToday(_ chosen: Set<UUID>, sayOrigin: Bool) async -> String? {
+        guard let session else { return SendProblem.notFound.errorDescription }
+        guard !sending else { return "The board is on its way already." }
+        sending = true
+        defer { sending = false }
+        session.commitEdit()
+        guard !session.readOnly, session.board.canBeChanged else { return "This board cannot be changed, so nothing was sent." }
+        let found = await Task.detached(priority: .userInitiated) { ParagonGate.find() }.value
+        self.found(found)
+        guard let place = found else { return SendProblem.notFound.errorDescription }
+        guard place.outbox != nil else { return SendProblem.noInbox.errorDescription }
+        let board = session.board
+        let way = ParagonExport.wayBack(board: board, look: nil, choices: SendChoices(sayOrigin: sayOrigin))
+        guard let send = ParagonExport.todayThree(board: board, chosen: chosen, now: Date(), way: way) else {
+            return "Nothing chosen can be sent as a task."
+        }
+        let ids = send.tasks.map(\.id)
+        saveNow()
+        var marked = session.board
+        marked.sentTodos = Array(Set(marked.sentTodos).union(ids))
+        marked.noteSent(send.tasks, place: SentTask.inbox)
+        marked.touch()
+        store.save(marked)
+        store.flush()
+        do {
+            let count = send.tasks.count == 1 ? "1 task is" : "\(send.tasks.count) tasks are"
+            let result = try await Task.detached(priority: .userInitiated) {
+                try ParagonGate.sendLines(send.lines, place: place, message: "\(count) on the way to the PARAGON Inbox, due today. \(ParagonGate.whenTheyShow)",
+                                          tasks: send.tasks, goesTo: SentTask.inbox)
+            }.value
+            if self.session === session {
+                session.markSent(nil, todos: result.todos, tasks: result.tasks, place: result.place)
+                saveNow()
+            }
+            sayHandedOver(result)
+            return nil
+        } catch {
+            var back = self.session === session ? session.board : marked
+            back.changed = max(Date(), back.changed, marked.changed).addingTimeInterval(0.002)
+            store.save(back)
+            return (error as? LocalizedError)?.errorDescription ?? "Nothing was sent."
         }
     }
 

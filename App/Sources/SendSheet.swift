@@ -17,6 +17,8 @@ struct SendSheet: View {
     @State private var done = LaunchOptions.arguments.contains("-sendDone")
     /// Only the chosen idea and everything under it is sent.
     @State private var branchOnly = false
+    /// 0.9: only what lies inside the chosen frame is sent. On at first when one frame is chosen.
+    @State private var frameOnly = false
 
     /// What a look at the note the board became found (reading only); nil while that is not known, and for a
     /// board that was never sent as a note or a project.
@@ -28,10 +30,15 @@ struct SendSheet: View {
 
     /// The one chosen idea, when there is one: the page then offers to send just that branch.
     private var branch: Item? { session.branchToSend }
+    /// 0.9: the one chosen frame, when the page can offer "Only this frame (…)".
+    private var frame: Item? { session.frameToSend }
+    /// A part of the board is sent (a branch or a frame), not the whole of it.
+    private var partOnly: Bool { (branchOnly && branch != nil) || (frameOnly && frame != nil) }
     /// The whole board (for pictures: the sample board shown as sent before, SendParts.swift).
     private var whole: Board { SendSample.board(session.board) }
     /// What is sent: the whole board, or the chosen branch as a small map of its own.
     private var subject: Board {
+        if frameOnly, let frame, let part = session.board.frameOnly(frame.id) { return part }
         guard branchOnly, let branch, let part = session.board.branchOnly(branch.id) else { return whole }
         return part
     }
@@ -41,11 +48,11 @@ struct SendSheet: View {
     private var todoTasks: Int { subject.items.filter { $0.todo && !subject.isInInbox($0.id) }.count }
     private var choices: SendChoices { SendChoices(sayOrigin: sayOrigin, remindStarts: remindStarts && subject.isTimeline) }
     /// The look counts for the whole board only: a branch is a small map of its own.
-    private var subjectLook: NoteLook? { branchOnly ? nil : look }
+    private var subjectLook: NoteLook? { partOnly ? nil : look }
     /// What has become a task since the board went to PARAGON; nil when it never did (or it cannot be told).
-    private var news: NewTasks? { branchOnly ? nil : ParagonExport.newTasks(board: whole, look: look) }
+    private var news: NewTasks? { partOnly ? nil : ParagonExport.newTasks(board: whole, look: look) }
     /// What "Add what is new" would send; nil when nothing is new.
-    private var adding: LinesToSend? { branchOnly ? nil : ParagonExport.addSend(board: whole, look: look, choices: choices) }
+    private var adding: LinesToSend? { partOnly ? nil : ParagonExport.addSend(board: whole, look: look, choices: choices) }
 
     private var canSend: Bool {
         guard model.paragonReady, !busy, !session.readOnly else { return false }
@@ -133,6 +140,15 @@ struct SendSheet: View {
                    : "The branches become headings. The ideas you ticked To do become tasks; with nothing ticked, all of them do. It goes to Projects.")
             choice(.todos, "Only the to-do boxes", todosWords)
 
+            if let frame {
+                FrameSwitch(words: session.frameSwitchWords(frame), on: $frameOnly)
+                if frameOnly {
+                    Text("Just what lies inside this frame is sent, with a picture of the frame alone. The board is not marked as sent.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             if let branch {
                 BranchSwitch(words: session.branchSwitchWords(branch), on: $branchOnly)
                 if branchOnly {
@@ -175,7 +191,7 @@ struct SendSheet: View {
             }
 
             let made = gets
-            ParagonGetsBox(rows: made.rows, picture: branchOnly ? nil : session.board,
+            ParagonGetsBox(rows: made.rows, picture: frameOnly && frame != nil ? (frame.flatMap { session.board.frameOnly($0.id, keepFrame: true) } ?? session.board) : (branchOnly ? nil : session.board),
                            countLine: ParagonExport.countLine(made.rows, inInbox: made.inInbox))
 
             if let sent = whole.sent, let news,
@@ -241,6 +257,12 @@ struct SendSheet: View {
         .padding(16)
         .onAppear {
             title = ParagonExport.noteTitle(for: session.board.title)
+            // 0.9: with one frame chosen, only that frame is sent (the switch is on) and its words are the name.
+            if let frame, !LaunchOptions.arguments.contains("-frameOff") {
+                frameOnly = true
+                let name = session.board.frameName(frame.id)
+                if !name.isEmpty { title = ParagonExport.noteTitle(for: name) }
+            }
             if session.board.mapCentres.isEmpty, waiting > 0, session.board.items.allSatisfy({ $0.todo }) { kind = .todos }
             // For pictures: `-sendAs note|project|todos` chooses the row, `-branchOnly` switches the branch switch on.
             if let word = LaunchOptions.value(for: "-sendAs"), let wanted = SendKind(rawValue: word) { kind = wanted }
@@ -255,7 +277,13 @@ struct SendSheet: View {
             } else if let sent = session.board.sent, let place = model.place {
                 look = await Task.detached(priority: .userInitiated) { ParagonGate.look(at: sent, in: place) }.value
             }
-            if adding != nil, LaunchOptions.value(for: "-sendAs") == nil, !branchOnly { kind = .add }
+            if adding != nil, LaunchOptions.value(for: "-sendAs") == nil, !partOnly { kind = .add }
+        }
+        .onChange(of: frameOnly) { _, on in
+            if on, kind == .add { kind = .note }
+            let whole = ParagonExport.noteTitle(for: session.board.title)
+            let part = frame.map { ParagonExport.noteTitle(for: session.board.frameName($0.id).isEmpty ? session.board.title : session.board.frameName($0.id)) } ?? whole
+            if title.isEmpty || title == (on ? whole : part) { title = on ? part : whole }
         }
         .onChange(of: branchOnly) { _, on in
             // A branch is a small map of its own: nothing is added to the note the whole board became.
@@ -301,7 +329,8 @@ struct SendSheet: View {
         busy = true
         problem = nil
         Task {
-            let failure = await model.send(kind: kind, title: title, branch: branchOnly ? branch?.id : nil, choices: choices)
+            let failure = await model.send(kind: kind, title: title, branch: branchOnly ? branch?.id : nil,
+                                             frame: frameOnly ? frame?.id : nil, choices: choices)
             busy = false
             if let failure {
                 problem = failure

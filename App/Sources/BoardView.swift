@@ -181,6 +181,8 @@ struct BoardView: View {
         .modifier(DoorHost(session: session))
         // The Share plate (SharePlate.swift).
         .modifier(ShareHost(session: session))
+        // 0.9: Today's three, and the Send page for a chosen frame (ParagonNine.swift).
+        .modifier(ParagonHost(session: session))
         // When the Send page closes, the board has the keys again.
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)

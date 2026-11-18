@@ -233,6 +233,8 @@ struct BoardPainter {
     /// 0.5: how each to-do thing stands (waiting, in PARAGON, done, cancelled) — `ParagonEcho.marks(for:)`.
     /// A thing that is not in here and is ticked "to do" counts as waiting.
     var todoStates: [UUID: TodoState] = [:]
+    /// 0.9: the due day PARAGON has for a thing's task ("2026-12-05"), drawn small beside its to-do mark.
+    var dues: [UUID: String] = [:]
     /// 0.5: things on their way and in the hand (BoardMotion.swift). Empty for every picture: the end state.
     var motion = MotionLooks()
     /// What lies behind the board (white for a picture). Not needed since 0.2: the words on an arrow have no patch behind them.
@@ -403,6 +405,14 @@ struct BoardPainter {
                 ? CGPoint(x: (facts.side[item.id] ?? .right) == .right ? f.maxX + 12 : f.minX - 12, y: f.midY)
                 : ShapeOutline.tickSpot(item.kind, f)
             TodoMark.draw(todo, at: c, paint: paint, ground: ground ?? paint.canvas, &ctx)
+            if let look = DueLook.of(dues[item.id], state: todo, today: Day.today()) {
+                // 0.9: the due day, small, outside the mark: "5 Dec", "Today", faint red when past due.
+                let left = item.kind == .idea && depth > 0 && (facts.side[item.id] ?? .right) == .left
+                let tone: Color = look.tone == .late ? paint.late : (look.tone == .today ? paint.today : paint.faint)
+                let due = ctx.resolve(Text(look.words).font(.system(size: 10, weight: look.tone == .later ? .regular : .semibold)).foregroundColor(tone))
+                ctx.draw(due, at: CGPoint(x: left ? c.x - TodoMark.radius - 3 : c.x + TodoMark.radius + 3, y: c.y),
+                         anchor: left ? .trailing : .leading)
+            }
         }
 
         if item.kind == .idea, item.folded, let count = facts.children[item.id], count > 0 {

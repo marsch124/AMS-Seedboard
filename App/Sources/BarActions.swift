@@ -128,6 +128,21 @@ struct BarActions {
         return act("todo", "To do", .control(.ticked), show: show, tone: .todo, on: on, gap: gap) { session.toggleTodo() }
     }
 
+    /// 0.9 (pick 42): "Today's three" — up to three chosen things go to PARAGON's Inbox as tasks due today.
+    /// Not there when more than three are chosen (or nothing chosen can be a task).
+    private func todayThree(drop: Int = 6) -> [BarAction] {
+        let session = session
+        guard session.todayThreeOffered else { return [] }
+        return [act("today.three", "Today's three", .new(.today), show: .wideWord, tone: .todo, drop: drop) { ParagonDesk.shared.askToday(session) }]
+    }
+
+    /// 0.9 (pick 40): "Send this frame to PARAGON…" — opens the Send page with only this frame's things.
+    private func sendFrame(drop: Int = 3) -> [BarAction] {
+        let session = session
+        guard session.frameToSend != nil else { return [] }
+        return [act("sendFrame", "Send this frame to PARAGON…", .app(.send), show: .wideWord, tone: .todo, drop: drop) { ParagonDesk.shared.sendFrame(session) }]
+    }
+
     private func duplicate(drop: Int = 4) -> BarAction {
         let session = session
         return act("copy", "Duplicate", .app(.duplicate), show: .wideWord, drop: drop) { session.duplicateSelection() }
@@ -225,6 +240,7 @@ struct BarActions {
         actions.append(duplicate())
         actions += chooseMore(drop: 2)
         actions.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }))
+        actions += todayThree()
         actions.append(remove())
         return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: actions)
     }
@@ -273,6 +289,7 @@ struct BarActions {
             all.append(words(item.id))
             all.append(duplicate())
             all += chooseMore()
+            all += sendFrame()
             all.append(remove(gap: true))
             return all
         case .picture:
@@ -312,6 +329,7 @@ struct BarActions {
                 return all
             }
         }
+        all += todayThree()
         all.append(remove())
         // 0.5: "Turn into" behind the "…" (Thinking.swift).
         return withTurnInto(all)
@@ -346,6 +364,7 @@ struct BarActions {
         guard let item = session.single else {
             // Several things.
             all.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }, gap: false))
+            all += todayThree()
             copy.gap = true
             all += [copy, cut, twin]
             var tidy: [BarAction] = []
@@ -368,6 +387,8 @@ struct BarActions {
         let isBranch = item.kind == .idea && item.parent != nil
         if item.kind.isShape || item.kind == .note || item.kind == .frame || isBranch { all.append(colour(for: item)) }
         if item.kind != .frame && item.kind != .drawing && item.kind != .picture { all.append(todo(on: item.todo, gap: false)) }
+        all += todayThree()
+        all += sendFrame()
         copy.gap = true
         all += [copy, cut, twin]
         var more: [BarAction] = []
