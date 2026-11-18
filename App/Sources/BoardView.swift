@@ -64,6 +64,8 @@ struct BoardView: View {
             }
 
             VStack(spacing: 6) {
+                // 0.5: what PARAGON says about a board that is a note or a project there (SentLine.swift).
+                SentLine(session: session)
                 // A starter is being changed: this board is its working copy (StartersPage.swift).
                 if session.starterDraft { StarterChangeBanner() }
                 if HandoffDesk.shared.waiting == session.board.id {
@@ -123,6 +125,8 @@ struct BoardView: View {
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("board.notice")
                 }
+                // On a timeline and a "Who does what" board the top holds the dates and the names: the line sits down here.
+                SentLine(session: session, low: true)
                 if session.board.isTimeline && !session.linking { TimelineSelectionBar(session: session) }
                 if session.board.isSequence && !session.linking { SequenceSelectionBar(session: session) }
                 if let flash = model.flash {

@@ -114,7 +114,7 @@ struct FlashAction {
 final class ParagonEcho: ObservableObject {
     static let shared = ParagonEcho()
 
-    /// Board → thing → how it stands in PARAGON (only `.done` and `.cancelled` are ever kept here).
+    /// Board → thing → how its task stands in PARAGON's note, as it was read there (in PARAGON, done, cancelled).
     @Published private(set) var read: [UUID: [UUID: TodoState]] = [:]
 
     /// How every to-do thing of `board` stands: what the board itself knows (waiting, in PARAGON), with what was
@@ -124,7 +124,8 @@ final class ParagonEcho: ObservableObject {
         for item in board.items {
             if let state = board.todoState(of: item.id) { marks[item.id] = state }
         }
-        for (id, state) in read[board.id] ?? [:] where marks[id] == .inParagon { marks[id] = state }
+        // Also a thing the board itself does not know as sent (a board sent by 0.4): the note says it is a task there.
+        for (id, state) in read[board.id] ?? [:] where marks[id] == .inParagon || marks[id] == nil { marks[id] = state }
         return marks
     }
 

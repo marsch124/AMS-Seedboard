@@ -72,6 +72,8 @@ struct BoardList: View {
     @State private var renaming: Board?
     @State private var newName = ""
     @State private var removing: Board?
+    /// 0.5: "5 of 13 done", read from PARAGON (EchoKeeper.swift).
+    @ObservedObject private var echo = EchoKeeper.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -244,7 +246,7 @@ struct BoardList: View {
                         .font(.body.weight(chosen ? .bold : .regular))
                         .foregroundStyle(chosen ? Part.boards.text : Color.primary)
                         .lineLimit(1)
-                    Text(phone ? "\(board.changedWords()) · \(board.countLine)" : board.countLine)
+                    Text(phone ? "\(board.changedWords())\(echo.doneTail(board)) · \(board.countLine)" : board.countLine)
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .lineLimit(1)
