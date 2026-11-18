@@ -94,6 +94,7 @@ public enum ParagonExport {
             flow.append(line)
         }
         section("Flow", flow, into: &out)
+        out += laneText(board)
 
         section("Notes", noteBullets(board), into: &out)
 
@@ -131,7 +132,9 @@ public enum ParagonExport {
             }
         }
         var steps: [String] = []
-        for shape in flowOrder(board) {
+        let laned = laneTasks(board)
+        groups.append(contentsOf: laned.groups)
+        for shape in flowOrder(board) where !laned.used.contains(shape.id) {
             let words = oneLine(shape.text)
             if !words.isEmpty { steps.append("- [ ] \(words)") }
         }

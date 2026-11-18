@@ -9,6 +9,8 @@ public enum ShapeFit {
         switch kind {
         case .diamond: return 340
         case .oval: return 320
+        case .person: return 220
+        case .slanted: return 330
         default: return 300
         }
     }
@@ -19,6 +21,7 @@ public enum ShapeFit {
         case .diamond: return max(w * 0.56, 50)
         case .oval: return max(w * 0.72, 50)
         case .note, .frame: return max(w - 20, 50)
+        case .person, .document, .slanted, .store: return max(Double(ShapeOutline.textBox(kind, CGRect(x: 0, y: 0, width: w, height: 400)).width), 50)
         default: return max(w - 24, 50)
         }
     }
@@ -28,6 +31,7 @@ public enum ShapeFit {
         switch kind {
         case .diamond: return words * 2 + 20
         case .oval: return words * 1.4 + 16
+        case .person, .document, .slanted, .store: return ShapeOutline.height(kind, words: words)
         default: return words + 22
         }
     }

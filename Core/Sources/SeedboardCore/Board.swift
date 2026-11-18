@@ -8,9 +8,11 @@ import CoreGraphics
 
 public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case idea, box, round, diamond, oval, note, text, frame
+    /// New in 0.2 (ShapeOutline.swift). The stored names are these words and never change.
+    case person, document, slanted, store
 
-    /// The four flowchart shapes.
-    public var isShape: Bool { self == .box || self == .round || self == .diamond || self == .oval }
+    /// The flowchart shapes (`ItemKind.flowShapes`).
+    public var isShape: Bool { ItemKind.flowShapes.contains(self) }
 
     public var word: String {
         switch self {
@@ -22,6 +24,10 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .note: return "Sticky note"
         case .text: return "Text"
         case .frame: return "Frame"
+        case .person: return "Person"
+        case .document: return "Document"
+        case .slanted: return "Slanted box"
+        case .store: return "Store"
         }
     }
 
@@ -35,6 +41,10 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .note: return CGSize(width: 150, height: 110)
         case .text: return CGSize(width: 120, height: 28)
         case .frame: return CGSize(width: 440, height: 300)
+        case .person: return CGSize(width: 110, height: 96)
+        case .document: return CGSize(width: 150, height: 68)
+        case .slanted: return CGSize(width: 160, height: 56)
+        case .store: return CGSize(width: 130, height: 80)
         }
     }
 }
@@ -61,6 +71,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var bothSides: Bool
     /// Mind map, main branch of a both-sides map only: the side it stays on. nil = not settled yet.
     public var side: Side? = nil
+    /// A frame only: its lanes (Lanes.swift). nil = a plain frame.
+    public var lanes: Lanes? = nil
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -82,6 +94,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, kind, text, x, y, w, h, colour, todo, parent, order, folded, bothSides, side
+        case lanes
     }
 
     public init(from decoder: Decoder) throws {
@@ -101,6 +114,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         folded = (try? c.decode(Bool.self, forKey: .folded)) ?? false
         bothSides = (try? c.decode(Bool.self, forKey: .bothSides)) ?? false
         side = try? c.decode(Side.self, forKey: .side)
+        lanes = try? c.decode(Lanes.self, forKey: .lanes)
     }
 
     public var frame: CGRect {

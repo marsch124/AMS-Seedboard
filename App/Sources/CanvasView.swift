@@ -72,6 +72,7 @@ struct CanvasView: View {
                     painter.editing = session.editing
                     painter.dropTarget = dropTarget
                     painter.handles = !session.readOnly
+                    painter.frames = snap.frames(for: session)
                     if case .idea(let id) = drag, let ghost { painter.ghost = (id, ghost) }
                     painter.draw(&sheet)
                     snap.shown(for: session).draw(sheet, paint: paint, scale: session.scale)
@@ -110,6 +111,7 @@ struct CanvasView: View {
                     .accessibilityIdentifier("board.count")
 
                 editor
+                LaneOverlay(session: session)
             }
             #if os(macOS)
             .background(ScrollCatcher(session: session))
@@ -168,7 +170,7 @@ struct CanvasView: View {
                 itemField(item)
             } else if let link = session.board.links.first(where: { $0.id == id }),
                       let a = session.board.item(link.from), let b = session.board.item(link.to) {
-                let label = session.toScreen(Route.path(from: a.frame, to: b.frame, style: link.style).label)
+                let label = session.toScreen(Route.path(from: a.frame, to: b.frame, style: link.style).meeting(a, b).label)
                 field(isIdea: false)
                     .font(.system(size: 13 * session.scale, weight: .medium))
                     .multilineTextAlignment(.center)
@@ -225,7 +227,7 @@ struct CanvasView: View {
 
     private func itemField(_ item: Item) -> some View {
         let s = session.scale
-        let r = session.toScreen(item.frame)
+        let r = session.toScreen(item.typingFrame)
         let depth = session.facts.depth[item.id] ?? 0
         let look = Lettering.style(for: item, depth: depth)
         let side = session.facts.side[item.id] ?? .right
@@ -396,6 +398,7 @@ struct CanvasView: View {
         switch drag {
         case .moving(let ids):
             snap.guides = session.liveMove(ids, by: delta, reach: SnapShow.reach(s))
+            snap.over = session.board.spots(ofDragged: ids)
             if hanging != nil { dropTarget = session.board.idea(at: here, notIn: ids) }
         case .idea(let id):
             ghost = delta
@@ -498,6 +501,8 @@ struct CanvasView: View {
                 } else if session.board.item(id)?.kind != .frame {
                     session.linkFrom = id
                 }
+            } else if double(id), session.beginLaneName(of: id, at: p) {
+                // Two presses on a lane's name band: its name is typed in place (LanesView.swift).
             } else if double(id) {
                 session.beginEdit(id)
             } else if shiftDown || session.choosingMore {

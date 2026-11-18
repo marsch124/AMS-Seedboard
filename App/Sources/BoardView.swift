@@ -265,7 +265,7 @@ struct ToolPill: View {
         Group {
             HStack(spacing: 6) {
                 tool(.seedMindMap, .mindMap, "tool.mindmap", "Mind map (M)") { session.add(.idea) }
-                tool(.seedBox, .shapes, "tool.box", "Box (B)") { session.add(.box) }
+                ShapeTool(session: session)
                 tool(.seedDiamond, .shapes, "tool.diamond", "Diamond (D)") { session.add(.diamond) }
                 tool(.seedArrow, .arrows, "tool.arrow", "Arrow between two shapes (A)", on: session.linking) {
                     session.commitEdit()
@@ -413,11 +413,8 @@ struct SelectionBar: View {
             }
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
             chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
-        case .box, .round, .diamond, .oval:
-            shape(.seedBox, .box, item)
-            shape(.seedRound, .round, item)
-            shape(.seedDiamond, .diamond, item)
-            shape(.seedOval, .oval, item)
+        case .box, .round, .diamond, .oval, .person, .document, .slanted, .store:
+            ShapeChip(session: session, item: item)
             chip("Colour", .app(.palette), "sel.colour", .shapes, on: showColours) { showColours.toggle() }
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
             chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
@@ -429,6 +426,7 @@ struct SelectionBar: View {
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
             chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
         case .frame:
+            LanesChip(session: session, item: item)
             chip("Colour", .app(.palette), "sel.colour", .frames, on: showColours) { showColours.toggle() }
             chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.duplicateSelection() }
         }
@@ -443,21 +441,6 @@ struct SelectionBar: View {
         }
         chip("Turn round", .app(.repeat), "sel.turn", .arrows) { session.turnLinkRound() }
         chip("Colour", .app(.palette), "sel.colour", .arrows, on: showColours) { showColours.toggle() }
-    }
-
-    private func shape(_ mark: AppMark, _ kind: ItemKind, _ item: Item) -> some View {
-        Button {
-            session.setKind(kind)
-            session.takeKeys()
-        } label: {
-            AppMarkView(mark, size: 20, colour: item.kind == kind ? .white : Part.shapes.text)
-                .frame(width: 30, height: 28)
-                .background(item.kind == kind ? Part.shapes.fill : Part.shapes.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .help(kind.word)
-        .accessibilityLabel(kind.word)
-        .accessibilityIdentifier("sel.shape.\(kind.rawValue)")
     }
 
     private func chip(_ word: String, _ glyph: Glyph, _ id: String, _ part: Part, on: Bool = false, action: @escaping () -> Void) -> some View {

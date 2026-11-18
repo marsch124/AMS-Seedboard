@@ -114,7 +114,7 @@ public extension Board {
     // MARK: Moving and sizing
 
     /// Everything that travels when these items are dragged: a map's centre takes its ideas along,
-    /// a frame takes what lies wholly inside it. Ideas that are not centres are left out
+    /// a frame takes every thing whose middle is inside it (Lanes.swift). Ideas that are not centres are left out
     /// (they are placed by the map).
     func carried(by ids: Set<UUID>) -> Set<UUID> {
         var all: Set<UUID> = []
@@ -128,7 +128,7 @@ public extension Board {
                 }
             case .frame:
                 all.insert(id)
-                for inner in items where inner.id != id && item.frame.contains(inner.frame) {
+                for inner in items where inner.id != id && Board.frame(item, holds: inner) {
                     if inner.kind == .idea {
                         if inner.parent == nil {
                             all.insert(inner.id)
@@ -156,7 +156,7 @@ public extension Board {
     /// Gives an item a new size, never smaller than it can sensibly be.
     mutating func resize(_ id: UUID, to rect: CGRect) {
         guard let i = index(of: id) else { return }
-        let least: CGSize = items[i].kind == .frame ? CGSize(width: 120, height: 80) : CGSize(width: 44, height: 28)
+        let least: CGSize = items[i].kind == .frame ? items[i].leastFrameSize : CGSize(width: 44, height: 28)
         var r = rect.standardized
         if r.width < least.width { r.size.width = least.width }
         if r.height < least.height { r.size.height = least.height }
@@ -182,7 +182,7 @@ public extension Board {
             let f = item.frame
             guard f.insetBy(dx: -6, dy: -6).contains(point) else { continue }
             let band = CGRect(x: f.minX, y: f.minY, width: f.width, height: 30)
-            if band.contains(point) || !f.insetBy(dx: 8, dy: 8).contains(point) { return item.id }
+            if band.contains(point) || !f.insetBy(dx: 8, dy: 8).contains(point) || item.laneName(at: point) != nil { return item.id }
         }
         return nil
     }

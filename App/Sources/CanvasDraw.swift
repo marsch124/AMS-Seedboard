@@ -130,7 +130,7 @@ enum Lettering {
             case .text:
                 board.items[i].w = Double(max(40, t.width + 8))
                 board.items[i].h = Double(max(26, t.height + 6))
-            case .box, .round, .diamond, .oval:
+            case .box, .round, .diamond, .oval, .person, .document, .slanted, .store:
                 let size = ShapeFit.size(item.kind, w: item.w, h: item.h, widen: widen.contains(item.id)) { width in
                     Double(measure(words, size: look.size, bold: look.bold, maxWidth: CGFloat(width)).height)
                 }
@@ -208,6 +208,8 @@ struct BoardPainter {
     /// The idea a dragged idea would hang under.
     var dropTarget: UUID?
     var handles = true
+    /// Frames and lanes that light up, and the lane whose name is being typed (LanesView.swift).
+    var frames = FrameShow()
     /// What lies behind the board (white for a picture), so the words on an arrow sit on the same colour.
     var ground: Color?
 
@@ -322,6 +324,7 @@ struct BoardPainter {
         let box = Path(roundedRect: item.frame, cornerRadius: 14)
         ctx.fill(box, with: .color(paint.soft(name).opacity(paint.night ? 0.35 : 0.45)))
         ctx.stroke(box, with: .color(paint.line(name)), lineWidth: 1.6)
+        drawLanes(item, &ctx)
         guard editing != item.id else { return }
         let words = item.text.isEmpty ? "Frame" : item.text
         let text = ctx.resolve(Text(words).font(Lettering.font(size: 13, bold: true)).foregroundColor(paint.line(name)))
@@ -331,7 +334,7 @@ struct BoardPainter {
     private func drawLink(_ link: SeedboardCore.Link, _ byID: [UUID: Item], _ ctx: inout GraphicsContext) {
         guard let a = byID[link.from], let b = byID[link.to],
               !facts.hidden.contains(a.id), !facts.hidden.contains(b.id) else { return }
-        let route = Route.path(from: a.frame, to: b.frame, style: link.style)
+        let route = Route.path(from: a.frame, to: b.frame, style: link.style).meeting(a, b)
         let points = route.points
         guard points.count > 1 else { return }
         let colour = link.colour.isEmpty ? paint.arrow : paint.line(link.colour)
@@ -419,6 +422,9 @@ struct BoardPainter {
                 ctx.fill(shape, with: .color(paint.soft(item.colour)))
                 ctx.stroke(shape, with: .color(paint.line(item.colour)), style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
             }
+        case .person, .document, .slanted, .store:
+            drawOutline(item, &ctx)
+            textBox = ShapeOutline.textBox(item.kind, f)
         case .note:
             let paper = Path(roundedRect: f, cornerRadius: 4)
             var shade = ctx
@@ -450,7 +456,7 @@ struct BoardPainter {
                     switch align {
                     case .leading: origin = CGPoint(x: f.minX + 3, y: f.midY - size.height / 2)
                     case .trailing: origin = CGPoint(x: f.maxX - 3 - size.width, y: f.midY - size.height / 2)
-                    default: origin = CGPoint(x: f.midX - size.width / 2, y: f.midY - size.height / 2)
+                    default: origin = CGPoint(x: textBox.midX - size.width / 2, y: textBox.midY - size.height / 2)
                     }
                 }
                 if item.kind == .text { origin.x = f.minX + 4 }
@@ -463,7 +469,7 @@ struct BoardPainter {
             let r: CGFloat = 7.5
             let c = item.kind == .idea && depth > 0
                 ? CGPoint(x: (facts.side[item.id] ?? .right) == .right ? f.maxX + 12 : f.minX - 12, y: f.midY)
-                : CGPoint(x: f.maxX - 3, y: f.minY + 3)
+                : ShapeOutline.tickSpot(item.kind, f)
             let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
             ctx.fill(ring, with: .color(Part.paragon.fill))
             var tick = Path()

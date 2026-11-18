@@ -25,6 +25,8 @@ final class BoardSession: ObservableObject {
     @Published var linkFrom: UUID?
     /// iPhone and iPad: each press adds to what is chosen (the Mac holds Shift instead).
     @Published var choosingMore = false
+    /// The name of a frame's lane is being typed (LanesView.swift).
+    @Published var laneTyping: LaneTyping?
     @Published private(set) var undoCount = 0
     @Published private(set) var redoCount = 0
 

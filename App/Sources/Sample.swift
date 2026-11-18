@@ -58,6 +58,30 @@ enum Sample {
             made(.flow, "Packing flow", "teal", daysAgo: 6),
             made(.mindMap, "Training year", "purple", daysAgo: 9),
             made(.steps, "Workshop bench", "green", daysAgo: 20, sent: true),
+            lanes(now: now),
         ]
+    }
+
+    /// "Lanes and shapes" (`-board Lanes`): a frame with three named rows that holds a short flow
+    /// made of the four shapes that are new in 0.2 — a Person, a Document, a Slanted box and a Store.
+    static func lanes(now: Date = Date()) -> Board {
+        var board = Board(title: "Lanes and shapes", created: now.addingTimeInterval(-86_400 * 5),
+                          changed: now.addingTimeInterval(-86_400 * 3), colour: "teal")
+        let frame = board.add(.frame, centre: CGPoint(x: 320, y: 210), text: "Web shop order")
+        board.resize(frame, to: CGRect(x: 0, y: 0, width: 640, height: 420))   // rows 30…160…290…420
+        board.setLanes(frame, way: .rows, count: 3)
+        for (n, name) in ["Customer", "Shop", "Warehouse"].enumerated() { board.setLaneName(frame, lane: n, to: name) }
+
+        let customer = board.add(.person, centre: CGPoint(x: 120, y: 95), text: "Customer", colour: "pink")
+        let form = board.add(.document, centre: CGPoint(x: 330, y: 95), text: "Order form")
+        let arrives = board.add(.slanted, centre: CGPoint(x: 330, y: 225), text: "Order comes in", colour: "orange")
+        let pack = board.add(.box, centre: CGPoint(x: 530, y: 225), text: "Check and pack")
+        let stock = board.add(.store, centre: CGPoint(x: 530, y: 355), text: "Stock", colour: "blue")
+        if let i = board.index(of: pack) { board.items[i].todo = true }
+        board.link(from: customer, to: form)
+        board.link(from: form, to: arrives)
+        board.link(from: arrives, to: pack)
+        board.link(from: pack, to: stock, text: "takes from")
+        return board
     }
 }
