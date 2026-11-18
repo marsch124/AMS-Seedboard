@@ -449,7 +449,9 @@ struct BoardPainter {
 
         if let number = facts.numbers[item.id], item.kind.isShape {
             // A flowchart's step number: a small round badge at the shape's top-left corner.
-            let c = CGPoint(x: f.minX + 3, y: f.minY + 3)
+            // A diamond has no corner there: the badge sits on its upper-left edge instead, touching the shape.
+            let c = item.kind == .diamond ? CGPoint(x: f.minX + f.width * 0.25, y: f.minY + f.height * 0.25 - 4)
+                                          : CGPoint(x: f.minX + 3, y: f.minY + 3)
             let ring = Path(ellipseIn: CGRect(x: c.x - 10, y: c.y - 10, width: 20, height: 20))
             ctx.fill(ring, with: .color(ground ?? paint.canvas))
             ctx.fill(Path(ellipseIn: CGRect(x: c.x - 8.5, y: c.y - 8.5, width: 17, height: 17)), with: .color(paint.line("blue")))

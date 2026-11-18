@@ -52,7 +52,7 @@ final class Finding09Tests: XCTestCase {
         let ok = t.addBar("Done", start: Day(year: 2026, month: 12, day: 1), days: 3)
         t.addMilestone("Later", on: Day(year: 2026, month: 12, day: 20))
         t.setDone([ok], true, on: today)
-        XCTAssertEqual(t.listLine(today: today), "2 bars · 1 milestone · 1 done · 1 late")
+        XCTAssertEqual(t.listLine(today: today), "3 things · 1 done · 1 late")
         _ = late
     }
 

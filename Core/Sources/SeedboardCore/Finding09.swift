@@ -119,6 +119,11 @@ public extension Board {
             var parts = [count(.bar, "bar", "bars"), count(.milestone, "milestone", "milestones")].compactMap { $0 }
             if parts.isEmpty { return timelineCountLine }
             let progress = timelineProgress(today: today, also: doneThings)
+            // With progress to tell, bars and milestones are counted together so the line fits an iPhone row.
+            if progress.done > 0 || progress.late > 0 {
+                let n = items.filter { $0.kind == .bar || $0.kind == .milestone }.count
+                parts = [n == 1 ? "1 thing" : "\(n) things"]
+            }
             if progress.done > 0 { parts.append("\(progress.done) done") }
             if progress.late > 0 { parts.append("\(progress.late) late") }
             return parts.joined(separator: " · ")
