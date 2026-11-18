@@ -763,7 +763,7 @@ All main branches of all maps are used. The text above is what is written when N
 ### 5.8 Lanes (`ParagonLanes.swift`)
 
 - As a note: after "Flow", per frame with lanes `## <frame name>` ("Lanes" when it has none), then per lane that holds something with words `### <lane name>` and its things as `- ` lines, in reading order (rows: left to right; columns: top to bottom). Empty lanes and frames with nothing in them are left out. Sticky notes and free text in a lane are listed there and also under "Notes" as before.
-- As a project: per lane a task group `### <frame name>: <lane name>` (only `### <lane name>` when the frame has no name) with the lane's flow shapes as `- [ ]` tasks, placed before "### Steps"; those shapes are not repeated under "Steps". When the ticks decide (5.6) the lane groups are part of the same plan.
+- As a project: per lane a task group `### <frame name>: <lane name>` (only `### <lane name>` when the frame has no name) with the lane's flow shapes as `- [ ]` tasks, placed before "### Steps"; those shapes are not repeated under "Steps". When the ticks decide (5.6) the lane groups follow them too: a ticked shape in a lane is `- [ ] `, an unticked one a plain `- ` line (`laneTasks(_:ticks:)`).
 
 ### 5.9 A timeline board (`Timeline.swift`, hooked into `Paragon.swift`)
 

@@ -165,7 +165,7 @@ enum Guide {
             "Drag the line between two lanes to make one bigger and the other smaller. No lane gets narrower than 60 points.",
             "A thing belongs to the lane its middle is in. While you drag a thing, that lane lights up.",
             "To choose or drag a frame with lanes, you can also press a lane's name band.",
-            "In PARAGON, a note lists the things of a frame lane by lane, under the lane's name. A project makes one group of tasks for each lane, named after the frame and the lane.",
+            "In PARAGON, a note lists the things of a frame lane by lane, under the lane's name. A project makes one group of tasks for each lane, named after the frame and the lane. Once an idea on the board is marked To do, only the marked shapes in a lane become tasks; the others stay as plain lines.",
         ]),
         Part(title: "Lining up and guide lines", text: [
             "Things fall in line by themselves. Drag a shape, note, text, frame or the middle idea of a mind map near another thing. When an edge or the middle comes within 6 points of a neighbour's, the thing jumps onto that line.",
@@ -410,7 +410,7 @@ enum Guide {
         Part(title: "Raycast, Siri and Spotlight", text: [
             "Seedboard can be reached from outside. In the Shortcuts app, look for Seedboard. There are three actions.",
             "New board from text takes a title, if you like, and any text. A list (two lines or more, with or without bullets) becomes a mind map. A single line or sentence becomes one sticky note. With no title, the board is named after the middle idea or the first line. Seedboard opens on the new board.",
-            "New board starts a board with the start you choose: Blank board, Mind map, Flow, Pros and cons or Plan in steps.",
+            "New board starts a board with the start you choose: Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timeline or Who does what.",
             "Open board offers your boards by name.",
             "Put an action on the Action button, in a shortcut, or say it to Siri. The phrases are: New Seedboard board from text. Start a thought in Seedboard. New Seedboard board. New board in Seedboard. New Mind map in Seedboard (or any other start). Open a Seedboard board. Open Summer cabin in Seedboard (or any other board).",
             "Raycast runs these three through its Shortcuts command.",
