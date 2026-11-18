@@ -138,6 +138,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
 
     /// The point between the two fingers at the step before.
     private var lastMid: CGPoint?
+    /// 0.5: the board rests while a third finger is down and for a moment after (SystemUndoHost.swift).
+    private var third = ThirdFingerRest()
     private var pinchByTrackpad = false
     private var pointerAt: CGPoint?
     private let watched = NSHashTable<UIGestureRecognizer>.weakObjects()
@@ -240,6 +242,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
             verdict.two = touch.type == .direct
         }
         // (A finger that lands while the Pencil is down is a resting hand: nobody takes it.)
+        // 0.5: a third finger is remembered (SystemUndoHost.swift).
+        if touch.type == .direct { third.landed(fingersAlreadyDown: down.filter({ $0.type == .direct }).count) }
         seen[key] = Seen(touch: touch, landed: touch.timestamp, type: touch.type, verdict: verdict)
         return verdict
     }
@@ -299,6 +303,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
             }
             return true
         }
+        // 0.5: the device's own three-finger gestures (undo, redo) work beside the board's (SystemUndoHost.swift).
+        if TouchSurface.isDevicesOwn(other) { return true }
         // Anything else (a swipe-back from the middle of the page, for one) loses to a press on the board.
         return false
     }
@@ -321,7 +327,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     /// a slide or a drawn line to the right went back to the list of boards. The swipe from the
     /// screen's very edge is left alone (see above).
     func gestureRecognizer(_ recogniser: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
-        if other.view === self || isEdgeSwipe(other) { return false }
+        if other.view === self || isEdgeSwipe(other) || TouchSurface.isDevicesOwn(other) { return false }
         return recogniser === fingerPress || recogniser === pencilPress || recogniser === inkStroke
     }
 
@@ -415,6 +421,11 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     }
 
     private func step() {
+        // 0.5: with a third finger down, and for a moment after, the board rests (three fingers swipe for Undo).
+        guard third.slides(fingersDown: others(than: nil).filter({ $0.type == .direct }).count) else {
+            lastMid = nil
+            return
+        }
         // With one finger lifted the board rests until both are down again.
         let both: [UIGestureRecognizer] = [twoPan, pinch]
         guard let lead = both.first(where: { active($0) && $0.numberOfTouches >= 2 }) else {

@@ -421,6 +421,8 @@ final class AppModel: ObservableObject {
     /// A link that arrives before the boards are loaded (the app was started by it) is held and
     /// followed once loading has finished.
     func open(url: URL) {
+        // 0.5: `seedboard://new/<starter id>` makes a new board (QuickActions.swift).
+        if openNew(url: url) { return }
         guard let id = BoardLink.id(from: url) else { return }
         guard loaded else {
             waitingLink = id

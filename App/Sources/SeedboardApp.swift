@@ -21,6 +21,10 @@ enum LaunchOptions {
 struct SeedboardApp: App {
     @StateObject private var model = AppModel.shared
     @Environment(\.scenePhase) private var phase
+    #if os(iOS)
+    // 0.5: a long press on the app's icon (QuickActions.swift).
+    @UIApplicationDelegateAdaptor(SeedAppDelegate.self) private var iconMenu
+    #endif
 
     var body: some Scene {
         #if os(macOS)
@@ -63,6 +67,8 @@ struct SeedboardApp: App {
             .onOpenURL { model.open(url: $0) }
             // File ▸ New Board's starter choice, a board found in Spotlight, and remembering where the owner left.
             .modifier(OutsideDoors(model: model))
+            // 0.5: three fingers swiped and a shake undo on the open board (SystemUndoHost.swift; iPhone and iPad).
+            .modifier(SystemUndoHost(model: model))
             // Leaving the app keeps what is being typed and writes everything at once.
             .onChange(of: phase) { _, new in
                 if new != .active { model.leaving() }

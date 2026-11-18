@@ -28,6 +28,8 @@ struct PictureTool: View {
 
     var body: some View {
         Button {
+            // 0.5: the press that opened the plate of ways (hold the tile) is not a press as well.
+            if PictureHold.swallow() { return }
             session.commitEdit()
             PictureDesk.shared.ask.send(nil)
         } label: {
@@ -40,6 +42,8 @@ struct PictureTool: View {
         .help("Picture (P)")
         .accessibilityLabel("Picture (P)")
         .accessibilityIdentifier("tool.picture")
+        // 0.5 (iPhone and iPad): hold the tile for "Photos · Take a photo · Scan a page" (PictureWays.swift).
+        .modifier(PictureWaysHold(session: session))
     }
 }
 
