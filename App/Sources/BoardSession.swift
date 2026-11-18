@@ -74,7 +74,7 @@ final class BoardSession: ObservableObject {
     }
 
     /// A board written by a newer version can be looked at, not changed.
-    var readOnly: Bool { !board.canBeChanged }
+    var readOnly: Bool { !board.canBeChanged || HandoffDesk.shared.waiting == board.id }
 
     // MARK: Changing
 

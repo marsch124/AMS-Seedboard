@@ -238,9 +238,12 @@ struct OutsideDoors: ViewModifier {
                       let id = UUID(uuidString: word), let url = URL(string: "seedboard://board/\(id.uuidString)") else { return }
                 model.open(url: url)
             }
+            // 0.5: a board that is open on another device is taken up here (Handoff).
+            .onContinueUserActivity(Handoff.activityType) { HandoffDesk.shared.took($0, model: model) }
             .onAppear {
                 Remember.shared.watch(model)
                 SpotlightIndex.shared.watch(model)
+                OutsideWatch.shared.watch(model)
                 // For pictures: `-starters` shows the starter choice.
                 if LaunchOptions.arguments.contains("-starters") { desk.choosingStarter = true }
             }

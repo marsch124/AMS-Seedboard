@@ -66,7 +66,10 @@ struct BoardView: View {
             VStack(spacing: 6) {
                 // A starter is being changed: this board is its working copy (StartersPage.swift).
                 if session.starterDraft { StarterChangeBanner() }
-                if session.readOnly {
+                if HandoffDesk.shared.waiting == session.board.id {
+                    // Taken up from another device before iCloud brought its newest version (HandoffDesk.swift).
+                    banner(Handoff.waitingLine, part: .boards).accessibilityIdentifier("board.handoffWait")
+                } else if session.readOnly {
                     banner("This board was made by a newer Seedboard. Update the app to change it.", part: .notes)
                 } else if session.linking {
                     HStack(spacing: 8) {
@@ -174,6 +177,8 @@ struct BoardView: View {
         #endif
         .toolbar { toolbar }
         .focusedSceneObject(session)
+        // 0.5: the open board offers itself on his other devices (Handoff).
+        .modifier(BoardHandoff(session: session))
         // File ▸ Rename… and Remove Board… open the same two questions as the More button (Menus.swift).
         .modifier(MenuAsks(rename: { newName = session.board.title; renaming = true }, remove: { removing = true }))
         // When the Send page closes, the board has the keys again.
