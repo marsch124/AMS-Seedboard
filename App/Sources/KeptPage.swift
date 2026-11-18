@@ -96,7 +96,10 @@ struct KeptPage: View {
                 }
             }
         }
+        // (The Mac's sheet says the page's name itself, in colour: BringBackBars.swift.)
+        #if !os(macOS)
         .navigationTitle("Removed and earlier versions")
+        #endif
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif

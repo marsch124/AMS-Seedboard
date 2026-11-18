@@ -59,7 +59,7 @@ extension ParagonExport {
             }
         }
         // A frame with lanes gives one group per lane; its shapes are then left out of the steps.
-        let laned = laneTasks(board)
+        let laned = laneTasks(board, ticks: plan.ticks)
         plan.groups.append(contentsOf: laned.groups)
         for shape in flowOrder(board) where !laned.used.contains(shape.id) {
             let words = oneLine(shape.text)

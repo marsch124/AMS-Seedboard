@@ -289,6 +289,14 @@ final class ShapesLanesTests: XCTestCase {
         let project = ParagonExport.project(board: board, title: "Order", picture: nil, now: now)
         XCTAssertTrue(project.contains("### Web shop order: Customer\n- [ ] Orders\n\n### Web shop order: Shop\n- [ ] Check the order\n- [ ] Pack\n\n### Steps\n- [ ] Outside\n"), project)
 
+        // Once an idea is ticked, only ticked shapes in a lane become tasks — the same rule as for the steps.
+        var ticked = board
+        let idea = ticked.add(.idea, centre: CGPoint(x: 900, y: 300), text: "Plan")
+        if let i = ticked.index(of: idea) { ticked.items[i].todo = true }
+        if let i = ticked.index(of: pack) { ticked.items[i].todo = true }
+        let mixed = ParagonExport.project(board: ticked, title: "Order", picture: nil, now: now)
+        XCTAssertTrue(mixed.contains("### Web shop order: Shop\n- Check the order\n- [ ] Pack\n"), mixed)
+
         // A frame without lanes changes nothing in the note.
         board.setLanes(frame, way: nil)
         XCTAssertFalse(ParagonExport.note(board: board, title: "Order", picture: nil, now: now).contains("###"))

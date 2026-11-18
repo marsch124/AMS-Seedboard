@@ -87,7 +87,7 @@ struct SequenceSelectionBar: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
                         chip("To do", .control(.ticked), "sel.todo", .paragon) { session.sequenceToggleTodo() }
-                        chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
+                        chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
                     }
                     #if !os(macOS)
                     chip("Choose more", .control(.addCircle), "sel.more", .boards, on: session.choosingMore) { session.choosingMore.toggle() }
@@ -122,12 +122,12 @@ struct SequenceSelectionBar: View {
             chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
             chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.sequenceToggleTodo() }
             moveChips
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
+            chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
         default:
             chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }
             chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
             moveChips
-            chip("Copy", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
+            chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
         }
     }
 
