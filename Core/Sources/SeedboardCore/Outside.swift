@@ -5,7 +5,7 @@ import CoreGraphics
 /// and the device's own search (Spotlight).
 public enum Outside {
     /// A new board from words handed over by a Shortcuts action. The same rule as pasting onto a board:
-    /// a list (two lines or more) becomes a mind map, anything else one sticky note; no words at all
+    /// a list becomes a mind map, paragraphs one text, one line one sticky note; no words at all
     /// gives an empty board. The board's name is the title given, else the map's middle idea, else the
     /// first line of the words.
     public static func board(title: String?, text: String, now: Date = Date()) -> Board {
@@ -18,7 +18,7 @@ public enum Outside {
             let centre = board.addMap(from: nodes, title: name, at: .zero)
             if name.isEmpty, let words = board.item(centre)?.text { board.title = short(words) }
         } else {
-            board.add(.note, centre: .zero, text: clean)
+            board.add(Outline.kindForWords(clean), centre: .zero, text: clean)
             if name.isEmpty { board.title = short(clean) }
         }
         return board

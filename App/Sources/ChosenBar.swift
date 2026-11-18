@@ -69,7 +69,9 @@ struct ChosenBar: View {
                 if showColours {
                     let link = session.selectedLink.flatMap { id in session.board.links.first { $0.id == id } }
                     // The dots keep the names they had in 0.1 ("colour.pink").
-                    ColourRow(colours: BarActions(session: session, prefix: "", night: night).colourChoices(for: session.single, link: link),
+                    // 0.5: several things chosen have their own row of colours (Thinking.swift).
+                    let dots = BarActions(session: session, prefix: "", night: night)
+                    ColourRow(colours: session.selection.count > 1 ? dots.severalColours() : dots.colourChoices(for: session.single, link: link),
                               edge: Paint(scheme).edge)
                 }
             }
@@ -121,6 +123,8 @@ struct ChosenBar: View {
     }
 
     private func line(_ model: ChosenBarModel, dropped: Set<String>, words: Words) -> some View {
+        // 0.5: some buttons always live behind the "…" (Turn into, By colour).
+        let dropped = dropped.union(model.actions.filter { $0.drop >= BarActions.behind }.map(\.id))
         let split = tailStart(model.actions)
         let head = model.actions[..<split].filter { !dropped.contains($0.id) }
         let tail = Array(model.actions[split...])
@@ -468,6 +472,8 @@ struct BoardExtras: View {
             if sizeClass != .compact { FloatingBar(session: session) }
             BoardMenuLayer(session: session)
         }
+        // 0.5: the small question of "Make a mind map" (Thinking.swift).
+        .modifier(ThinkingHost(session: session))
         .background(GeometryReader { geo in
             Color.clear.onChange(of: geo.frame(in: .global).origin, initial: true) { _, origin in BarDesk.shared.origin = origin }
         })

@@ -240,6 +240,8 @@ struct CanvasView: View {
                     if isIdea, let id = session.editing { session.moveOut(id) }
                     return .handled
                 }
+                // 0.5: Tab in a sticky note keeps the words and starts the next note beside it (Thinking.swift).
+                if session.nextNote() { return .handled }
                 session.commitEdit(then: isIdea ? .child : .nothing)
                 return .handled
             }
@@ -417,7 +419,8 @@ struct CanvasView: View {
                 session.liveStart()
                 drag = .moving(board.carried(by: chosen))
                 // One map dragged by its middle idea can be dropped on an idea of another map.
-                if let item = board.item(id), item.kind == .idea, item.parent == nil, chosen.count == 1 { hanging = id }
+                // 0.5: so can one sticky note, box or text — it becomes an idea under that one (Thinking.swift).
+                if let item = board.item(id), (item.kind == .idea && item.parent == nil) || board.canBecomeIdea(id), chosen.count == 1 { hanging = id }
             }
         case .plus(let id, let d):
             drag = .plus(id, d)
@@ -493,7 +496,7 @@ struct CanvasView: View {
             } else if let centre = hanging, let over = dropTarget {
                 // Dropped on an idea of another map: the map goes back to where it was and hangs there.
                 session.liveEnd(keep: false)
-                session.hang(centre, under: over)
+                if !session.becomeIdea(centre, under: over) { session.hang(centre, under: over) }
             } else {
                 session.liveEnd(keep: true)
             }
@@ -581,8 +584,9 @@ struct CanvasView: View {
                 withAnimation(.easeOut(duration: 0.2)) { session.fit() }
                 lastTapAt = .distantPast
                 return
-            } else if double(nil), lastTapBare, session.selection.isEmpty, session.selectedLink == nil {
-                // Two presses on empty board (with nothing chosen before the first): a sticky note right there.
+            } else if double(nil), session.selection.isEmpty, session.selectedLink == nil {
+                // Two presses on empty board: a sticky note right there — since 0.5 also when something was chosen
+                // before the first press (which un-chose it).
                 session.add(.note, at: p)
                 lastTapAt = .distantPast
                 lastTapBare = false

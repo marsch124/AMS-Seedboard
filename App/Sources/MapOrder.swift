@@ -163,6 +163,8 @@ extension CanvasView {
     func fieldIdentity(isIdea: Bool) -> UUID? {
         #if os(iOS)
         if isIdea { return Self.ideaField }
+        // 0.5: sticky notes typed one after the other ("Next note") share one field too, and so do shapes.
+        if let shared = session.chainField { return shared }
         #endif
         return session.editing
     }
@@ -186,6 +188,9 @@ extension CanvasView {
             KeyBarButton(mark: .outLevel, words: wide ? "Out one level" : "Out", name: "Out one level", id: "board.key.out", on: canGoOut) {
                 if let id { session.moveOut(id) }
             }
+        } else {
+            // 0.5: "Next note" for a sticky note, "Next shape" for a shape (Thinking.swift).
+            ThinkKeyBar(session: session)
         }
         Spacer()
         Button("Done") { session.commitEdit() }

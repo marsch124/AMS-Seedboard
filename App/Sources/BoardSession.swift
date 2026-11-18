@@ -293,6 +293,8 @@ final class BoardSession: ObservableObject {
 
     func commitEdit(then after: After = .nothing) {
         guard let id = editing else { return }
+        // 0.5: a "next note" left empty was not meant: it goes again and leaves no trace (Thinking.swift).
+        if editIsNew, dropsEmptyNextNote(id) { return }
         editing = nil
         lineBreakWanted = false
         var new = board
@@ -478,7 +480,8 @@ final class BoardSession: ObservableObject {
             return
         }
         var made: UUID?
-        if Outline.isList(clean), !nodes.isEmpty {
+        // 0.5: this is "Paste a list as a mind map" — two lines or more always make a map, paragraphs too.
+        if Outline.hasSeveralLines(clean), !nodes.isEmpty {
             let spot = freeSpot(near: visibleCentre, size: CGSize(width: 300, height: 200))
             change { made = $0.addMap(from: nodes, title: nil, at: spot) }
         } else {
