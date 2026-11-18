@@ -96,6 +96,11 @@ public enum KeptFiles {
     public static func tidy(safety: URL, now: Date, timeZone: TimeZone = .current) -> Int {
         var gone = 0
         for url in files(in: safety) {
+            // 0.5: a starter's version that was written over is kept for the same 30 days.
+            if let kept = StarterKept.kept(url.lastPathComponent, timeZone: timeZone) {
+                if KeptRules.letGo(.setAside, kept: kept, now: now), (try? FileManager.default.removeItem(at: url)) != nil { gone += 1 }
+                continue
+            }
             guard let name = KeptFileName(url.lastPathComponent, timeZone: timeZone), !name.waiting,
                   case .setAside = name.kind, KeptRules.letGo(.setAside, kept: name.kept, now: now) else { continue }
             if (try? FileManager.default.removeItem(at: url)) != nil { gone += 1 }

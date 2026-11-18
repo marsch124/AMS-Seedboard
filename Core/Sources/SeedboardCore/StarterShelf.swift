@@ -19,10 +19,15 @@ public struct StarterEntry: Codable, Equatable, Identifiable, Sendable {
     /// nil for a built-in whose content was never changed.
     public var board: Board?
     public var changed: Date
+    /// 0.5: when the CONTENT (the board) was last set — by Change, Save as a starter or "back to the original".
+    /// A rename or a move stamps `changed` only, so it can never win over a newer board made on another device.
+    /// nil in a file of 0.4: the content then counts as old as `changed` (`boardStamp`).
+    public var boardChanged: Date?
     public private(set) var extra: [String: JSONValue] = [:]
 
     public init(id: String, name: String, hint: String = "", order: Double = 0, removed: Bool = false,
-                removedWhen: Date? = nil, builtin: String? = nil, board: Board? = nil, changed: Date = Date()) {
+                removedWhen: Date? = nil, builtin: String? = nil, board: Board? = nil, changed: Date = Date(),
+                boardChanged: Date? = nil) {
         self.id = id
         self.name = name
         self.hint = hint
@@ -32,10 +37,11 @@ public struct StarterEntry: Codable, Equatable, Identifiable, Sendable {
         self.builtin = builtin
         self.board = board
         self.changed = changed
+        self.boardChanged = boardChanged
     }
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case id, name, hint, order, removed, removedWhen, builtin, board, changed
+        case id, name, hint, order, removed, removedWhen, builtin, board, changed, boardChanged
     }
 
     public init(from decoder: Decoder) throws {
@@ -49,6 +55,7 @@ public struct StarterEntry: Codable, Equatable, Identifiable, Sendable {
         builtin = try? c.decode(String.self, forKey: .builtin)
         board = try? c.decode(Board.self, forKey: .board)
         changed = (try? c.decode(Date.self, forKey: .changed)) ?? Date(timeIntervalSince1970: 0)
+        boardChanged = try? c.decode(Date.self, forKey: .boardChanged)
         extra = unknownFields(of: decoder, known: CodingKeys.allCases.map(\.rawValue))
     }
 
@@ -64,10 +71,28 @@ public struct StarterEntry: Codable, Equatable, Identifiable, Sendable {
         try c.encodeIfPresent(builtin, forKey: .builtin)
         try c.encodeIfPresent(board, forKey: .board)
         try c.encode(changed, forKey: .changed)
+        try c.encodeIfPresent(boardChanged, forKey: .boardChanged)
     }
 
-    /// Of two copies of the same entry (two devices), the newer `changed` wins.
-    public static func newer(_ a: StarterEntry, _ b: StarterEntry) -> StarterEntry { b.changed > a.changed ? b : a }
+    /// How new the content is. A file of 0.4 has no stamp of its own: its content counts as old as `changed`.
+    /// A 0.4 app that changes the board carries an old stamp along unchanged, but it dates the board itself, so
+    /// the later of the two is taken.
+    public var boardStamp: Date { max(boardChanged ?? changed, board?.changed ?? .distantPast) }
+
+    /// Of two copies of the same entry (two devices): the name, the grey line, the place and "removed" come from
+    /// the copy with the later `changed`; the board comes from the copy whose CONTENT is the later one. So a
+    /// rename or a move made elsewhere never brings an older board back (0.5).
+    public static func newer(_ a: StarterEntry, _ b: StarterEntry) -> StarterEntry {
+        var out = b.changed > a.changed ? b : a
+        // Two contents equally new (two files of 0.4, or the same content): the later copy's, as before 0.5.
+        let content = b.boardStamp > a.boardStamp ? b : (a.boardStamp > b.boardStamp ? a : out)
+        out.board = content.board
+        out.boardChanged = content.boardStamp
+        // Two copies that say the same stay exactly as they are (nothing is written again for a stamp alone).
+        if out.board == a.board, out.changed == a.changed, a.boardStamp == out.boardStamp { return a }
+        if out.board == b.board, out.changed == b.changed, b.boardStamp == out.boardStamp { return b }
+        return out
+    }
 }
 
 /// A starter as the screens show it.
@@ -131,12 +156,18 @@ public struct StarterShelf: Equatable, Sendable {
     private mutating func entry(for id: String, now: Date) -> StarterEntry? {
         if let e = entries[id] { return e }
         guard let s = Starter(rawValue: id), let n = Starter.allCases.firstIndex(of: s) else { return nil }
-        return StarterEntry(id: id, name: s.name, hint: s.hint, order: Double(n), builtin: id, changed: now)
+        // An untouched built-in has no content of its own: its content is as old as can be.
+        return StarterEntry(id: id, name: s.name, hint: s.hint, order: Double(n), builtin: id, changed: now,
+                            boardChanged: Date(timeIntervalSince1970: 0))
     }
 
-    private mutating func store(_ e: StarterEntry, now: Date) {
+    /// `content`: the board itself was set (Change, back to the original); otherwise only the name, the grey
+    /// line, the place or "removed" changed, and the content keeps the stamp it had.
+    private mutating func store(_ e: StarterEntry, now: Date, content: Bool = false) {
         var e = e
-        e.changed = max(now, (entries[e.id]?.changed ?? .distantPast).addingTimeInterval(0.001))
+        let stamp = max(now, (entries[e.id]?.changed ?? .distantPast).addingTimeInterval(0.001))
+        e.boardChanged = content ? stamp : e.boardStamp
+        e.changed = stamp
         entries[e.id] = e
     }
 
@@ -190,7 +221,7 @@ public struct StarterShelf: Equatable, Sendable {
     public mutating func backToOriginal(_ id: String, now: Date = Date()) {
         guard Starter(rawValue: id) != nil, var e = entries[id], e.board != nil else { return }
         e.board = nil
-        store(e, now: now)
+        store(e, now: now, content: true)
     }
 
     /// Stores a changed board: a built-in's own board, or an own starter's.
@@ -199,7 +230,7 @@ public struct StarterShelf: Equatable, Sendable {
         var b = board
         b.changed = now
         e.board = b
-        store(e, now: now)
+        store(e, now: now, content: true)
     }
 
     /// A name no shown starter has yet: "Name", else "Name 2", "Name 3" …
@@ -221,7 +252,7 @@ public struct StarterShelf: Equatable, Sendable {
         let last = (everything.map(\.order).max() ?? -1) + 1
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let e = StarterEntry(id: id, name: freeName(clean.isEmpty ? board.title : clean),
-                             hint: hint, order: last, board: b, changed: now)
+                             hint: hint, order: last, board: b, changed: now, boardChanged: now)
         entries[id] = e
         return id
     }
@@ -259,7 +290,7 @@ public struct StarterShelf: Equatable, Sendable {
         return s.builtin?.board(title: s.name == s.builtin?.name ? nil : s.name, now: now)
     }
 
-    private static func move(_ b: inout Board, byDays shift: Int) {
+    static func move(_ b: inout Board, byDays shift: Int) {
         guard shift != 0 else { return }
         for i in b.items.indices {
             if let s = b.items[i].start, let d = Day(iso: s) { b.items[i].start = (d + shift).iso }

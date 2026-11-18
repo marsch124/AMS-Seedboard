@@ -137,6 +137,8 @@ struct KeptSettingsRows: View {
     @State private var fileName = ""
     @State private var showExporter = false
     @State private var exportProblem: String?
+    /// 0.5: what the export packed, and which pictures it could not ("… are not on this device yet").
+    @State private var exportSummary: String?
     @State private var showImporter = false
     @State private var importLine: String?
 
@@ -170,7 +172,7 @@ struct KeptSettingsRows: View {
                 }
                 file = nil
             }
-            Text(exportProblem ?? ExportRules.lastExportLine(lastExport > 0 ? Date(timeIntervalSince1970: lastExport) : nil, now: Date()))
+            Text(exportProblem ?? exportSummary ?? ExportRules.lastExportLine(lastExport > 0 ? Date(timeIntervalSince1970: lastExport) : nil, now: Date()))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -184,7 +186,7 @@ struct KeptSettingsRows: View {
                 .accessibilityIdentifier("settings.import")
                 // The `.seedboard` files from an export (unpack the zip in Files or the Finder first).
                 .fileImporter(isPresented: $showImporter, allowedContentTypes: [.data], allowsMultipleSelection: true) { result in
-                    if case let .success(files) = result { importLine = model.importBoards(files) }
+                    if case let .success(files) = result { Task { importLine = await model.importBoards(files) } }
                 }
             if let importLine {
                 Text(importLine)
@@ -203,6 +205,7 @@ struct KeptSettingsRows: View {
             if let made = await model.exportAllBoards() {
                 file = ZipDocument(data: made.data)
                 fileName = made.name
+                exportSummary = made.summary
                 exportProblem = nil
                 showExporter = true
             } else {

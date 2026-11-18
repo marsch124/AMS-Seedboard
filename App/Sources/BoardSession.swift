@@ -133,7 +133,8 @@ final class BoardSession: ObservableObject {
         clearNotice()
         guard editing == nil, let old = undoStack.popLast() else { return }
         redoStack.append(board)
-        var back = old
+        // What went to PARAGON meanwhile is not taken back with the step (0.5: no task goes twice).
+        var back = old.keepingSentMarks(of: board)
         back.touch()
         set(back)
         tidySelection()
@@ -145,7 +146,7 @@ final class BoardSession: ObservableObject {
     func redo() {
         guard editing == nil, let next = redoStack.popLast() else { return }
         undoStack.append(board)
-        var again = next
+        var again = next.keepingSentMarks(of: board)
         again.touch()
         set(again)
         tidySelection()

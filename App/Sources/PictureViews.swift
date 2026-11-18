@@ -131,6 +131,13 @@ extension BoardSession {
             return
         }
         guard !pictures.isEmpty else { return }
+        // The board was closed while the pictures were on their way (the photos were loading, a drop was read):
+        // a board that is no longer shown must not save its older state over the open one (0.5).
+        let closed = "The pictures were not laid: the board was closed."
+        guard SafetyRules.maySave(asking: self, shown: AppModel.shared.session) else {
+            AppModel.shared.say(closed, tone: .problem)
+            return
+        }
         commitEdit()
         Task { @MainActor in
             var made: Set<UUID> = []
@@ -138,6 +145,10 @@ extension BoardSession {
             var spot = point
             for data in pictures {
                 let taken = await Task.detached(priority: .userInitiated) { PictureStore.shared.take(data) }.value
+                guard SafetyRules.maySave(asking: self, shown: AppModel.shared.session) else {
+                    AppModel.shared.say(closed, tone: .problem)
+                    return
+                }
                 guard let taken else { failed += 1; continue }
                 let size = Board.pictureSize(forPixels: taken.pixels)
                 let at = spot ?? freeSpot(near: visibleCentre, size: size)
@@ -213,7 +224,7 @@ extension BoardPainter {
         let f = item.frame
         let box = Path(roundedRect: f, cornerRadius: 4)
         let store = PictureStore.shared
-        if let name = item.picture, let image = handles ? store.image(name) : store.imageNow(name) {
+        if let name = item.picture, let image = handles ? store.image(name, shown: shownPixels(item, ctx)) : store.imageNow(name) {
             var inside = ctx
             inside.clip(to: box)
             if let part = Item.cleanCrop(item.crop) {
@@ -233,7 +244,8 @@ extension BoardPainter {
         ctx.fill(box, with: .color(Part.pictures.soft))
         ctx.stroke(box, with: .color(Part.pictures.text.opacity(0.5)), lineWidth: 1)
         let side = max(14, min(40, min(f.width, f.height) * 0.42))
-        let words = f.height >= 70 && f.width >= 90
+        // The words only when the file was looked for and is not on this device; a plain plate while it is being read (0.5).
+        let words = f.height >= 70 && f.width >= 90 && (item.picture.map { store.isMissing($0) } ?? true)
         let mark = CGRect(x: f.midX - side / 2, y: f.midY - side / 2 - (words ? 9 : 0), width: side, height: side * 0.8)
         Self.pictureMark(mark, in: ctx, colour: Part.pictures.text, line: max(1.2, side / 14))
         if words {
@@ -241,6 +253,15 @@ extension BoardPainter {
             ctx.draw(Text("Picture not here yet").font(font).foregroundStyle(Part.pictures.text),
                      at: CGPoint(x: f.midX, y: mark.maxY + 5), anchor: .top)
         }
+    }
+
+    /// How many screen pixels long the WHOLE picture is drawn right now (two pixels a point); 0 when it is out of
+    /// view. The store reads a picture in full only when it is shown clearly larger than its memory copy.
+    private func shownPixels(_ item: Item, _ ctx: GraphicsContext) -> Double {
+        let f = item.frame
+        guard ctx.clipBoundingRect.intersects(f) else { return 0 }
+        let part = item.shownPart
+        return Double(max(f.width / CGFloat(part[2]), f.height / CGFloat(part[3])) * scale) * 2
     }
 
     /// The picture mark drawn as shapes: a frame, a sun and two hills, one round line, no fill.

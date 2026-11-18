@@ -212,6 +212,7 @@ final class AppModel: ObservableObject {
                 keep(session.board)
                 saveNow()
             } else {
+                session.onChange = nil
                 self.session = nil
                 openID = nil
                 pendingSave = nil
@@ -241,6 +242,8 @@ final class AppModel: ObservableObject {
         if closing { leaveChange() }
         session?.commitEdit()
         saveNow()
+        // A starter that is being changed: its working copy is on this device before the app is gone (0.5).
+        keepWorkingNow()
         starterStore.flush()
         #if os(macOS)
         store.flush(cloudToo: closing)
@@ -294,6 +297,9 @@ final class AppModel: ObservableObject {
         leaveChange()
         session?.commitEdit()
         saveNow()
+        // A board that is no longer shown never saves again: work of its own that is still on its way (photos
+        // that are loading, a drop) must not write its older state over the board that is open (0.5).
+        session?.onChange = nil
         // Leaving a board ends its typing: news that was held for it is offered now.
         heldWatch = nil
         openID = id
@@ -305,18 +311,23 @@ final class AppModel: ObservableObject {
             return
         }
         let new = BoardSession(board: board)
-        new.onChange = { [weak self] board in self?.keep(board) }
+        new.onChange = { [weak self, weak new] board in
+            guard let self, SafetyRules.maySave(asking: new, shown: self.session) else { return }
+            self.keep(board)
+        }
         session = new
     }
 
     /// A working copy that is not one of the boards (changing a starter): shown like a board, never kept as one.
     func present(draft new: BoardSession) {
+        session?.onChange = nil
         heldWatch = nil
         openID = new.board.id
         session = new
     }
 
     func closeDraft() {
+        session?.onChange = nil
         session = nil
         openID = nil
     }
@@ -345,6 +356,7 @@ final class AppModel: ObservableObject {
 
     func remove(_ id: UUID) {
         if openID == id {
+            session?.onChange = nil
             session = nil
             openID = nil
             pendingSave = nil

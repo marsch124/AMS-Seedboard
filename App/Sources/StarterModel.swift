@@ -44,6 +44,7 @@ extension AppModel {
         var merged = StarterShelf(entries: found + Array(shelf.entries.values))
         merged.purge()
         shelf = merged
+        await reopenWorkLeftBehind()
         await starterLaunchWords()
     }
 
@@ -97,6 +98,12 @@ extension AppModel {
     @discardableResult
     func newBoard(from starter: ShelfStarter) -> UUID {
         guard let made = shelf.makeBoard(from: starter.id) else { return newBoard(.blank) }
+        // A starter a newer Seedboard wrote: a board made of it could not be saved (it was gone at the next start).
+        guard made.canBeChanged else {
+            let id = newBoard(.blank)
+            say("This starter was made by a newer Seedboard. Update the app to use it. A blank board was made instead.", tone: .problem, seconds: 6)
+            return id
+        }
         return add(made)
     }
 
@@ -155,7 +162,10 @@ extension AppModel {
         saveNow()
         let draft = BoardSession(board: work)
         draft.starterDraft = true
-        draft.onChange = { [weak self] _ in self?.changing?.dirty = true }
+        draft.onChange = { [weak self] _ in
+            self?.changing?.dirty = true
+            self?.keepWorkingSoon()
+        }
         changing = StarterChange(id: id, name: starter.name)
         present(draft: draft)
     }
@@ -165,6 +175,7 @@ extension AppModel {
         guard !clean.isEmpty, changing != nil else { return }
         changing?.name = clean
         changing?.dirty = true
+        keepWorkingSoon()
     }
 
     func saveChange() {
@@ -191,7 +202,77 @@ extension AppModel {
 
     /// Closes the working copy (saved, cancelled, or left).
     func endChange() {
+        forgetWorking()
         changing = nil
         closeDraft()
     }
+
+    // MARK: The working copy is kept on this device while a starter is being changed (0.5, data safety 1)
+
+    /// Half a second after a change of the working copy (the wait a board has before it is saved) it is written
+    /// to this device, `Starters/<id>.working`. Never into the shelf and never to iCloud: Cancel must still work,
+    /// and half-done work must not reach the other devices.
+    func keepWorkingSoon() {
+        let desk = StarterWorkDesk.shared
+        desk.work?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.keepWorkingNow() }
+        desk.work = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+    }
+
+    /// Writes the working copy now (also when the app is left). Nothing when no starter is being changed, or
+    /// nothing was changed yet.
+    func keepWorkingNow() {
+        StarterWorkDesk.shared.work?.cancel()
+        StarterWorkDesk.shared.work = nil
+        guard let change = changing, change.dirty, let draft = session, draft.starterDraft else { return }
+        starterStore.keepWorking(StarterWorking(starter: change.id, name: change.name, board: draft.board))
+    }
+
+    /// The change has ended (Save, Cancel, or it was left): no working copy stays behind.
+    private func forgetWorking() {
+        StarterWorkDesk.shared.work?.cancel()
+        StarterWorkDesk.shared.work = nil
+        starterStore.clearWorking()
+    }
+
+    /// Once, after the first loading: the app was stopped while a starter was being changed (iOS dropped it from
+    /// memory, a crash, a forced quit). The working copy is opened again, marked as changed.
+    private func reopenWorkLeftBehind() async {
+        let desk = StarterWorkDesk.shared
+        guard !desk.looked else { return }
+        desk.looked = true
+        guard let work = await starterStore.waitingWork() else { return }
+        // The boards first: the board that was open last comes back before the working copy lies over it.
+        for _ in 0..<100 where !loaded { try? await Task.sleep(nanoseconds: 50_000_000) }
+        leaveChange()
+        let board = work.board(now: Date())
+        guard let starter = shelf.starter(work.starter), !starter.removed else {
+            // The starter was removed meanwhile (on another device): the work is not thrown away.
+            apply { $0.saveAs(board, name: work.name, hint: "Your own starter") }
+            forgetWorking()
+            say("The starter “\(work.name)” was removed. What you were changing is kept as a new starter.", seconds: 6)
+            return
+        }
+        session?.commitEdit()
+        saveNow()
+        let draft = BoardSession(board: board)
+        draft.starterDraft = true
+        draft.onChange = { [weak self] _ in
+            self?.changing?.dirty = true
+            self?.keepWorkingSoon()
+        }
+        changing = StarterChange(id: work.starter, name: work.name, dirty: true)
+        present(draft: draft)
+        say("You were changing the starter “\(work.name)”. Your changes are back.", seconds: 6)
+    }
+}
+
+/// What the working copy's keeping needs between calls (an extension cannot hold it).
+@MainActor
+private final class StarterWorkDesk {
+    static let shared = StarterWorkDesk()
+    var work: DispatchWorkItem?
+    /// The left-behind working copy was looked for (once per start).
+    var looked = false
 }

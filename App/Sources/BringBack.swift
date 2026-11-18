@@ -32,6 +32,9 @@ struct ExportFile {
     /// "Seedboard boards 2026-11-18" (the system adds ".zip").
     var name: String
     var boards: Int
+    /// 0.5: what was packed and what could not be — "Exported 14 boards and 31 pictures. 3 pictures are not on
+    /// this device yet and are not in the file."
+    var summary: String
 }
 
 extension AppModel {
@@ -114,6 +117,9 @@ extension AppModel {
     // MARK: Export and import
 
     /// Every board as its `.seedboard` file plus a plain-text outline, in ONE zip file. nil when it could not be made.
+    /// 0.5: the owner's own and changed starters go along in a folder "Starters" (each as a board that carries the
+    /// starter's name), with the pictures they show; the pictures are read off the main thread; and a picture that
+    /// is not on this device yet is asked for from iCloud and SAID, never silently left out.
     func exportAllBoards() async -> ExportFile? {
         // What is being typed belongs in the export too.
         session?.commitEdit()
@@ -124,37 +130,61 @@ extension AppModel {
         guard !files.isEmpty else { return nil }
         let name = ExportRules.archiveName(now)
         let count = files.count / 2
-        // The pictures the boards show go along, each under its own file name, beside the boards.
-        for picture in Set(boards.flatMap(\.pictureNames)).sorted() {
-            if let bytes = PictureStore.shared.fileBytes(picture) { files.append((name: picture, data: bytes)) }
-        }
+        let starters = Array(shelf.entries.values)
+        let starterFiles = ExportRules.starterFiles(starters, bytes: { store.bytes(of: $0) })
+        files += starterFiles
+        // The pictures the boards and the starters show go along, each under its own file name, beside the boards.
+        let pictures = ExportRules.pictureNames(boards: boards, starters: starters)
+        let ready = files
         return await Task.detached(priority: .userInitiated) { () -> ExportFile? in
+            var files = ready
+            var missing: [String] = []
+            for picture in pictures {
+                if let bytes = PictureStore.shared.fileBytes(picture) { files.append((name: picture, data: bytes)) } else { missing.append(picture) }
+            }
+            // So they are here for the next export.
+            PictureStore.shared.askFor(missing)
             // Made in a throwaway folder of the app's own; nothing of it stays behind.
             let place = FileManager.default.temporaryDirectory.appendingPathComponent("SeedboardExport-\(UUID().uuidString)", isDirectory: true)
             try? FileManager.default.createDirectory(at: place, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: place) }
             guard let zip = try? BoardArchive.make(name: name, files: files, in: place),
                   let data = try? Data(contentsOf: zip) else { return nil }
-            return ExportFile(data: data, name: name, boards: count)
+            let summary = ExportRules.summary(boards: count, starters: starterFiles.count,
+                                              pictures: pictures.count - missing.count, missing: missing.count)
+            return ExportFile(data: data, name: name, boards: count, summary: summary)
         }.value
     }
 
     /// Boards from `.seedboard` files (the ones inside an export) come in as NEW boards; none is replaced.
     /// Gives back plain words about what happened.
-    func importBoards(_ files: [URL]) -> String {
-        var made = 0
-        var skipped = 0
-        var pictures = 0
-        for file in files {
-            let allowed = file.startAccessingSecurityScopedResource()
-            defer { if allowed { file.stopAccessingSecurityScopedResource() } }
-            // A picture file from an export: it comes back under its own name, so the boards that show it find it.
-            if file.pathExtension.lowercased() == "jpg" {
-                if let data = try? Data(contentsOf: file), PictureStore.shared.adopt(data, named: file.lastPathComponent) { pictures += 1 } else { skipped += 1 }
-                continue
+    /// 0.5: the files are read off the main thread, and a picture file comes back byte for byte as it is — one
+    /// that is already here (on the device or in iCloud) is never written again.
+    func importBoards(_ files: [URL]) async -> String {
+        let read = await Task.detached(priority: .userInitiated) { () -> (boards: [Data], pictures: Int, skipped: Int) in
+            var boards: [Data] = []
+            var pictures = 0
+            var skipped = 0
+            for file in files {
+                let allowed = file.startAccessingSecurityScopedResource()
+                defer { if allowed { file.stopAccessingSecurityScopedResource() } }
+                guard let data = try? Data(contentsOf: file) else { skipped += 1; continue }
+                // A picture file from an export: it comes back under its own name, so the boards that show it find it.
+                if file.pathExtension.lowercased() == "jpg" {
+                    if PictureStore.shared.adopt(data, named: file.lastPathComponent) { pictures += 1 } else { skipped += 1 }
+                } else if ExportRules.looksLikeBoard(data) {
+                    boards.append(data)
+                } else {
+                    skipped += 1
+                }
             }
-            guard let data = try? Data(contentsOf: file), ExportRules.looksLikeBoard(data),
-                  let board = store.board(from: data), board.canBeChanged else {
+            return (boards, pictures, skipped)
+        }.value
+        var made = 0
+        var skipped = read.skipped
+        let pictures = read.pictures
+        for data in read.boards {
+            guard let board = store.board(from: data), board.canBeChanged else {
                 skipped += 1
                 continue
             }

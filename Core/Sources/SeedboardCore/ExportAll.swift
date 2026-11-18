@@ -60,6 +60,54 @@ public enum ExportRules {
         return out
     }
 
+    // MARK: Starters and pictures (0.5)
+
+    /// The folder inside the zip that holds the starters.
+    public static let starterFolder = "Starters"
+
+    /// The starters an export packs: every own starter and every built-in whose board was changed, not the
+    /// removed ones, each as an ordinary board that carries the starter's name. (Import brings it in as a board;
+    /// "Save as a starter…" makes it a starter again.)
+    public static func starterBoards(_ entries: [StarterEntry]) -> [Board] {
+        entries.filter { !$0.removed && $0.board != nil }
+            .sorted { ($0.order, $0.id) < ($1.order, $1.id) }
+            .compactMap { entry in
+                var board = entry.board
+                board?.title = entry.name
+                return board
+            }
+    }
+
+    /// The starters' files: `Starters/<name>.seedboard` for each. One whose bytes are missing is left out.
+    public static func starterFiles(_ entries: [StarterEntry], bytes: (Board) -> Data?) -> [(name: String, data: Data)] {
+        let boards = starterBoards(entries)
+        let names = fileNames(boards)
+        return boards.compactMap { board in
+            guard let name = names[board.id], let data = bytes(board) else { return nil }
+            return ("\(starterFolder)/\(name).seedboard", data)
+        }
+    }
+
+    /// The names of every picture file the export packs: what the boards show AND what the starters show.
+    public static func pictureNames(boards: [Board], starters: [StarterEntry]) -> [String] {
+        var names = Set(boards.flatMap(\.pictureNames))
+        for board in starterBoards(starters) { names.formUnion(board.pictureNames) }
+        return names.sorted()
+    }
+
+    /// What was packed, and what could not be: "Exported 14 boards and 31 pictures. 3 pictures are not on this
+    /// device yet and are not in the file."
+    public static func summary(boards: Int, starters: Int = 0, pictures: Int, missing: Int) -> String {
+        var parts = [boards == 1 ? "1 board" : "\(boards) boards"]
+        if starters > 0 { parts.append(starters == 1 ? "1 starter" : "\(starters) starters") }
+        if pictures > 0 { parts.append(pictures == 1 ? "1 picture" : "\(pictures) pictures") }
+        let last = parts.removeLast()
+        var line = "Exported " + (parts.isEmpty ? last : parts.joined(separator: ", ") + " and " + last) + "."
+        if missing == 1 { line += " 1 picture is not on this device yet and is not in the file." }
+        if missing > 1 { line += " \(missing) pictures are not on this device yet and are not in the file." }
+        return line
+    }
+
     /// "Last export: 18 Nov" — or that there was none yet.
     public static func lastExportLine(_ last: Date?, now: Date, timeZone: TimeZone = .current) -> String {
         guard let last else { return "No export yet." }
@@ -110,7 +158,10 @@ public enum BoardArchive {
         do {
             try fm.createDirectory(at: folder, withIntermediateDirectories: true)
             for file in files {
-                try file.data.write(to: folder.appendingPathComponent(file.name), options: .atomic)
+                let target = folder.appendingPathComponent(file.name)
+                // A name with a folder in front ("Starters/…") gets that folder.
+                if file.name.contains("/") { try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true) }
+                try file.data.write(to: target, options: .atomic)
             }
         } catch {
             throw Problem.folder

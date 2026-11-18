@@ -16,8 +16,12 @@ struct CropPage: View {
     @State private var dragBase: CGRect?
     @Environment(\.colorScheme) private var scheme
 
+    /// The whole picture, read off the main thread when the page opens (0.5); until then the board's memory copy.
+    @State private var full: CGImage?
+    @State private var looked = false
+
     private var item: Item? { session.board.item(id) }
-    private var image: CGImage? { item?.picture.flatMap { PictureStore.shared.imageNow($0) } }
+    private var image: CGImage? { full ?? item?.picture.flatMap { PictureStore.shared.imageInMemory($0) } }
     private static let grip: CGFloat = 44
 
     var body: some View {
@@ -33,7 +37,7 @@ struct CropPage: View {
                 }
             } else {
                 Spacer()
-                Text("Picture not here yet").font(Txt.label).foregroundStyle(.secondary)
+                if looked { Text("Picture not here yet").font(Txt.label).foregroundStyle(.secondary) }
                 Spacer()
             }
             HStack(spacing: 10) {
@@ -69,6 +73,12 @@ struct CropPage: View {
             started = true
             let p = item?.shownPart ?? [0, 0, 1, 1]
             part = CGRect(x: p[0], y: p[1], width: p[2], height: p[3])
+        }
+        .task {
+            if let name = item?.picture {
+                full = await Task.detached(priority: .userInitiated) { PictureStore.shared.fullImage(name) }.value
+            }
+            looked = true
         }
     }
 
@@ -182,6 +192,8 @@ struct CropPage: View {
         case .topLeft, .topRight: top = min(max(base.minY + d.height, 0), bottom - least.height)
         case .bottomLeft, .bottomRight: bottom = max(min(base.maxY + d.height, 1), top + least.height)
         }
+        // A very narrow picture (the least a frame may be is wider than what is left): never outside the picture.
+        left = max(left, 0); right = min(right, 1); top = max(top, 0); bottom = min(bottom, 1)
         return CGRect(x: left, y: top, width: right - left, height: bottom - top)
     }
 }

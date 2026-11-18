@@ -268,7 +268,7 @@ final class StoredFieldsTests: XCTestCase {
                   sent: ["kind", "path", "title", "when"],
                   stroke: ["colour", "points", "pressure", "width"],
                   lanes: ["cuts", "names", "way"],
-                  starter: ["board", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
+                  starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
                   sentTask: ["id", "place", "words"]),
     ]
 
@@ -314,7 +314,7 @@ final class StoredFieldsTests: XCTestCase {
         board.sentTodos = [a.id]
         board.noteSent(b.id, words: "b", place: SentTask.note)
         let starter = StarterEntry(id: "own-1", name: "Mine", hint: "h", order: 1, removed: true, removedWhen: Date(),
-                                   builtin: "blank", board: board, changed: Date())
+                                   builtin: "blank", board: board, changed: Date(), boardChanged: Date())
 
         let file = try JSONSerialization.jsonObject(with: JSONEncoder().encode(board)) as! [String: Any]
         let item = (file["items"] as! [[String: Any]])[1]
