@@ -72,6 +72,7 @@ struct BoardView: View {
                         Button("Cancel") {
                             session.linking = false
                             session.linkFrom = nil
+                            session.takeKeys()
                         }
                         .buttonStyle(FilledButton(.arrows))
                         .accessibilityIdentifier("board.linkCancel")
@@ -84,6 +85,32 @@ struct BoardView: View {
                     SelectionBar(session: session)
                 }
                 Spacer(minLength: 0)
+                if let notice = session.notice {
+                    // A step the owner may not have meant (an idea torn off its map): one press takes it back.
+                    HStack(spacing: 10) {
+                        Text(notice.words)
+                            .font(Txt.label)
+                            .foregroundStyle(.white)
+                        Button("Undo") {
+                            session.undo()
+                            session.takeKeys()
+                        }
+                        .font(Txt.label.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.22), in: Capsule())
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("board.noticeUndo")
+                    }
+                    .padding(.leading, 12)
+                    .padding(.trailing, 5)
+                    .padding(.vertical, 5)
+                    .background(Part.mindMap.fill, in: Capsule())
+                    // Its own element with its button inside, so the button keeps its own name for the screen tests.
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("board.notice")
+                }
                 if let flash = model.flash {
                     Text(flash)
                         .font(Txt.label)
@@ -131,18 +158,22 @@ struct BoardView: View {
         #endif
         .toolbar { toolbar }
         .focusedSceneObject(session)
-        .sheet(isPresented: $model.showSend) {
+        // When the Send page closes, the board has the keys again.
+        .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
         }
         .alert("Name of the board", isPresented: $renaming) {
             TextField("Name", text: $newName)
                 .accessibilityIdentifier("rename.field")
-            Button("Cancel", role: .cancel) {}
-            Button("Save") { session.rename(newName) }
+            Button("Cancel", role: .cancel) { session.takeKeys() }
+            Button("Save") {
+                session.rename(newName)
+                session.takeKeys()
+            }
         }
         .confirmationDialog("Remove “\(session.board.title)”?", isPresented: $removing, titleVisibility: .visible) {
             Button("Remove the board", role: .destructive) { model.remove(session.board.id) }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) { session.takeKeys() }
         } message: {
             Text("It is kept for 30 days in the Removed folder.")
         }
@@ -162,12 +193,12 @@ struct BoardView: View {
         ToolbarItemGroup(placement: .primaryAction) {
             // On the iPhone Undo and Redo sit at the bottom, so the board's name has room up here.
             if !compact {
-                Button { session.undo() } label: { GlyphView(glyph: .app(.undo), size: 20) }
+                Button { session.undo(); session.takeKeys() } label: { GlyphView(glyph: .app(.undo), size: 20) }
                     .disabled(session.undoCount == 0)
                     .help("Undo")
                     .accessibilityLabel("Undo")
                     .accessibilityIdentifier("board.undo")
-                Button { session.redo() } label: { GlyphView(glyph: .app(.redo), size: 20) }
+                Button { session.redo(); session.takeKeys() } label: { GlyphView(glyph: .app(.redo), size: 20) }
                     .disabled(session.redoCount == 0)
                     .help("Redo")
                     .accessibilityLabel("Redo")
@@ -178,14 +209,20 @@ struct BoardView: View {
                     newName = session.board.title
                     renaming = true
                 }
-                Button(session.board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(session.board.id) }
+                // After each choice in the menu the board has the keys again.
+                Button(session.board.pinned ? "Unpin" : "Pin to the top") {
+                    model.togglePin(session.board.id)
+                    session.takeKeys()
+                }
                 Divider()
                 Button("Paste a list as a mind map") {
                     if let text = model.clipboardText() { session.paste(text) } else { model.say("Nothing to paste.") }
+                    session.takeKeys()
                 }
                 Button("Copy the board as text") {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
+                    session.takeKeys()
                 }
                 if !session.board.isEmpty {
                     ShareLink(item: BoardPNG(board: session.board), preview: SharePreview(session.board.title)) {
@@ -252,7 +289,10 @@ struct ToolPill: View {
     }
 
     private func tool(_ mark: AppMark, _ part: Part, _ id: String, _ help: String, on: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            action()
+            session.takeKeys()
+        } label: {
             AppMarkView(mark, size: 24, colour: on ? .white : part.text)
                 .frame(width: 40, height: 40)
                 .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -285,7 +325,10 @@ struct ZoomCluster: View {
     }
 
     private func button(_ glyph: Glyph, _ id: String, _ help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            action()
+            session.takeKeys()
+        } label: {
             GlyphView(glyph: glyph, size: 18, colour: Part.arrows.text)
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
@@ -400,7 +443,10 @@ struct SelectionBar: View {
     }
 
     private func shape(_ mark: AppMark, _ kind: ItemKind, _ item: Item) -> some View {
-        Button { session.setKind(kind) } label: {
+        Button {
+            session.setKind(kind)
+            session.takeKeys()
+        } label: {
             AppMarkView(mark, size: 20, colour: item.kind == kind ? .white : Part.shapes.text)
                 .frame(width: 30, height: 28)
                 .background(item.kind == kind ? Part.shapes.fill : Part.shapes.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -412,7 +458,10 @@ struct SelectionBar: View {
     }
 
     private func chip(_ word: String, _ glyph: Glyph, _ id: String, _ part: Part, on: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            action()
+            session.takeKeys()
+        } label: {
             HStack(spacing: 4) {
                 GlyphView(glyph: glyph, size: 15, colour: on ? .white : part.text)
                 Text(word)
@@ -452,7 +501,10 @@ struct SelectionBar: View {
     }
 
     private func dot(_ colour: Color, edge: Color?, id: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            action()
+            session.takeKeys()
+        } label: {
             Circle()
                 .fill(colour)
                 .overlay(Circle().stroke(edge ?? .clear, lineWidth: 1.5))
@@ -464,7 +516,43 @@ struct SelectionBar: View {
     }
 }
 
-/// The Board menu on the Mac and with an iPad keyboard.
+/// Undo and Redo for the words being typed: they belong to the text field that has the keys.
+enum TextUndo {
+    static func undo() {
+        #if os(macOS)
+        NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+        #else
+        typingField?.undoManager?.undo()
+        #endif
+    }
+
+    static func redo() {
+        #if os(macOS)
+        NSApp.sendAction(Selector(("redo:")), to: nil, from: nil)
+        #else
+        typingField?.undoManager?.redo()
+        #endif
+    }
+
+    #if !os(macOS)
+    fileprivate static weak var found: UIResponder?
+
+    /// The view that has the keys right now.
+    private static var typingField: UIResponder? {
+        found = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.seedboardHasTheKeys(_:)), to: nil, from: nil, for: nil)
+        return found
+    }
+    #endif
+}
+
+#if !os(macOS)
+extension UIResponder {
+    @objc fileprivate func seedboardHasTheKeys(_ sender: Any?) { TextUndo.found = self }
+}
+#endif
+
+/// The Board menu on the Mac and with a keyboard on the iPad or iPhone.
 struct BoardCommands: Commands {
     @FocusedObject private var session: BoardSession?
 
@@ -472,19 +560,15 @@ struct BoardCommands: Commands {
         CommandGroup(replacing: .undoRedo) {
             Button("Undo") {
                 // While words are being typed, Undo belongs to the typing.
-                if session?.editing != nil {
-                    #if os(macOS)
-                    NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
-                    #endif
-                } else {
-                    session?.undo()
-                }
+                if session?.editing != nil { TextUndo.undo() } else { session?.undo() }
             }
             .keyboardShortcut("z", modifiers: .command)
             .disabled(session == nil || (session?.undoCount == 0 && session?.editing == nil))
-            Button("Redo") { session?.redo() }
-                .keyboardShortcut("z", modifiers: [.command, .shift])
-                .disabled(session == nil || session?.redoCount == 0)
+            Button("Redo") {
+                if session?.editing != nil { TextUndo.redo() } else { session?.redo() }
+            }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+            .disabled(session == nil || (session?.redoCount == 0 && session?.editing == nil))
         }
         CommandMenu("Board") {
             Button("Copy the Chosen Things") { session?.duplicateSelection() }
@@ -526,7 +610,10 @@ struct UndoCluster: View {
     }
 
     private func button(_ mark: AppMark, _ id: String, _ help: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            action()
+            session.takeKeys()
+        } label: {
             AppMarkView(mark, size: 18, colour: Part.arrows.text)
                 .frame(width: 30, height: 28)
                 .contentShape(Rectangle())

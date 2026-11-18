@@ -61,9 +61,11 @@ final class MindMapTests: XCTestCase {
 
     func testLeftSideIsMirroredWhenBothSides() {
         var board = Board()
-        let c = board.addCentre(at: .zero, text: "C", bothSides: true)
+        // A map whose branches remember no side yet (an older file, a pasted list): first half right, rest left.
+        let c = board.addCentre(at: .zero, text: "C", bothSides: false)
         let k = kids(&board, c, 5)
         let grand = kids(&board, k[3], 2)
+        board.items[board.index(of: c)!].bothSides = true
         board.layoutMaps()
         XCTAssertEqual(k.map { board.side(of: $0) }, [.right, .right, .right, .left, .left])
         let centre = board.item(c)!
@@ -182,8 +184,9 @@ final class MindMapTests: XCTestCase {
 
     func testArrowKeysWalkBothSides() {
         var board = Board()
-        let c = board.addCentre(at: .zero, text: "C", bothSides: true)
+        let c = board.addCentre(at: .zero, text: "C", bothSides: false)
         let k = kids(&board, c, 4)
+        board.items[board.index(of: c)!].bothSides = true   // k0, k1 right; k2, k3 left
         let rg = kids(&board, k[0], 2)
         let lg = kids(&board, k[2], 1)
         XCTAssertEqual(board.idea(from: c, step: .right), k[0])

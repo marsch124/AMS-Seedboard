@@ -38,6 +38,9 @@ struct SeedboardApp: App {
         }
         #else
         WindowGroup { root }
+            // With a keyboard on the iPad (or iPhone): ⌘Z, ⇧⌘Z, ⌘D, ⌘+, ⌘-, ⌘0 and the rest of the
+            // Board menu work, and show when ⌘ is held.
+            .commands { BoardCommands() }
         #endif
     }
 

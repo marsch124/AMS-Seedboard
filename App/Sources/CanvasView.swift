@@ -2,6 +2,8 @@ import SwiftUI
 import SeedboardCore
 #if os(macOS)
 import AppKit
+#else
+import UIKit
 #endif
 
 /// The board itself: draws it, and turns presses, drags, pinches and keys into changes.
@@ -24,6 +26,15 @@ struct CanvasView: View {
     @State private var pinched = false
     @State private var pressing = false
     @State private var lastTapBare = false
+    /// When the press began: on a touch screen an idea lifts only after a short hold.
+    @State private var pressBegan = Date.distantPast
+    /// The middle idea of the one map being dragged: it may be dropped on an idea of another map.
+    @State private var hanging: UUID?
+
+    /// Shift and Tab arrives as its own key on the Mac.
+    private static let backTab = KeyEquivalent("\u{19}")
+    /// How long a finger must rest on an idea before it lifts.
+    private static let hold: TimeInterval = 0.25
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
@@ -121,6 +132,13 @@ struct CanvasView: View {
                 if new != nil { typing = true } else { keys = true }
             }
         }
+        // After a button, a menu or a page the board takes the keys back, so the letter keys,
+        // the arrow keys and the Board menu's keys go on working.
+        .onReceive(session.keysWanted) { _ in
+            DispatchQueue.main.async {
+                if session.editing == nil { keys = true }
+            }
+        }
     }
 
     private func resetPress() {
@@ -130,6 +148,7 @@ struct CanvasView: View {
         rubber = nil
         ghost = nil
         dropTarget = nil
+        hanging = nil
         pinchBase = nil
         pinched = false
         pressing = false
@@ -166,12 +185,20 @@ struct CanvasView: View {
             .id(session.editing)
             .accessibilityIdentifier("board.field")
             .onKeyPress(.return, phases: .down) { press in
-                // Shift or Option with Return makes a new line; Return alone ends the typing.
-                if press.modifiers.contains(.shift) || press.modifiers.contains(.option) { return .ignored }
+                // Shift or Option with Return makes a new line (in an idea too); Return alone ends the typing.
+                if press.modifiers.contains(.shift) || press.modifiers.contains(.option) {
+                    session.wantLineBreak()
+                    return .ignored
+                }
                 session.commitEdit(then: isIdea ? .sister : .nothing)
                 return .handled
             }
-            .onKeyPress(.tab, phases: .down) { _ in
+            .onKeyPress(keys: [.tab, Self.backTab], phases: .down) { press in
+                if press.modifiers.contains(.shift) || press.key == Self.backTab {
+                    // Shift and Tab: the idea moves out one level, and the typing goes on.
+                    if isIdea, let id = session.editing { session.moveOut(id) }
+                    return .handled
+                }
                 session.commitEdit(then: isIdea ? .child : .nothing)
                 return .handled
             }
@@ -280,8 +307,11 @@ struct CanvasView: View {
                 switch drag {
                 case .idle:
                     let t = target(at: session.toBoard(value.startLocation))
+                    pressBegan = value.time
                     // Pressing somewhere else ends the typing.
                     if session.editing != nil { session.commitEdit() }
+                    // Every press on the board gives it the keys.
+                    keys = true
                     if case .item(let id) = t, !session.linking, !session.selection.contains(id), !shiftDown, !session.choosingMore {
                         session.select(id)
                     }
@@ -301,6 +331,7 @@ struct CanvasView: View {
                     rubber = nil
                     ghost = nil
                     dropTarget = nil
+                    hanging = nil
                 }
                 pressing = false
                 guard !pinched else {
@@ -320,11 +351,22 @@ struct CanvasView: View {
             if session.linking {
                 drag = .joining(id)
             } else if let item = board.item(id), item.kind == .idea, item.parent != nil {
+                #if os(iOS)
+                // A slide that starts on an idea moves the view. The idea lifts only after a short hold,
+                // so it is never torn off its map by accident.
+                guard value.time.timeIntervalSince(pressBegan) >= Self.hold else {
+                    drag = .panning(session.offset)
+                    return
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                #endif
                 drag = .idea(id)
             } else {
                 let chosen = session.selection.contains(id) ? session.selection : [id]
                 session.liveStart()
                 drag = .moving(board.carried(by: chosen))
+                // One map dragged by its middle idea can be dropped on an idea of another map.
+                if let item = board.item(id), item.kind == .idea, item.parent == nil, chosen.count == 1 { hanging = id }
             }
         case .plus(let id, let d):
             drag = .plus(id, d)
@@ -348,6 +390,7 @@ struct CanvasView: View {
         switch drag {
         case .moving(let ids):
             session.live { $0.move(ids, by: delta) }
+            if hanging != nil { dropTarget = session.board.idea(at: here, notIn: ids) }
         case .idea(let id):
             ghost = delta
             if let over = session.board.hit(here), over != id, session.board.item(over)?.kind == .idea,
@@ -368,7 +411,8 @@ struct CanvasView: View {
             session.selectedLink = nil
             session.selection = session.board.items(in: CGRect(x: p0.x, y: p0.y, width: box.width / s, height: box.height / s))
         case .panning(let base):
-            session.offset = CGSize(width: base.width + value.translation.width, height: base.height + value.translation.height)
+            // The same step as every other way of moving the view, so the board knows the owner moved it.
+            session.slide(from: base, by: value.translation)
         case .idle, .waiting:
             break
         }
@@ -379,13 +423,21 @@ struct CanvasView: View {
         switch drag {
         case .waiting(let t):
             tap(t, at: here)
-        case .moving, .sizing:
+        case .moving:
+            if let centre = hanging, let over = dropTarget {
+                // Dropped on an idea of another map: the map goes back to where it was and hangs there.
+                session.liveEnd(keep: false)
+                session.hang(centre, under: over)
+            } else {
+                session.liveEnd(keep: true)
+            }
+        case .sizing:
             session.liveEnd(keep: true)
         case .idea(let id):
             if let over = dropTarget {
-                session.change { $0.reparent(id, under: over) }
+                session.hang(id, under: over)
             } else if hypot(value.translation.width, value.translation.height) > 50 {
-                session.change { $0.detach(id, at: here) }
+                session.detach(id, at: here)
             }
         case .plus(let id, let d):
             guard let item = session.board.item(id) else { return }
@@ -485,6 +537,7 @@ struct CanvasView: View {
                     rubber = nil
                     ghost = nil
                     dropTarget = nil
+                    hanging = nil
                 }
                 session.zoom(to: (pinchBase ?? 1) * value.magnification, around: value.startLocation)
             }
@@ -506,8 +559,16 @@ struct CanvasView: View {
             return .ignored
         }
         switch press.key {
-        case .tab:
-            if let item, item.kind == .idea { session.addChild(of: item.id); return .handled }
+        case .tab, Self.backTab:
+            if let item, item.kind == .idea {
+                // Tab: an idea under this one. Shift and Tab: this idea moves out one level.
+                if press.modifiers.contains(.shift) || press.key == Self.backTab {
+                    session.moveOut(item.id)
+                } else {
+                    session.addChild(of: item.id)
+                }
+                return .handled
+            }
             return .ignored
         case .return:
             if let item {

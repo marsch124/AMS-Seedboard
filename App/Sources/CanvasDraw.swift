@@ -103,17 +103,15 @@ enum Lettering {
         switch item.kind {
         case .idea: return 240
         case .text: return 360
-        case .diamond: return max(CGFloat(item.w) * 0.56, 50)
-        case .oval: return max(CGFloat(item.w) * 0.72, 50)
-        case .note: return max(CGFloat(item.w) - 20, 50)
-        case .frame: return max(CGFloat(item.w) - 20, 50)
-        default: return max(CGFloat(item.w) - 24, 50)
+        default: return CGFloat(ShapeFit.wordsWidth(item.kind, w: item.w))
         }
     }
 
     /// Sizes every item so its words fit: ideas and free text take exactly the room of their
     /// words; shapes and notes only ever grow. Then the mind maps are laid out again.
-    static func fit(_ board: inout Board, facts: MapFacts) {
+    /// A shape in `widen` (its words are being typed, or its kind was just changed) grows wider
+    /// first, round its middle, and only then taller; any other shape keeps the owner's width.
+    static func fit(_ board: inout Board, facts: MapFacts, widen: Set<UUID> = []) {
         for i in board.items.indices {
             let item = board.items[i]
             let depth = facts.depth[item.id] ?? 0
@@ -132,12 +130,13 @@ enum Lettering {
             case .text:
                 board.items[i].w = Double(max(40, t.width + 8))
                 board.items[i].h = Double(max(26, t.height + 6))
-            case .box, .round:
-                board.items[i].h = max(item.h, Double(t.height + 22))
-            case .diamond:
-                board.items[i].h = max(item.h, Double(t.height * 2 + 20))
-            case .oval:
-                board.items[i].h = max(item.h, Double(t.height * 1.4 + 16))
+            case .box, .round, .diamond, .oval:
+                let size = ShapeFit.size(item.kind, w: item.w, h: item.h, widen: widen.contains(item.id)) { width in
+                    Double(measure(words, size: look.size, bold: look.bold, maxWidth: CGFloat(width)).height)
+                }
+                board.items[i].x -= (size.w - item.w) / 2
+                board.items[i].w = size.w
+                board.items[i].h = size.h
             case .note:
                 board.items[i].h = max(item.h, Double(t.height + 22))
             case .frame:
@@ -183,9 +182,10 @@ struct MapFacts {
             depth[centre.id] = 0
             side[centre.id] = .right
             let list = kids[centre.id] ?? []
-            let half = (list.count + 1) / 2
+            // A main branch stays on the side it remembers (the same rule as the layout).
+            let sides = MindMap.sides(of: list, bothSides: centre.bothSides)
             for (n, branch) in list.enumerated() {
-                let s: Side = centre.bothSides && n >= half ? .left : .right
+                let s = sides[n]
                 walk(branch, depth: 1, side: s, colour: branch.colour.isEmpty ? "pink" : branch.colour, hidden: centre.folded)
             }
         }

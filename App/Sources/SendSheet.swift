@@ -23,6 +23,23 @@ struct SendSheet: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        page.frame(width: 470)
+        #else
+        // As tall as its words (it scrolls when the room is short). On the iPhone the page is full
+        // height, so its title is never cut off; on the iPad it is a card just as tall as what is in it.
+        ScrollView {
+            page
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .presentationDetents([.large])
+        .modifier(FittedPage())
+        #endif
+    }
+
+    private var page: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 AppMarkView(.send, size: 22, colour: Part.paragon.text)
@@ -104,12 +121,6 @@ struct SendSheet: View {
             .padding(.top, 2)
         }
         .padding(16)
-        #if os(macOS)
-        .frame(width: 470)
-        #else
-        .frame(maxWidth: 560, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.medium, .large])
-        #endif
         .onAppear {
             title = ParagonExport.noteTitle(for: session.board.title)
             if session.board.mapCentres.isEmpty, waiting > 0, session.board.items.allSatisfy({ $0.todo }) { kind = .todos }
@@ -159,3 +170,16 @@ struct SendSheet: View {
         }
     }
 }
+
+#if !os(macOS)
+/// On the iPad a page is a card in the middle of the screen: it is made just as tall as what is in it.
+private struct FittedPage: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.presentationSizing(.form.fitted(horizontal: false, vertical: true))
+        } else {
+            content
+        }
+    }
+}
+#endif

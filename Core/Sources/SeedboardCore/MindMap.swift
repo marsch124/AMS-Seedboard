@@ -4,13 +4,37 @@ import CoreGraphics
 // Mind maps. An idea with no parent is the centre of a map; every other idea hangs under one.
 // The centre stays where the owner put it; all other ideas are placed by `layoutMaps()`.
 
-public enum Side: String, Sendable { case right, left }
+public enum Side: String, Codable, Sendable { case right, left }
 
 public enum MindMap {
     /// Space between an idea and its children, sideways.
     public static let gapAcross: Double = 46
     /// Space between sister ideas, up and down.
     public static let gapDown: Double = 10
+
+    /// The side of each main branch of one map, in the branches' order.
+    /// A branch stays on the side it remembers. A branch that remembers none goes to the emptier
+    /// side (right when both are even), so adding one never makes another jump across the middle.
+    /// A map in which no branch remembers a side (made before sides were kept) is split as it
+    /// always was: the first half right, the rest left.
+    public static func sides(of branches: [Item], bothSides: Bool) -> [Side] {
+        guard bothSides else { return branches.map { _ in .right } }
+        if branches.allSatisfy({ $0.side == nil }) {
+            let half = (branches.count + 1) / 2
+            return branches.indices.map { $0 < half ? .right : .left }
+        }
+        var right = branches.filter { $0.side == .right }.count
+        var left = branches.filter { $0.side == .left }.count
+        return branches.map { branch in
+            if let side = branch.side { return side }
+            if left < right {
+                left += 1
+                return .left
+            }
+            right += 1
+            return .right
+        }
+    }
 }
 
 public extension Board {
@@ -90,7 +114,26 @@ public extension Board {
         guard centre.bothSides else { return .right }
         let all = children(of: centreID)
         guard let place = all.firstIndex(where: { $0.id == branch }) else { return .right }
-        return place < (all.count + 1) / 2 ? .right : .left
+        return MindMap.sides(of: all, bothSides: true)[place]
+    }
+
+    /// Writes down the side of every main branch of a both-sides map, so each one stays there.
+    mutating func settleSides(of centreID: UUID) {
+        guard let centre = item(centreID), centre.kind == .idea, centre.parent == nil, centre.bothSides else { return }
+        let all = children(of: centreID)
+        let sides = MindMap.sides(of: all, bothSides: true)
+        for (n, branch) in all.enumerated() where branch.side != sides[n] {
+            if let i = index(of: branch.id) { items[i].side = sides[n] }
+        }
+    }
+
+    /// The topmost idea under the point that can be seen, leaving some ideas out
+    /// (the ones being dragged).
+    func idea(at point: CGPoint, notIn left: Set<UUID>) -> UUID? {
+        for item in items.reversed() where item.kind == .idea && !left.contains(item.id) && !isHidden(item.id) {
+            if item.frame.insetBy(dx: -5, dy: -4).contains(point) { return item.id }
+        }
+        return nil
     }
 
     /// True when the idea is out of sight because something above it is folded.
@@ -119,10 +162,12 @@ public extension Board {
         return idea.id
     }
 
-    /// A new idea under this one, after its sisters. A main branch takes the next branch colour.
+    /// A new idea under this one, after its sisters. A main branch takes the next branch colour
+    /// and, in a both-sides map, the emptier side; the branches already there stay where they are.
     @discardableResult
     mutating func addChild(of id: UUID, text: String = "") -> UUID? {
         guard let parent = item(id), parent.kind == .idea else { return nil }
+        if parent.parent == nil { settleSides(of: id) }
         let sisters = children(of: id)
         var idea = Item(kind: .idea, text: text, parent: id, order: (sisters.last?.order ?? 0) + 1)
         if parent.parent == nil {
@@ -133,6 +178,7 @@ public extension Board {
         idea.y = parent.y
         items.append(idea)
         if let i = index(of: id) { items[i].folded = false }
+        if parent.parent == nil { settleSides(of: id) }
         return idea.id
     }
 
@@ -142,7 +188,12 @@ public extension Board {
     mutating func addSister(of id: UUID, above: Bool = false) -> UUID? {
         guard let me = item(id), me.kind == .idea else { return nil }
         guard let parentID = me.parent else { return addChild(of: id) }
+        // A new main branch goes to the emptier side; when both sides are even it stays beside this one.
+        settleSides(of: parentID)
+        let branches = children(of: parentID)
+        let even = branches.filter { $0.side == .left }.count * 2 == branches.count
         guard let newID = addChild(of: parentID) else { return nil }
+        if even, let mine = item(id)?.side, let n = index(of: newID), items[n].side != nil { items[n].side = mine }
         // Put it straight after (or before) this idea, then give everyone whole numbers again.
         var order = children(of: parentID).map(\.id).filter { $0 != newID }
         let at = (order.firstIndex(of: id) ?? order.count - 1) + (above ? 0 : 1)
@@ -154,35 +205,78 @@ public extension Board {
     }
 
     /// Hangs an idea (with everything under it) under another idea. Refused when the new
-    /// parent is the idea itself or sits below it.
+    /// parent is the idea itself or sits below it. The middle of a map can be hung too: its
+    /// whole map then becomes a branch, and its ideas follow the colour of the branch they are in.
     @discardableResult
     mutating func reparent(_ id: UUID, under newParent: UUID) -> Bool {
         guard id != newParent, let me = item(id), me.kind == .idea,
               let target = item(newParent), target.kind == .idea,
               !descendants(of: id).contains(newParent), let i = index(of: id) else { return false }
+        if target.parent == nil { settleSides(of: newParent) }
         let sisters = children(of: newParent).filter { $0.id != id }
+        let stays = me.parent == newParent
+        if me.parent == nil {
+            // What was a map of its own: its main branches are ordinary ideas now.
+            items[i].bothSides = false
+            for below in descendants(of: id) {
+                if let b = index(of: below) {
+                    items[b].colour = ""
+                    items[b].side = nil
+                }
+            }
+        }
         items[i].parent = newParent
         items[i].order = (sisters.last?.order ?? 0) + 1
         if target.parent == nil {
+            if !stays { items[i].side = nil }
             if items[i].colour.isEmpty {
                 let used = Set(sisters.map(\.colour))
                 items[i].colour = Palette.branches.first { !used.contains($0) } ?? Palette.branch(sisters.count)
             }
         } else {
             items[i].colour = ""
+            items[i].side = nil
         }
         if let t = index(of: newParent) { items[t].folded = false }
+        if target.parent == nil { settleSides(of: newParent) }
         return true
     }
 
     /// Takes an idea out of its map: it becomes the centre of its own map at the point.
+    /// The ideas right under it become main branches and take branch colours.
     mutating func detach(_ id: UUID, at point: CGPoint) {
         guard let i = index(of: id), items[i].kind == .idea, items[i].parent != nil else { return }
         items[i].parent = nil
         items[i].colour = ""
+        items[i].side = nil
         items[i].bothSides = false
         items[i].x = Double(point.x) - items[i].w / 2
         items[i].y = Double(point.y) - items[i].h / 2
+        let branches = children(of: id)
+        var used = Set(branches.map(\.colour).filter { !$0.isEmpty })
+        for (n, branch) in branches.enumerated() where branch.colour.isEmpty {
+            guard let b = index(of: branch.id) else { continue }
+            items[b].colour = Palette.branches.first { !used.contains($0) } ?? Palette.branch(n)
+            used.insert(items[b].colour)
+        }
+    }
+
+    /// Moves an idea out one level: it becomes the next sister of the idea it hung under.
+    /// Refused for a centre and for a main branch (there is no level further out).
+    @discardableResult
+    mutating func moveOut(_ id: UUID) -> Bool {
+        guard let me = item(id), me.kind == .idea, let parentID = me.parent,
+              let grand = item(parentID)?.parent else { return false }
+        guard reparent(id, under: grand) else { return false }
+        var order = children(of: grand).map(\.id).filter { $0 != id }
+        let at = (order.firstIndex(of: parentID) ?? order.count - 1) + 1
+        order.insert(id, at: min(max(at, 0), order.count))
+        for (n, each) in order.enumerated() {
+            if let i = index(of: each) { items[i].order = Double(n + 1) }
+        }
+        // A new main branch stays on the side it was on.
+        if let side = item(parentID)?.side, let i = index(of: id), items[i].side != nil { items[i].side = side }
+        return true
     }
 
     /// Moves an idea one place up or down among its sisters.
@@ -259,9 +353,11 @@ public extension Board {
             let list = kids[items[c].id] ?? []
             guard !items[c].folded else { continue }
             if items[c].bothSides {
-                let half = (list.count + 1) / 2
-                place(Array(list.prefix(half)), beside: c, side: .right)
-                place(Array(list.dropFirst(half)), beside: c, side: .left)
+                // Every main branch keeps its side from now on.
+                let sides = MindMap.sides(of: list.map { items[$0] }, bothSides: true)
+                for (n, i) in list.enumerated() { items[i].side = sides[n] }
+                place(list.filter { items[$0].side != .left }, beside: c, side: .right)
+                place(list.filter { items[$0].side == .left }, beside: c, side: .left)
             } else {
                 place(list, beside: c, side: .right)
             }

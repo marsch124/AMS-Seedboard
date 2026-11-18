@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import SeedboardCore
 
 /// The board that is open: what is chosen, what is being typed, where the view stands,
@@ -13,9 +14,12 @@ final class BoardSession: ObservableObject {
     /// The item or arrow being typed in.
     @Published private(set) var editing: UUID?
     @Published private(set) var draft = ""
+    /// Where the board stands on screen, and whether the owner has moved it.
+    @Published private(set) var place = Viewport()
     /// Where the board's zero point is on screen, and how big one board point is.
-    @Published var offset: CGSize = .zero
-    @Published var scale: CGFloat = 1
+    var offset: CGSize { place.offset }
+    var scale: CGFloat { CGFloat(place.scale) }
+    var viewSize: CGSize { place.size }
     /// The arrow tool is on: the next two shapes pressed are joined.
     @Published var linking = false
     @Published var linkFrom: UUID?
@@ -24,8 +28,20 @@ final class BoardSession: ObservableObject {
     @Published private(set) var undoCount = 0
     @Published private(set) var redoCount = 0
 
-    var viewSize: CGSize = .zero
-    private var moved = false
+    /// A short line with an Undo button, after a step the owner may not have meant.
+    struct Notice: Equatable {
+        let id = UUID()
+        let words: String
+    }
+    @Published private(set) var notice: Notice?
+    private var noticeWork: DispatchWorkItem?
+
+    /// The board asks for the keys back (after a button, a menu or a page).
+    let keysWanted = PassthroughSubject<Void, Never>()
+    func takeKeys() { keysWanted.send() }
+
+    /// Shift and Return was pressed: the next line break typed is a new line, in an idea too.
+    private var lineBreakWanted = false
     private var undoStack: [Board] = []
     private var redoStack: [Board] = []
     private var liveBase: Board?
@@ -47,9 +63,12 @@ final class BoardSession: ObservableObject {
 
     // MARK: Changing
 
-    private func set(_ new: Board) {
+    /// `room`: the board before the change — a map that grew since pushes aside what it would now cover.
+    /// `widen`: shapes whose words were just typed or whose kind was changed; they may grow wider.
+    private func set(_ new: Board, room old: Board? = nil, widen: Set<UUID> = []) {
         var fitted = new
-        Lettering.fit(&fitted, facts: MapFacts(new))
+        Lettering.fit(&fitted, facts: MapFacts(new), widen: widen)
+        if let old { fitted.makeRoom(since: old) }
         board = fitted
         facts = MapFacts(fitted)
     }
@@ -60,22 +79,43 @@ final class BoardSession: ObservableObject {
         redoStack = []
         undoCount = undoStack.count
         redoCount = 0
+        clearNotice()
     }
 
-    /// One change that can be undone.
-    func change(_ work: (inout Board) -> Void) {
-        guard !readOnly else { return }
+    /// One change that can be undone. True when something changed.
+    @discardableResult
+    func change(widen: Set<UUID> = [], _ work: (inout Board) -> Void) -> Bool {
+        guard !readOnly else { return false }
         let old = board
         var new = board
         work(&new)
-        guard new != old else { return }
+        guard new != old else { return false }
         new.touch()
         pushUndo(old)
-        set(new)
+        set(new, room: old, widen: widen)
         onChange?(board)
+        return true
+    }
+
+    /// Shows a short line with an Undo button for the step just taken. It goes by itself.
+    func tell(_ words: String) {
+        noticeWork?.cancel()
+        let made = Notice(words: words)
+        notice = made
+        let work = DispatchWorkItem { [weak self] in
+            if self?.notice == made { self?.notice = nil }
+        }
+        noticeWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: work)
+    }
+
+    private func clearNotice() {
+        noticeWork?.cancel()
+        if notice != nil { notice = nil }
     }
 
     func undo() {
+        clearNotice()
         guard editing == nil, let old = undoStack.popLast() else { return }
         redoStack.append(board)
         var back = old
@@ -109,6 +149,7 @@ final class BoardSession: ObservableObject {
         redoStack = []
         undoCount = 0
         redoCount = 0
+        clearNotice()
     }
 
     /// In the middle of typing or dragging.
@@ -166,25 +207,44 @@ final class BoardSession: ObservableObject {
         }
         editBase = board
         editIsNew = isNew
+        lineBreakWanted = false
         editing = id
     }
 
     enum After { case nothing, child, sister }
 
     /// What is typed goes straight onto the board, so shapes grow and maps make room as you type.
-    /// A line break in an idea ends it and starts the next one.
+    /// One new line break in an idea (the screen keyboard's Return) ends it and starts the next one —
+    /// unless Shift and Return asked for a new line. Line breaks that are already there stay.
     func typed(_ text: String) {
         guard let id = editing else { return }
-        if let item = board.item(id), item.kind == .idea, text.contains("\n") {
-            draft = text.replacingOccurrences(of: "\n", with: "")
-            apply(draft, to: id)
-            commitEdit(then: draft.isEmpty ? .nothing : .sister)
-            return
+        if let clean = Typing.withoutNewBreak(old: draft, new: text) {
+            if lineBreakWanted {
+                lineBreakWanted = false
+            } else if board.item(id)?.kind == .idea {
+                draft = clean
+                apply(clean, to: id)
+                commitEdit(then: clean.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .nothing : .sister)
+                return
+            }
         }
         draft = text
         apply(text, to: id)
         // Kept as it is typed, so leaving the app in the middle of a sentence loses nothing.
         onChange?(board)
+    }
+
+    /// Shift (or Option) with Return while typing: a new line, in an idea too. The field makes the
+    /// line where the cursor stands; if it does not, the line goes at the end of the words.
+    func wantLineBreak() {
+        guard editing != nil else { return }
+        lineBreakWanted = true
+        let words = draft
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            guard let self, self.lineBreakWanted else { return }
+            if self.editing != nil, self.draft == words { self.typed(words + "\n") }
+            self.lineBreakWanted = false
+        }
     }
 
     private func apply(_ text: String, to id: UUID) {
@@ -195,12 +255,13 @@ final class BoardSession: ObservableObject {
         } else if let l = new.links.firstIndex(where: { $0.id == id }) {
             new.links[l].text = text
         }
-        set(new)
+        set(new, room: board, widen: [id])
     }
 
     func commitEdit(then after: After = .nothing) {
         guard let id = editing else { return }
         editing = nil
+        lineBreakWanted = false
         var new = board
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         var removed = false
@@ -229,7 +290,7 @@ final class BoardSession: ObservableObject {
         if new.items != base.items || new.links != base.links || new.title != base.title {
             pushUndo(base)
         }
-        set(new)
+        set(new, room: board)
         onChange?(board)
         guard !removed else { return }
         switch after {
@@ -243,6 +304,7 @@ final class BoardSession: ObservableObject {
     func cancelEdit() {
         guard let id = editing else { return }
         editing = nil
+        lineBreakWanted = false
         draft = ""
         var back = editBase ?? board
         editBase = nil
@@ -309,6 +371,38 @@ final class BoardSession: ObservableObject {
         var made: UUID?
         change { made = $0.addSister(of: id) }
         if let made { beginEdit(made, isNew: true); reveal(made) }
+    }
+
+    /// Shift and Tab: the idea moves out one level and becomes the next sister of the idea it hung
+    /// under. It stays chosen, and typing in it goes on.
+    func moveOut(_ id: UUID) {
+        guard !readOnly else { return }
+        if editing == id {
+            var new = board
+            guard new.moveOut(id) else { return }
+            new.touch()
+            set(new, room: board)
+            onChange?(board)
+        } else {
+            guard change({ $0.moveOut(id) }) else { return }
+        }
+        reveal(id)
+    }
+
+    /// An idea dropped on another idea hangs under it, with everything below it. The middle of a
+    /// map can be dropped on an idea of another map: the two maps become one.
+    func hang(_ id: UUID, under target: UUID) {
+        let wasMap = board.isCentre(id)
+        guard change({ $0.reparent(id, under: target) }) else { return }
+        selection = [id]
+        if wasMap { tell("Joined to the other map") }
+    }
+
+    /// An idea dragged far out onto empty board becomes the middle of a map of its own.
+    func detach(_ id: UUID, at point: CGPoint) {
+        guard change({ $0.detach(id, at: point) }) else { return }
+        selection = [id]
+        tell("Made its own map")
     }
 
     func addNext(from id: UUID, direction: Direction) {
@@ -421,18 +515,11 @@ final class BoardSession: ObservableObject {
         }
     }
 
+    /// Another kind of shape. The size the owner gave it stays; long words make it wider first, then taller.
     func setKind(_ kind: ItemKind) {
         let ids = selection
-        change { board in
-            for id in ids {
-                guard let i = board.index(of: id), board.items[i].kind.isShape, kind.isShape else { continue }
-                let centre = board.items[i].centre
-                board.items[i].kind = kind
-                board.items[i].w = Double(kind.defaultSize.width)
-                board.items[i].h = Double(kind.defaultSize.height)
-                board.items[i].x = Double(centre.x) - board.items[i].w / 2
-                board.items[i].y = Double(centre.y) - board.items[i].h / 2
-            }
+        change(widen: ids) { board in
+            for id in ids { board.setKind(id, to: kind) }
         }
     }
 
@@ -503,9 +590,7 @@ final class BoardSession: ObservableObject {
 
     // MARK: The view
 
-    func toBoard(_ p: CGPoint) -> CGPoint {
-        CGPoint(x: (p.x - offset.width) / scale, y: (p.y - offset.height) / scale)
-    }
+    func toBoard(_ p: CGPoint) -> CGPoint { place.toBoard(p) }
 
     func toScreen(_ r: CGRect) -> CGRect {
         CGRect(x: r.minX * scale + offset.width, y: r.minY * scale + offset.height, width: r.width * scale, height: r.height * scale)
@@ -515,44 +600,21 @@ final class BoardSession: ObservableObject {
         CGPoint(x: p.x * scale + offset.width, y: p.y * scale + offset.height)
     }
 
-    func pan(by delta: CGSize) {
-        moved = true
-        offset = CGSize(width: offset.width + delta.width, height: offset.height + delta.height)
-    }
+    /// Every way of moving the view goes through `place`, which remembers that the owner moved it.
+    func pan(by delta: CGSize) { place.pan(by: delta) }
+
+    /// A finger slide on empty board: the view as it stood when the slide began, moved by the finger's way.
+    func slide(from start: CGSize, by way: CGSize) { place.slide(from: start, by: way) }
 
     /// Zooms so the board point under the screen point stays where it is.
-    func zoom(to newScale: CGFloat, around point: CGPoint? = nil) {
-        let anchor = point ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
-        moved = true
-        let clamped = min(max(newScale, 0.2), 3)
-        let under = toBoard(anchor)
-        scale = clamped
-        offset = CGSize(width: anchor.x - under.x * clamped, height: anchor.y - under.y * clamped)
-    }
+    func zoom(to newScale: CGFloat, around point: CGPoint? = nil) { place.zoom(to: Double(newScale), around: point) }
 
     /// Shows the whole board, never bigger than life size.
-    func fit() {
-        guard viewSize.width > 10, viewSize.height > 10 else { return }
-        guard let all = board.bounds else {
-            scale = 1
-            offset = CGSize(width: viewSize.width / 2, height: viewSize.height / 2)
-            return
-        }
-        let room = CGSize(width: max(viewSize.width - 80, 80), height: max(viewSize.height - 170, 80))
-        let s = min(1, min(room.width / max(all.width, 1), room.height / max(all.height, 1)))
-        // Never so small that the words cannot be read: on a small screen the middle of the board shows.
-        scale = max(s, 0.5)
-        offset = CGSize(width: viewSize.width / 2 - all.midX * scale, height: viewSize.height / 2 - all.midY * scale)
-    }
+    func fit() { place.fit(board.bounds) }
 
-    /// The first time the board's place on screen is known, it is shown whole.
-    func placeIfNeeded(_ size: CGSize) {
-        viewSize = size
-        // Until the owner has moved or zoomed the board, it is shown whole again whenever its room changes
-        // (a window still settling, a page opening over it).
-        guard !moved, size.width > 10 else { return }
-        fit()
-    }
+    /// The first time the board's place on screen is known, it is shown whole — and again whenever its
+    /// room changes (a window still settling, a page opening over it), until the owner has moved or zoomed it.
+    func placeIfNeeded(_ size: CGSize) { place.resized(to: size, showing: board.bounds) }
 
     /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.
     func resized(_ size: CGSize) {
