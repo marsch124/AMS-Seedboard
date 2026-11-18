@@ -7,7 +7,16 @@ lay out a flow with shapes and arrows, and stick notes anywhere. A Timeline boar
 over time, with a bar for each thing to do. When the board is ready, one button sends it to
 PARAGON as a note, as a project, or as to-dos for the Inbox.
 
-What is in 0.2:
+What is in 0.3 (build 3):
+
+- Pictures on boards: the ninth tool, Picture (key P), or Paste, or drop one on the board. Move it, resize it, copy it, point arrows at it. It goes with the board to your other devices, and shows in the picture sent to PARAGON.
+- Your own starters: More, Save as a starter. A Starters page renames, moves, changes and removes every starter, the built-in seven too (Back to the original, Bring back the built-in starters). Shortcuts and Siri still offer the seven built-in ones.
+- The tool row has nine tools; on a narrow iPhone the tiles shrink (40, 36, 32 points) before the row has to slide.
+- Shift + Return puts a new line exactly where the cursor stands. Key S switches Draw on and off (Mac).
+- Small fixes: a Who does what message with a missing name, ⌘0 on a timeline, where a Who does what board opens on a small screen, the project tally for shapes in lanes, iPad trackpad on Timeline and Who does what boards.
+- Boards changed by 0.3 are stored in format 3: Seedboard 0.2 shows them but cannot change them.
+
+And all of 0.2, which is:
 
 - A home page (Mac and iPad) under the heading "Plant a seed": seven ways to start as cards with a small drawing, and your boards as cards with their picture and "Changed 2 days ago". The list at the side has Pinned, Recent and Sent to PARAGON, and a search that finds boards by their name and by the words on them.
 - New board starts blank, or as a mind map, a flow, pros and cons, a plan in steps, or a timeline.
@@ -26,12 +35,12 @@ What is in 0.2:
 - Every note carries a link that opens the board again in Seedboard.
 - From outside: three actions for Shortcuts, Siri, the Action button and Raycast (New board from text, New board, Open board), and the device's search (Spotlight) finds boards.
 - Boards live on the device and in iCloud, on all your devices. Safety copies once a day (14 days). A removed board leaves every device and is kept 30 days; Settings has "Removed and earlier versions" with Bring back and Open as a copy. When two devices change the same board, the newer change stays, the other is kept, and a line says so.
-- Export all boards as one packed file (each board as a Seedboard file and as a text outline); Import boards adds them as new boards.
+- Export all boards as one packed file (each board as a Seedboard file and as a text outline, plus the pictures the boards show); Import boards adds them as new boards and takes the picture files back.
 - A board from a newer Seedboard is shown, not changed, never written over. Boards changed by 0.2 are stored in format 2: Seedboard 0.1 shows them but cannot change them.
 - Undo and Redo (120 steps), zoom 20 % to 300 %, day and night colours.
 - Settings has How it works and What's new (on the Mac its own window, ⌘,).
 - Also in 0.2: Apple Pencil drawing (a Draw tool, a rubber, three thicknesses, ten colours), the "Who does what" board (a sequence diagram: people in a row, messages in order), the bar beside the chosen thing (one row on the iPhone), a right-click / press-and-hold menu on every thing, copy, cut and paste (also between boards, and dragged-in text), and a Home row in the boards list.
-- Not in 0.2: find in a board, notes on ideas, pictures on boards, shared editing.
+- Not in 0.3: find in a board, notes on ideas, shared editing.
 
 Build:
 
@@ -48,7 +57,7 @@ Apple facts:
 
 Where things are:
 
-- `Core/` has the rules (Swift package SeedboardCore, no screens; 222 data tests).
+- `Core/` has the rules (Swift package SeedboardCore, no screens; 284 data tests).
 - `App/Sources/` has the screens. `Guide.swift` holds the in-app How it works and What's new.
 - `UITests/` has the screen tests, one file for each new screen.
-- `Docs/SPEC.md` is the full written specification. `Docs/PANEL-0.2.md` is the expert panel's list before 0.2; `Docs/notes-0.2/` holds each builder's notes.
+- `Docs/SPEC.md` is the full written specification. `Docs/PANEL-0.2.md` is the expert panel's list before 0.2; `Docs/notes-0.2/` and `Docs/notes-0.3/` hold each builder's notes.

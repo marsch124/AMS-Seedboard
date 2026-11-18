@@ -120,10 +120,14 @@ extension AppModel {
         saveNow()
         let now = Date()
         let store = self.store
-        let files = ExportRules.files(boards, bytes: { store.bytes(of: $0) }, now: now)
+        var files = ExportRules.files(boards, bytes: { store.bytes(of: $0) }, now: now)
         guard !files.isEmpty else { return nil }
         let name = ExportRules.archiveName(now)
         let count = files.count / 2
+        // The pictures the boards show go along, each under its own file name, beside the boards.
+        for picture in Set(boards.flatMap(\.pictureNames)).sorted() {
+            if let bytes = PictureStore.shared.fileBytes(picture) { files.append((name: picture, data: bytes)) }
+        }
         return await Task.detached(priority: .userInitiated) { () -> ExportFile? in
             // Made in a throwaway folder of the app's own; nothing of it stays behind.
             let place = FileManager.default.temporaryDirectory.appendingPathComponent("SeedboardExport-\(UUID().uuidString)", isDirectory: true)
@@ -140,9 +144,15 @@ extension AppModel {
     func importBoards(_ files: [URL]) -> String {
         var made = 0
         var skipped = 0
+        var pictures = 0
         for file in files {
             let allowed = file.startAccessingSecurityScopedResource()
             defer { if allowed { file.stopAccessingSecurityScopedResource() } }
+            // A picture file from an export: it comes back under its own name, so the boards that show it find it.
+            if file.pathExtension.lowercased() == "jpg" {
+                if let data = try? Data(contentsOf: file), PictureStore.shared.adopt(data, named: file.lastPathComponent) { pictures += 1 } else { skipped += 1 }
+                continue
+            }
             guard let data = try? Data(contentsOf: file), ExportRules.looksLikeBoard(data),
                   let board = store.board(from: data), board.canBeChanged else {
                 skipped += 1
@@ -153,6 +163,7 @@ extension AppModel {
         }
         var words: [String] = []
         if made > 0 { words.append(made == 1 ? "1 board came in as a new board." : "\(made) boards came in as new boards.") }
+        if pictures > 0 { words.append(pictures == 1 ? "1 picture came in." : "\(pictures) pictures came in.") }
         if skipped > 0 { words.append(skipped == 1 ? "1 file was not a board this Seedboard can read." : "\(skipped) files were not boards this Seedboard can read.") }
         return words.isEmpty ? "Nothing was chosen." : words.joined(separator: " ")
     }

@@ -168,6 +168,29 @@ final class PictureStore: @unchecked Sendable {
         }
     }
 
+    /// The file's own bytes, for the export of all boards. nil when the file is not on this device.
+    func fileBytes(_ name: String) -> Data? {
+        guard PictureKeeping.isPlainName(name) else { return nil }
+        var places = [local]
+        if let cloud { places.append(cloud) }
+        for folder in places {
+            let file = folder.appendingPathComponent(name)
+            guard FileManager.default.fileExists(atPath: file.path) else { continue }
+            var data: Data?
+            var problem: NSError?
+            NSFileCoordinator().coordinate(readingItemAt: file, options: [], error: &problem) { url in data = try? Data(contentsOf: url) }
+            if let data { return data }
+        }
+        return nil
+    }
+
+    /// A picture file from an export comes back under its own name. One that is already here stays as it is.
+    func adopt(_ data: Data, named name: String) -> Bool {
+        guard PictureKeeping.isPlainName(name), name.lowercased().hasSuffix(".jpg") else { return false }
+        if FileManager.default.fileExists(atPath: local.appendingPathComponent(name).path) { return true }
+        return take(data, as: name) != nil
+    }
+
     /// Reads the file from the device's folder, else from iCloud's when it has been downloaded.
     private func read(_ name: String) -> CGImage? {
         guard PictureKeeping.isPlainName(name) else { return nil }
