@@ -354,6 +354,7 @@ final class AppModel: ObservableObject {
             guard let self, SafetyRules.maySave(asking: new, shown: self.session) else { return }
             self.keep(board)
         }
+        new.onTicked = { [weak self] lines in self?.tellParagonTicked(lines) }
         session = new
         // 0.9: words inside the board's pictures are read once, quietly, for the search.
         PictureWordsReader.shared.start(new)
@@ -536,6 +537,13 @@ final class AppModel: ObservableObject {
             let found = ParagonGate.find()
             await MainActor.run { self.found(found) }
         }
+    }
+
+    /// 0.11: a box ticked on a board whose task is in PARAGON: one line each on PARAGON's waiting list. Nothing is
+    /// opened or changed in PARAGON's folder; no waiting list on this device (sample boards, no PARAGON) = nothing.
+    func tellParagonTicked(_ lines: [ParagonExport.DoneLine]) {
+        guard !LaunchOptions.sampleData, let outbox = place?.outbox else { return }
+        ParagonGate.appendDone(lines, to: outbox)
     }
 
     private func found(_ found: ParagonPlace?) {
