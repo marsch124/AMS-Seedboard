@@ -70,6 +70,10 @@ struct SeedMenus: Commands {
                 .keyboardShortcut("n", modifiers: .command)
             Button("New Blank Board") { if model.loaded { model.newBoard(.blank) } }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
+            // 0.11: the last five boards opened (Extras11.swift).
+            #if os(macOS)
+            OpenRecentMenu(model: model)
+            #endif
             Divider()
             Button("Rename…") { desk.rename.send() }
                 .disabled(!canChange)

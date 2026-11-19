@@ -58,10 +58,10 @@ extension ParagonExport {
     static func notesBody(_ board: Board, picture: Bool) -> String {
         let notes = framed(board, isNoteThing)
         var out = ""
-        if !notes.loose.isEmpty { out += notes.loose.map { noteBullet($0, picture: picture) }.joined(separator: "\n") + "\n\n" }
+        if !notes.loose.isEmpty { out += notes.loose.map { namedBullet($0, in: board, picture: picture) }.joined(separator: "\n") + "\n\n" }
         for group in notes.groups {
             out += "### \(group.name)\n\n"
-            out += group.things.map { noteBullet($0, picture: picture) }.joined(separator: "\n") + "\n\n"
+            out += group.things.map { namedBullet($0, in: board, picture: picture) }.joined(separator: "\n") + "\n\n"
         }
         return out
     }

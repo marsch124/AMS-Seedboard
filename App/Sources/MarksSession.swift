@@ -76,7 +76,12 @@ extension BoardSession {
     func pressMark(_ id: UUID, at p: CGPoint) -> Bool {
         guard editing == nil, !board.placesItself, let item = board.item(id) else { return false }
         if item.kind == .note, let line = TickLayout.box(of: item, at: p) {
-            if marksOn { change { $0.items[$0.index(of: id)!].text = TickList.toggled(item.text, line: line) } }
+            if marksOn {
+                // 0.11: a soft tick when a box gets ticked (not when the tick is taken off).
+                let all = TickList.lines(item.text)
+                if all.indices.contains(line), let one = all[line], !one.ticked { TickSound.play() }
+                change { $0.items[$0.index(of: id)!].text = TickList.toggled(item.text, line: line) }
+            }
             return true
         }
         if LinkLine.rect(for: item)?.contains(p) == true {

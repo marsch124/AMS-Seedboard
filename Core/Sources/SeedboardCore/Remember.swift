@@ -22,15 +22,19 @@ public struct Remembered: Codable, Equatable, Sendable {
     public var open: UUID?
     /// Each board's view, by the board's id as text.
     public var views: [String: LeftView]
+    /// 0.11: the boards opened last, newest first, at most five (the Mac's "Open Recent").
+    public var recent: [UUID]
 
-    public init(open: UUID? = nil, views: [String: LeftView] = [:]) {
+    public init(open: UUID? = nil, views: [String: LeftView] = [:], recent: [UUID] = []) {
         self.open = open
         self.views = views
+        self.recent = recent
     }
 
     enum CodingKeys: String, CodingKey {
         case open
         case views
+        case recent
     }
 
     /// Tolerant: whatever cannot be read is simply not remembered.
@@ -38,6 +42,7 @@ public struct Remembered: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         open = try? c.decode(UUID.self, forKey: .open)
         views = (try? c.decode([String: LeftView].self, forKey: .views)) ?? [:]
+        recent = (try? c.decode([UUID].self, forKey: .recent)) ?? []
     }
 
     public func view(of board: UUID) -> LeftView? { views[board.uuidString] }
@@ -50,6 +55,7 @@ public struct Remembered: Codable, Equatable, Sendable {
     public func keeping(_ boards: Set<UUID>) -> Remembered {
         var kept = self
         kept.views = views.filter { entry in UUID(uuidString: entry.key).map(boards.contains) ?? false }
+        kept.recent = recent.filter(boards.contains)
         return kept
     }
 }

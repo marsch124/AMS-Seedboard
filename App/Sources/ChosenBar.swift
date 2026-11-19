@@ -241,14 +241,24 @@ struct ColourRow: View {
                 }
                 .buttonStyle(PressStyle(wash: nil))
                 .modifier(InUseRing(on: colour.on))
+                .help(colour.word)
                 .accessibilityLabel(colour.word)
                 .accessibilityIdentifier(colour.id)
             }
         }
-        if bare {
-            dots.padding(.horizontal, 6).padding(.vertical, 8)
-        } else {
+        // 0.11: the legend's word for the colour in use, small under the dots ("Question").
+        let named = colours.first { $0.on && $0.word != String($0.id.dropFirst("colour.".count)).capitalized && $0.id.hasPrefix("colour.") }
+        let content = VStack(spacing: 2) {
             dots
+            if let named {
+                Text(named.word).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    .accessibilityIdentifier("colour.legendWord")
+            }
+        }
+        if bare {
+            content.padding(.horizontal, 6).padding(.vertical, 8)
+        } else {
+            content
                 .padding(.horizontal, 9)
                 .padding(.vertical, 6)
                 .background(Theme.plate, in: plate)
