@@ -31,6 +31,8 @@ enum Feel {
     static func sent() { tick(.sent) }
     /// Send to PARAGON did not go through.
     static func notSent() { tick(.notSent) }
+    /// 0.14: the brainstorm timer ran out: one soft tap.
+    static func timeUp() { tick(.timeUp) }
 
     /// "Reduce Motion" is on in the device's settings: no glide, no landing, no fade — things jump as in 0.4.
     static var reduceMotion: Bool {
@@ -50,7 +52,7 @@ enum Feel {
 
     // MARK: The motor
 
-    private enum Moment { case `catch`, lift, setDown, joined, todoOn, lifeSize, theEnd, sent, notSent }
+    private enum Moment { case `catch`, lift, setDown, joined, todoOn, lifeSize, theEnd, sent, notSent, timeUp }
 
     private static var lastCatch = Date.distantPast
 
@@ -66,7 +68,7 @@ enum Feel {
         switch moment {
         case .catch: performer.perform(.alignment, performanceTime: .now)
         case .lifeSize, .theEnd: performer.perform(.levelChange, performanceTime: .now)
-        case .setDown, .joined: performer.perform(.generic, performanceTime: .now)
+        case .setDown, .joined, .timeUp: performer.perform(.generic, performanceTime: .now)
         case .lift, .todoOn, .sent, .notSent: break
         }
         #else
@@ -79,6 +81,7 @@ enum Feel {
         case .theEnd: UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 0.5)
         case .sent: UINotificationFeedbackGenerator().notificationOccurred(.success)
         case .notSent: UINotificationFeedbackGenerator().notificationOccurred(.error)
+        case .timeUp: UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.8)
         }
         #endif
     }

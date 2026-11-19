@@ -193,6 +193,11 @@ struct SeedMenus: Commands {
             // 0.9: on a timeline: brings today into view (the key T does the same while the timeline has the keys).
             Button("Go to Today") { session?.timelineShowToday() }
                 .disabled(session?.board.isTimeline != true)
+            // 0.14 (22): the brainstorm timer (PiecesPage.swift).
+            Button("Brainstorm Timer") {
+                if let session { BrainstormDesk.shared.offer(on: session.board.id) }
+            }
+            .disabled(session == nil || session?.board.placesItself == true)
             Divider()
         }
 
@@ -207,6 +212,9 @@ struct SeedMenus: Commands {
             PictureInsertLine(enabled: canChange && session?.board.placesItself != true, letter: lettersAreTools)
             drawLine
             // 0.9: the chosen picture takes drawing; the chosen sketch's handwriting becomes typed words.
+            // 0.14 (27): a saved piece goes onto the board (PiecesPage.swift).
+            Button("Piece…") { if let session { PieceDesk.shared.openPage(session) } }
+                .disabled(session == nil || !(session.map { PieceDesk.shared.canAdd($0) } ?? false))
             Button("Draw on Picture") {
                 guard let session, let id = session.single?.id else { return }
                 session.drawOnPicture(id)
