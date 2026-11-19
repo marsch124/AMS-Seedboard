@@ -12,7 +12,7 @@
 - `App/Sources/UnusedPictures11.swift`: `PictureStore.unusedPictures()`, `removeUnusedPictures()` (scans again at the moment of removal, never trusts the shown list; coordinated delete in the device and iCloud Pictures folders), `UnusedPicturesRows`, `UnusedPicturesPage` (title "Pictures nobody uses"). Identifiers: `settings.unusedLine`, `settings.unusedShow`, `settings.unusedRemove`, `settings.unusedTold`, `unused.page`. Result words: "1 picture removed." / "N pictures removed." / "Nothing was removed: Seedboard could not be sure."
 - `PictureStore.swift`: the reading of every kept copy became `PictureStore.keptBlobs(folders:places:)`, shared with the weekly tidy (same behaviour); `cloud` and `cloudOn` are no longer private.
 - `BoardStore.swift`: `BoardDisk` is no longer private and has `init(support:cloudDocuments:)` (both nil in the app) so a test can point it at a throwaway folder.
-- `project.yml`: new target `AMSSeedboardStoreTests` (macOS unit tests, compiles BoardStore.swift only) in the AMSSeedboard scheme's tests. Run: `xcodebuild test -project AMSSeedboard.xcodeproj -scheme AMSSeedboardStoreTests -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" CODE_SIGN_ENTITLEMENTS=""`. Files: `StoreTests/BoardStoreTests.swift`. Core test: `UnusedPictures11Tests` (1).
+- `project.yml`: new target `AMSSeedboardStoreTests` (macOS unit tests, compiles BoardStore.swift only) in the AMSSeedboard scheme's tests. Run: `xcodebuild test -project AMSSeedboard.xcodeproj -scheme AMSSeedboard -only-testing:AMSSeedboardStoreTests -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" CODE_SIGN_ENTITLEMENTS=""`. Files: `StoreTests/BoardStoreTests.swift`. Core test: `UnusedPictures11Tests` (1).
 - Counts: store tests 5, Core tests 484 total.
 
 ## Pictures
