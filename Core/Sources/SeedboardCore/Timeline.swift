@@ -608,7 +608,7 @@ public extension Board {
     @discardableResult
     mutating func addBar(_ text: String = "", start: Day, days: Int = 7, atRow row: Int? = nil, colour: String = "") -> UUID {
         var item = Item(kind: .bar, text: text, colour: colour)
-        if colour.isEmpty { item.colour = Palette.branch(items.filter { $0.kind == .bar }.count) }
+        if colour.isEmpty { item.colour = TimelineColours.bar(items.filter { $0.kind == .bar }.count) }
         item.setSpan(start, start + (max(days, 1) - 1))
         insert(item, atRow: row)
         return item.id
@@ -616,7 +616,7 @@ public extension Board {
 
     /// A new milestone: one day, drawn as a diamond.
     @discardableResult
-    mutating func addMilestone(_ text: String = "", on day: Day, atRow row: Int? = nil, colour: String = "purple") -> UUID {
+    mutating func addMilestone(_ text: String = "", on day: Day, atRow row: Int? = nil, colour: String = TimelineColours.milestone) -> UUID {
         var item = Item(kind: .milestone, text: text, colour: colour)
         item.setSpan(day, day)
         insert(item, atRow: row)
@@ -629,7 +629,7 @@ public extension Board {
         var item = Item(kind: .phase, text: text, colour: colour)
         if colour.isEmpty {
             let used = items.filter { $0.kind == .phase }.count
-            item.colour = ["teal", "blue", "orange", "green", "pink", "purple"][used % 6]
+            item.colour = TimelineColours.phase(used)
         }
         insert(item, atRow: row)
         return item.id

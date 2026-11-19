@@ -36,7 +36,7 @@ extension TimelinePainter {
     /// Laid over a bar that is drawn: the tick of a done one; for one that is not done, the days behind it
     /// darker (up to the Today line) and, when it is late, a red end.
     func drawState(_ item: Item, _ box: CGRect, _ ctx: inout GraphicsContext) {
-        let own = paint.line(item.colour.isEmpty ? (item.kind == .milestone ? "purple" : "blue") : item.colour)
+        let own = paint.line(item.colour.isEmpty ? (item.kind == .milestone ? TimelineColours.milestone : "blue") : item.colour)
         let red = paint.line("red")
         if isDone(item) {
             // Inside the bar's end when there is room, otherwise right behind it.

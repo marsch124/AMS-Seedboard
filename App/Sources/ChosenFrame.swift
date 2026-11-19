@@ -78,6 +78,20 @@ extension BoardSession {
     /// Sizes a thing from one of its corners while the knob is dragged (between `liveStart` and
     /// `liveEnd`): the opposite corner stays where it was, also when the words inside push back.
     func liveSize(_ id: UUID, corner: Corner, from base: CGRect, by delta: CGSize, reach: CGFloat) -> [Snap.Guide] {
+        // 0.15: a tilted thing is sized along its own edges, and its held corner stays put on the screen.
+        let turn = board.item(id)?.turn ?? 0
+        if turn != 0 {
+            _ = straightSize(id, corner: corner, from: base, by: Tilt.along(delta, turnedBy: turn), reach: 0)
+            guard let now = board.item(id)?.frame else { return [] }
+            let slide = Tilt.slide(from: base, to: now, turnedBy: turn)
+            if slide != .zero { live { $0.move([id], by: slide) } }
+            return []
+        }
+        return straightSize(id, corner: corner, from: base, by: delta, reach: reach)
+    }
+
+    /// Sizing as for a straight thing: the opposite corner of the straight box stays where it was.
+    private func straightSize(_ id: UUID, corner: Corner, from base: CGRect, by delta: CGSize, reach: CGFloat) -> [Snap.Guide] {
         var found: [Snap.Guide] = []
         live { found = $0.size(id, corner: corner, from: base, by: delta, reach: reach) }
         guard var now = board.item(id)?.frame else { return [] }

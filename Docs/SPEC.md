@@ -553,7 +553,7 @@ Seven starters: Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timel
 - `phaseGroups`: a phase holds every row under it down to the next phase; its days = first start … last end of its bars. (**Note**: dragging a phase's name moves the phase alone; its rows do not travel with it.)
 - `timelineRange(today:air:)`: first bar's start − air … last bar's end + air, widened to hold today.
 - `timelinePicture()`: the scale that fits 1100 points, starts on a Monday (months: on the 1st), names column 120–260 by the longest name.
-- New bar colours: taken in turn from the 7 branch colours; milestone purple; phases in turn teal, blue, orange, green, pink, purple.
+- New bar colours: taken in turn from the 7 branch colours; milestone purple; phases in turn teal, blue, orange, green, pink, purple. (Replaced in 0.15, section 21.1: milestone orange; no purple, no red in the turns.)
 - `countLine` and "Copy the board as text": 2.2 and 3.10. To PARAGON: 5.9.
 
 ### 3.14 Search, "Changed …", small pictures (Home.swift; BoardThumb.swift)
@@ -1747,3 +1747,27 @@ Version 0.14 (build 14): 29 ideas from `Docs/IDEAS-0.14.md` (1–29; idea 30, a 
 ### 20.13 Words and tests
 - `Guide.swift`: new 0.14 entry in What's new (above 0.13); How it works changed in: Your boards, Sticky notes text and frames, Shapes and arrows, Moving around, Timeline board, Who does what, Pictures, new parts Tables, Brainstorm timer and Pieces, Switches in Settings, Safety, What PARAGON did with it, Share PDF and print, Sharing to Seedboard, Shortcuts Siri Raycast and Spotlight, Menus and keys, The bar above the keyboard, Signs in this app.
 - Core tests 515+ green when the lanes were written; screen tests of the new screens are built, not run. Version 0.14 (build 14).
+
+## 21. New in 0.15 (build 15, 19 Nov 2026)
+Version 0.15 (build 15): colour, tilt and lock fixes. Where this part and an older part disagree, this part is right. Board format stays 8; no new stored fields.
+
+### 21.1 Milestone and timeline colours
+- One colour, one meaning: purple means PARAGON only; red means late (and, in the lines at the bottom, something did not work).
+- A NEW milestone is orange (before: purple). A milestone with no colour (empty colour) is drawn orange (before: purple).
+- Colours a timeline picks in turn never include purple or red. Bars: pink, orange, teal, blue, green, then round again. Phases: teal, blue, orange, green, pink.
+- Milestones, bars and phases already on a board keep their stored colour. "Colour" in the bar changes them (nine colours, unchanged).
+- Texts: How it works (Timeline, Signs in this app) says purple = PARAGON only, orange diamond = a milestone, red = late / did not work. Older parts of this file and notes-0.2 that say "milestone purple" are history.
+
+### 21.2 Tilt: sizing and typing
+- Dragging a size knob of a tilted note, picture, free text or flowchart shape sizes it along its own tilted edges; the opposite corner stays where it is on the screen. Before: the drag sized the straight box (the known rough edge of 20.4).
+- Snap guides (the thin catch lines) are not offered while a tilted thing is sized.
+- The typing field of a tilted thing is tilted by the same angle, so the words typed stand where they will be drawn. Before: the field was straight.
+
+### 21.3 Lock closes on leaving
+- A board locked with Face ID / Touch ID / device code closes when the app goes to the background: iPhone and iPad when you go Home or switch app; Mac when the app is hidden.
+- On return the list (or the home page) shows, with a line: “<board name>” was closed while you were away. (the real name in the quotes). Opening it asks again.
+- Boards that are not locked are not closed.
+
+### 21.4 Course and texts
+- The course (the tour web page) gets a chapter "New in 0.14" (outside the app; What's new says it in one line).
+- `Guide.swift`: new 0.15 entry in What's new (above 0.14); How it works changed in: Timeline (milestone, bar and phase colours), Sticky notes text and frames (tilt), Your boards (lock), Signs in this app (purple = PARAGON only, orange diamond, red).

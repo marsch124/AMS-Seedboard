@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Seedboard Tour: chapter rail on the left, coach card + a pretend iPhone, iPad or Mac on the right. Same engine as the other AMS tours.
-   Based on AMS Seedboard 0.12. Update this tour in the release that changes a taught screen. Updated for 0.12. */
+   Based on AMS Seedboard 0.15. Update this tour in the release that changes a taught screen. Updated for 0.15. */
 :root {
   --bg: #F2F7F6; --panel: #FFFFFF; --fg: #14292A; --muted: #587070; --line: #D9E5E3;
   --accent: #17797A; --accent-soft: #DDF0EE; --good: #2F7D32; --good-soft: #E6F3E6; --warn: #A8431A;
@@ -596,7 +596,7 @@ function listHTML() {
   return `<div class="scr" data-keep="list"><div class="hd"><h1>Seedboard</h1></div>
     ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON')}
     ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}${paRow()}</div>
-    <button class="setl" data-act="soon">Settings <span>0.12</span></button>
+    <button class="setl" data-act="soon">Settings <span>0.15</span></button>
     <div class="lbar"><label class="sfield" data-t="search-field">${icon('search', 'g')}<input data-in="q" placeholder="Search boards" value="${esc(S.q)}" autocomplete="off" aria-label="Search boards"></label>
       <button class="plusb" data-act="plus" data-t="plus" aria-label="New board">${icon('plus', 'g')}</button></div>`;
 }
@@ -801,7 +801,7 @@ function sideHTML() {
     <div class="wlist"><button class="wrow${S.screen === 'list' ? ' isOn' : ''}" data-act="back" data-t="back-btn" style="margin-top:4px"><span style="width:9px">${icon('sprout', 'g')}</span><span class="bn" style="margin-left:4px">Home</span></button>
     ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON', 'pg')}
     ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}${paRow()}</div>
-    <div class="wfoot"><button data-act="set-open" data-t="settings-btn">${icon('gear', 'g')}Settings</button><span data-t="version">0.12</span></div></div>`;
+    <div class="wfoot"><button data-act="set-open" data-t="settings-btn">${icon('gear', 'g')}Settings</button><span data-t="version">0.15</span></div></div>`;
 }
 function homeWide() {
   const shown = BOARDS.filter(matches), grp = (g, cls) => { const l = shown.filter(b => b.group === g); return l.length ? `<div class="hsec ${cls || ''}">${g}</div><div class="cgrid">${l.map(b => `<button class="bcard" data-act="open-board" data-id="${b.id}" data-t="card-${b.id}"><span class="pic">${icon(b.bt === 'tl' ? 'timeline' : 'mind', 'g')}</span><span><span class="bn">${esc(b.n)}</span><span class="bi">${esc(b.cnt)}</span>${b.due ? `<span class="due" data-t="due-${b.id}">${b.due}</span>` : ''}</span></button>`).join('')}</div>` : ''; };
@@ -815,7 +815,7 @@ function wideWeb() {
     <div style="padding:64px 40px 0;max-width:640px"><h3>Roof ideas for a small cabin</h3><div class="gl"></div><div class="gl" style="width:80%"></div><div class="webimg">${icon('picture', 'g')}</div><div class="gl"></div><div class="gl" style="width:60%"></div></div></div>`;
 }
 function settingsHTML() {
-  const rows = [['Help', ['How it works', 'What’s new']], ['PARAGON', ['Check again']], ['Sounds', [DEV === 'mac' ? 'Tick sound  Off' : 'Tick sound  On']], ['Your boards', ['Removed and earlier versions', 'Export all boards', 'Import boards', 'Pictures nobody uses: 3 (12 MB)'].concat(DEV === 'mac' ? ['Show the boards folder'] : [])], ['About', ['Version  0.12']]];
+  const rows = [['Help', ['How it works', 'What’s new']], ['PARAGON', ['Check again']], ['Sounds', [DEV === 'mac' ? 'Tick sound  Off' : 'Tick sound  On']], ['Your boards', ['Removed and earlier versions', 'Export all boards', 'Import boards', 'Pictures nobody uses: 3 (12 MB)'].concat(DEV === 'mac' ? ['Show the boards folder'] : [])], ['About', ['Version  0.15']]];
   const list = rows.map(([h, l]) => `<div class="hd2">${h}</div><div class="card">${l.map(x => `<div class="shrow" style="cursor:default">${esc(x)}</div>`).join('')}</div>`).join('');
   const done = `<button class="hb fill" data-act="set-close" data-t="settings-done">Done</button>`;
   if (DEV === 'mac') return `<div class="mset" data-t="win-settings"><div class="mtitle"><i class="d1"></i><i class="d2"></i><i class="d3"></i><span class="mtn">Settings</span><span style="margin-left:auto;position:relative">${done}</span></div><div class="scr" data-keep="set">${list}</div></div>`;
@@ -851,6 +851,11 @@ function nineHTML() {
     if (k === 'pin' && sel) btns = [nb(N.pinned ? 'Unpin' : 'Pin in place', 'pin', 'n-pin', 'n-pin-btn', 'var(--teal)', N.pinned)];
     if (k === 'three') { label = '3 chosen'; btns = [nb('Today’s three', 'todo', 'n-three', 'n-three-btn', 'var(--para)')]; }
     if (k === 'legend' && N.legend) extra = `<div class="lgc" data-t="legend-card"><span><i style="background:#F7E27A"></i>Ideas</span><span><i style="background:#BBD6F5"></i>Questions</span></div>`;
+  } else if (k === 'tilt') {
+    const T = N.tilt || 0;
+    body = `<button class="stk sel" style="left:60px;top:90px;width:150px;border:0;text-align:left;cursor:pointer;font-family:inherit;transform:rotate(${T}deg)" data-act="n-sel" data-id="a" data-t="n-note-a">Cedar shingles on the roof</button>`;
+    label = sel ? 'Cedar shingles' : '';
+    if (sel) btns = [`<button class="cb${T ? ' fillb' : ''}" style="--cc:var(--teal)" data-act="n-tilt" data-t="n-tilt-btn">Tilt</button>`];
   } else if (k === 'tick') {
     const L = ['Order timber', 'Call Alex', 'Book the crane'];
     body = `<div class="stk sel" style="left:20px;top:30px;width:190px"><span style="font-weight:700;display:block;margin-bottom:2px">To do this week</span>${L.map((t, i) => `<button class="tkl${N.ticks[i] ? ' on' : ''}" data-act="n-tick" data-id="${i}" data-t="n-tick-${i}"><span class="tkb2">${N.ticks[i] ? icon('check', 'g') : ''}</span><span class="w">${t}</span></button>`).join('')}</div>`;
@@ -1029,6 +1034,7 @@ function act(a, id, el) {
     case 'n-sel': S.nine.sel = id; renderStage(); emit('n-sel', id); break;
     case 'n-vote': { const N = S.nine; if (!N.sel) break; N.dots[N.sel] = (N.dots[N.sel] || 0) + 1; renderStage(); emit('vote', N.dots[N.sel]); break; }
     case 'n-tick': { const N = S.nine; N.ticks[+id] = !N.ticks[+id]; renderStage(); emit('tick'); break; }
+    case 'n-tilt': { const N = S.nine; N.tilt = !N.tilt ? -4 : N.tilt < 0 ? 4 : 0; renderStage(); emit('tilt', N.tilt); break; }
     case 'n-pin': { const N = S.nine; N.pinned = !N.pinned; renderStage(); emit('pin', N.pinned); break; }
     case 'n-focus': { const N = S.nine; N.focus = N.sel; renderStage(); emit('focus'); break; }
     case 'n-focus-done': S.nine.focus = null; renderStage(); emit('focus-done'); break;
@@ -1074,8 +1080,8 @@ const LESSONS = [
   { title: 'Home and starters', icon: 'home', steps: [
     { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the title they stand in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and when you last changed it. New in 0.9: under the name a line says what is on the board, for example 9 ideas · 5 done. Only ideas with words count, and done means done in PARAGON. A new empty board says Empty, and a timeline says for example 9 things · 3 done · 1 late.', target: 'row-cabin', setup: () => set({}),
       wide: { text: 'No board is open, so the home page shows. At the side stands the list of your boards in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and what is on the board, for example 6 ideas · 2 done (new in 0.9). The list stays there when a board is open. Press Home at the top of the list to come back to this page.' } },
-    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.12, is in the last line.', target: 'plus', setup: () => set({}),
-      wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.12, are at the bottom of the list.' } },
+    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.15, is in the last line.', target: 'plus', setup: () => set({}),
+      wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.15, are at the bottom of the list.' } },
     { kind: 'try', head: 'Find a board by a word', text: 'Tap the search field and type "timber". It is not in any board’s name. It is written on a board.', target: 'search-field', setup: () => set({}), wait: 'search', when: d => d.q.length >= 5 && d.n === 1, ok: 'Only "Summer cabin" is left. Search finds a board by its name and by every word written on it. Type two words and only boards with both are shown.' },
     { kind: 'try', head: 'Start a new board', text: 'Tap the round green +.', target: 'plus', setup: () => set({}), wait: 'starters', ok: 'The starters come up from the bottom, two in a row.',
       wide: { text: 'Press the green "New board" button at the top of the list.', ok: 'The starters come up in a small pop-up under the button.' } },
@@ -1178,6 +1184,17 @@ const LESSONS = [
     { kind: 'look', head: 'The due day on the card', text: 'A board with a due day shows it small under its name, here "Due 12 Jan". It turns red once the day has passed.', wide: { text: 'A board with a due day shows it small under its name, in the list and on its card, here "Due 12 Jan". It turns red once the day has passed.' }, target: 'due-cabin', setup: () => set({}) },
     { kind: 'look', head: 'Sounds and unused pictures', text: 'Settings has two new things. "Sounds" with "Tick sound": a soft tick when you tick a to-do box. It is on at first on the iPhone and iPad, off on the Mac. And under Your boards, "Pictures nobody uses" says how many pictures no board needs and how much room they take. Show lists them, Remove now asks once before it removes them.', target: 'win-settings', setup: () => set({ settings: true }) },
   ]},
+  { title: 'New in 0.14', icon: 'sprout', steps: [
+    { kind: 'try', head: 'Tilt a note', text: 'A sticky note lies on the board. Tap it, then press the words "Tilt" in the bar.', target: 'n-note-a', setup: () => nineB('tilt'), wait: 'tilt', when: d => d !== 0, on: { 'n-sel': 'n-tilt-btn' }, ok: 'The note leans a little to the left, like a note stuck on crooked. Press Tilt again: a little to the right. Once more: straight. The button is lit while the thing is tilted. A note, a picture, a free text and the flowchart shapes can tilt. On the iPhone and iPad you can also twist with two fingers on the chosen thing, up to 45 degrees each way. New in 0.15: a tilted thing now sizes along its own edges, and you type straight onto it at its tilt.',
+      mac: { ok: 'The note leans a little to the left, like a note stuck on crooked. Press Tilt again: a little to the right. Once more: straight. The button is lit while the thing is tilted. You can also right-click and choose Tilt, then Straighten, Lean left or Lean right. New in 0.15: a tilted thing now sizes along its own edges, and you type straight onto it at its tilt.' } },
+    { kind: 'look', head: 'Tables', text: 'A table is a small grid of cells on an ordinary board, three columns and three rows at first. The top row is the heading row. Make one with Insert, Table on the Mac, with the line "Table" on the shapes plate (hold the Box tile), or by right-clicking empty board and choosing "New table here".', target: 'canvas-area', setup: () => board() },
+    { kind: 'look', head: 'Lock with Face ID', text: 'Press and hold a board in the list (right-click on the Mac) and choose "Lock with Face ID". It says Touch ID on a Mac with Touch ID, and "Lock with device code" where there is neither. A locked board shows only its name and the word "Private" on its card, and it asks before it opens, whichever way you go in.', target: 'row-cabin', setup: () => set({}) },
+    { kind: 'look', head: 'Join with…', text: 'Press and hold a board in the list (right-click on the Mac) and choose "Join with…". Pick another board and press Join. The first board’s things are laid to the right of the other one. The first board goes under Put away, never deleted.', target: 'row-cabin', setup: () => set({}) },
+    { kind: 'look', head: 'Pieces', text: 'Choose several things on a board and press "Save as a piece…". Give it a name and press Save. Later, in More, choose "Add a piece…", and press a piece to drop a copy of it on any board, with its arrows.', target: 'more-btn', setup: () => board() },
+    { kind: 'look', head: 'Brainstorm timer', text: 'In More, choose "Brainstorm timer" and pick "5 min" or "10 min". A small pill counts down, for example "4:12 left", with a Stop button. At the end it says "Time!" for a moment.', target: 'more-btn', setup: () => board() },
+    { kind: 'look', head: 'Planned and real days', text: 'On a timeline, "Set the plan" remembers each bar’s days. A bar that has moved shows a faint dashed outline where it was planned, and a done bar says how it went, for example "2 days late" in red or "3 days early" in green.', target: 'tl-bar-4', setup: () => tlb() },
+    { kind: 'look', head: 'Lift out of a picture', text: 'Choose a picture and press "Lift out". The person or thing is cut out of its background and laid beside the old picture as a new one. A PDF you drop or paste on a board becomes a picture too: you are asked "Only page 1" or "All pages".', target: 'canvas-area', setup: () => board() },
+  ]},
 ];
 
 /* ---------- Tour engine (reusable) ---------- */
@@ -1246,7 +1263,7 @@ function renderRail() {
     ${LESSONS.map((l, i) => `<button class="chap ${i === ci ? 'cur' : ''} ${doneChapters.has(i) ? 'done' : ''}" data-ch="${i}">${icon(l.icon)}<span>${l.title}</span><span class="n">${doneChapters.has(i) ? '✓' : arrs[i].length ? arrs[i].length + ' steps' : 'iPad, Mac'}</span></button>`).join('')}
     <button class="chap ${ci === LESSONS.length ? 'cur' : ''}" data-ch="${LESSONS.length}">${icon('todo')}<span>Now on your ${DEVS[DEV].name}</span></button>
     <div class="bar"><i style="width:${Math.round(100 * Math.min(before, total) / total)}%"></i></div>
-    <p class="railnote">Practice copy, nothing changes on your ${DEVS[DEV].name}. Based on AMS Seedboard 0.12.</p>`;
+    <p class="railnote">Practice copy, nothing changes on your ${DEVS[DEV].name}. Based on AMS Seedboard 0.15.</p>`;
 }
 document.getElementById('rail').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) goChapter(+b.dataset.ch); });
 
@@ -1290,7 +1307,7 @@ function renderFinish() {
   const fin = document.getElementById('finish'); fin.hidden = false;
   S = START(); curTarget = null; renderStage();
   const dn = DEVS[DEV].name;
-  const items = DEV === 'phone' ? ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and the version 0.12 in the last line.',
+  const items = DEV === 'phone' ? ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and the version 0.15 in the last line.',
     'Press the green +, pick Mind map, type a middle idea, press Return for a branch and Tab for an idea under it. Look at where the words sit on the line.',
     'Choose an idea and press To do. The hollow purple ring appears at its corner.',
     'Press the green +, pick Timeline. Choose a bar and press Done. Check the line at the top, for example "3 of 8 done · 1 late · ends 20 Feb", and the Done button: with that bar chosen it says the day, for example "Done 18 Nov". If a bar is late, press the red Catch up.',
@@ -1301,7 +1318,7 @@ function renderFinish() {
     'Press and hold the Seedboard icon on your Home Screen. Check the four lines: New board, New board from the clipboard and your two pinned boards.',
     'New in 0.9: choose a sticky note and press Vote, then Sort by dots in More. Choose a frame and press Focus. Press and hold the Undo button to see the Undo list.',
     'New in 0.11: on the Draw plate press the fade mark. Choose a mind map\u2019s middle and press Main branches only. Open More, then Due day….']
-  : [`Open Seedboard on your ${dn}. At the side stand the green New board, the field "Search boards" and your boards in three groups (Pinned, Recent, Sent to PARAGON). Settings and the version 0.12 are at the bottom of the list. Press Home to see the home page with the starters.`,
+  : [`Open Seedboard on your ${dn}. At the side stand the green New board, the field "Search boards" and your boards in three groups (Pinned, Recent, Sent to PARAGON). Settings and the version 0.15 are at the bottom of the list. Press Home to see the home page with the starters.`,
     'Press New board and pick Mind map. Choose an idea and press To do. The bar floats just above the idea. The hollow purple ring appears at its corner.',
     'Press New board and pick Timeline. Choose a bar: the bar above the tools shows its dates in words. Press Done: with that bar chosen the button says the day, for example "Done 18 Nov". If a bar is late, press the red Catch up.',
     'Send the timeline to PARAGON as a project. Switch to PARAGON and check that the bar you marked Done is already ticked, with its words struck through.',

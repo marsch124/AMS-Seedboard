@@ -63,7 +63,7 @@ struct TimelinePainter {
 
     private func colour(of item: Item) -> Color {
         switch item.kind {
-        case .milestone: return paint.line(item.colour.isEmpty ? "purple" : item.colour)
+        case .milestone: return paint.line(item.colour.isEmpty ? TimelineColours.milestone : item.colour)
         case .phase: return paint.line(item.colour.isEmpty ? "teal" : item.colour)
         default: return paint.line(item.colour.isEmpty ? "blue" : item.colour)
         }

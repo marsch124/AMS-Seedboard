@@ -86,6 +86,9 @@ struct SeedboardApp: App {
             // Leaving the app keeps what is being typed and writes everything at once.
             .onChange(of: phase) { _, new in
                 if new != .active { model.leaving() }
+                // 0.15: a locked board closes when the app goes away, and says so on return (Lock15.swift).
+                if new == .background { model.closeLockedOnLeave() }
+                if new == .active { model.tellClosedLocked() }
             }
     }
 }

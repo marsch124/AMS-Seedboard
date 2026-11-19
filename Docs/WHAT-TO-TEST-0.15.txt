@@ -1,0 +1,11 @@
+Seedboard 0.15 — what to try.
+1. Timeline: add a Milestone. It is an orange diamond, not purple.
+2. Add several bars and phases: none is purple or red.
+3. Choose an old purple milestone: it keeps its colour. Colour changes it.
+4. Tilt a note, then drag a size knob: it sizes along its tilted edges, the opposite corner stays still, no catch lines.
+5. Do the same with a picture, a text and a shape.
+6. Tilt a note and type in it: the typing field is tilted too.
+7. Lock a board with Face ID and open it. Go Home (Mac: hide the app), come back: the list shows “Garden” was closed while you were away.
+8. Open that board again: it asks for Face ID.
+9. Settings ▸ How it works ▸ Signs in this app: purple = PARAGON, orange diamond = milestone, red = late.
+10. Settings ▸ What's new: Version 0.15 is at the top.

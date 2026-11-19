@@ -335,7 +335,14 @@ struct CanvasView: View {
             .padding(.horizontal, pad)
             .padding(.top, topPad)
             .frame(width: max(width, 40), height: max(r.height, 20), alignment: align)
-            .position(x: x, y: r.midY)
+            // 0.15: a tilted thing is typed in at its tilt, turned round the thing's own middle.
+            .rotationEffect(.degrees(item.turn))
+            .position(Self.turnedSpot(CGPoint(x: x, y: r.midY), around: session.toScreen(item.frame), by: item.turn))
+    }
+
+    /// Where the middle of the typing field goes once its thing is turned round its own middle.
+    static func turnedSpot(_ p: CGPoint, around box: CGRect, by degrees: Double) -> CGPoint {
+        Tilt.rotate(p, about: CGPoint(x: box.midX, y: box.midY), degrees: degrees)
     }
 
     // MARK: Presses and drags
