@@ -47,6 +47,8 @@ struct BarAction: Identifiable {
     /// Switched on (To do, Dashed, Choose more) or the one in use (a colour, a line style).
     var on = false
     var enabled = true
+    /// 0.14: a button of words only, no mark ("Tilt").
+    var wordOnly = false
     /// When the bar is too narrow for one row, the buttons with the highest number go into the
     /// "…" list first. 0: always in the bar.
     var drop = 0
@@ -219,6 +221,8 @@ struct BarActions {
             put(act("vote.remove", "Remove a dot", .app(.minus), enabled: hasDots) { session.removeDot() })
             put(act("vote.clear", "Clear dots", .app(.minus), enabled: hasDots) { session.clearDots() })
         }
+        // 0.14 (idea 14): "Tilt" for what can be tilted (Tilt14Session.swift).
+        for one in tiltActions(full: full, chosen: chosen) { put(one) }
         let pinned = session.board.allPinned(session.selection)
         put(act("pin.toggle", pinned ? "Unpin" : "Pin in place", .app(.seedPin), show: .wideWord, on: pinned, drop: 6) { session.togglePinned() })
         if chosen.allSatisfy({ $0.kind == .note }) {
@@ -230,6 +234,28 @@ struct BarActions {
             put(act("link.open", "Open link", .app(.openLink), show: .wideWord, drop: 6) { session.openLink(id) })
         }
         return all
+    }
+
+    // MARK: 0.14 Tilt (idea 14) — Tilt14.swift
+
+    /// "Tilt" in the bar (words only; behind "…" when the bar is narrow); in a menu a list "Tilt" with "Straighten".
+    private func tiltActions(full: Bool, chosen: [Item]) -> [BarAction] {
+        let session = session
+        guard chosen.allSatisfy({ Tilt.canTilt($0.kind) }) else { return [] }
+        let tilted = chosen.contains { ($0.tilt ?? 0) != 0 }
+        if !full {
+            var one = act("tilt", "Tilt", .control(.circle), show: .word, on: tilted, drop: 7) { session.tiltStep() }
+            one.wordOnly = true
+            return [one]
+        }
+        let now = chosen.first?.tilt ?? 0
+        var menuList = list("tilt", "Tilt", .control(.circle), on: tilted, drop: 7, [
+            act("tilt.straighten", "Straighten", .control(.circle), on: !tilted, enabled: tilted) { session.tilt(to: nil) },
+            act("tilt.left", "Lean left", .control(.circle), on: abs(now - -4) < 0.05) { session.tilt(to: -4) },
+            act("tilt.right", "Lean right", .control(.circle), on: abs(now - 4) < 0.05) { session.tilt(to: 4) },
+        ])
+        menuList.wordOnly = true
+        return [menuList]
     }
 
     /// The marks go in just before "Remove" (which stays last).

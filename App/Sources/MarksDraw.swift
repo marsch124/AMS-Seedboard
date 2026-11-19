@@ -119,9 +119,11 @@ extension BoardPainter {
     func drawMarks(_ ctx: inout GraphicsContext) {
         let unit = min(max(1 / max(scale, 0.01), 0.6), 2.4)
         for item in board.items where !facts.hidden.contains(item.id) && item.kind != .door {
-            if let n = item.votes, n > 0 { drawDots(n, of: item, unit: unit, &ctx) }
-            if let line = LinkLine.rect(for: item), let words = LinkLine.caption(for: item) { drawLinkLine(words, in: line, &ctx) }
-            if item.locked == true, selection.contains(item.id) { drawPin(on: item, unit: unit, &ctx) }
+            // 0.14: the marks of a tilted thing turn with it.
+            var layer = turned(ctx, item)
+            if let n = item.votes, n > 0 { drawDots(n, of: item, unit: unit, &layer) }
+            if let line = LinkLine.rect(for: item), let words = LinkLine.caption(for: item) { drawLinkLine(words, in: line, &layer) }
+            if item.locked == true, selection.contains(item.id) { drawPin(on: item, unit: unit, &layer) }
         }
     }
 

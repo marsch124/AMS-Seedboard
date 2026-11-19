@@ -32,7 +32,9 @@ extension BoardSession {
             taken = board.sidesWithArrows(of: id, arrows: arrows)
             words = wordBoxes(near: item.frame, arrows)
         }
-        let round = Controls.round(item, side: facts.side[id] ?? .right, scale: scale, taken: taken, words: words)
+        var round = Controls.round(item, side: facts.side[id] ?? .right, scale: scale, taken: taken, words: words)
+        // 0.14: the grips follow a tilted thing: each box keeps its size and moves round the middle.
+        if item.turn != 0 { round = round.map { Tilt14.moved($0, item) } }
         // 0.9: a pinned thing cannot be sized — it has no size knobs.
         return item.locked == true ? round.filter { if case .size = $0.kind { return false } else { return true } } : round
     }
@@ -58,7 +60,8 @@ extension BoardSession {
         }
         var all: CGRect?
         for id in selection where !facts.hidden.contains(id) {
-            guard let frame = board.item(id)?.frame else { continue }
+            guard let thing = board.item(id) else { continue }
+            let frame = Tilt.bounds(of: thing.frame, turnedBy: thing.turn)
             all = all.map { $0.union(frame) } ?? frame
         }
         guard let all else { return nil }
@@ -160,7 +163,9 @@ struct ChosenLayer: View {
             let gap = Controls.frameGap / scale
             for id in session.selection {
                 guard let item = session.shownThing(id), !session.facts.hidden.contains(id) else { continue }
-                let frame = ChosenOutline.path(of: item, depth: session.facts.depth[id] ?? 0, gap: gap)
+                var frame = ChosenOutline.path(of: item, depth: session.facts.depth[id] ?? 0, gap: gap)
+                // 0.14: the frame turns with a tilted thing.
+                if item.turn != 0 { frame = frame.applying(Tilt14.turn(item)) }
                 sheet.stroke(frame, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2 / scale, lineJoin: .round))
             }
             for control in session.chosenControls() {

@@ -324,7 +324,7 @@ extension BoardPainter {
 
     /// Draws one thing as it shows right now.
     func drawInMotion(_ item: Item, _ ctx: inout GraphicsContext) {
-        var layer = motionLayer(ctx, for: item)
+        var layer = turned(motionLayer(ctx, for: item), item)
         let up = lift(of: item)
         guard up > 0, hasBody(item) else { drawItem(item, &layer); return }
         if paint.night {

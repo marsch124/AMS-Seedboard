@@ -296,7 +296,7 @@ struct BoardPainter {
             var moved = item
             moved.x += Double(ghost.offset.width)
             moved.y += Double(ghost.offset.height)
-            var layer = ctx
+            var layer = turned(ctx, moved)
             layer.opacity = 0.7
             drawItem(moved, &layer)
         }
