@@ -28,7 +28,7 @@ public enum CalendarFollow {
     public static let linkStart = "seedboard://board/"
 
     public static func key(board: UUID, item: UUID) -> String {
-        "\(linkStart)\(board.uuidString)/item/\(item.uuidString)"
+        BoardLink.link(board: board, item: item)
     }
 
     /// Whether an event's link is one of Seedboard's.
@@ -81,6 +81,66 @@ public enum CalendarFollow {
         }
         plan.remove = there.keys.filter { !seen.contains($0) }.sorted()
         return plan
+    }
+
+    // MARK: 0.14: care with the calendar
+
+    /// Never more than this many days are taken out in one pass; the rest waits for the next one.
+    public static let mostRemovals = 5
+    /// Said under the switch when the calendar refused a change.
+    public static let failedLine = "Could not update the calendar — will try again"
+
+    /// The plan with its removals cut to `most`; `held` is how many wait. Added, changed and twin copies are not cut.
+    public static func limited(_ plan: Plan, most: Int = mostRemovals) -> (plan: Plan, held: Int) {
+        guard plan.remove.count > most else { return (plan, 0) }
+        var cut = plan
+        cut.remove = Array(plan.remove.prefix(most))
+        return (cut, plan.remove.count - most)
+    }
+
+    /// A short, steady fingerprint of the wanted days: the same days always give the same words.
+    public static func signature(of wanted: [FollowEvent]) -> String {
+        let text = wanted.map { "\($0.key)|\($0.title)|\($0.first.number)|\($0.last.number)|\($0.notes)" }.sorted().joined(separator: "\n")
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in text.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100000001b3
+        }
+        return String(hash, radix: 16) + "-\(wanted.count)"
+    }
+
+    public enum Pass: Equatable, Sendable {
+        /// Boards are still arriving from iCloud: do nothing now, look again soon.
+        case wait
+        /// The wanted days are what they were at the last pass: the calendar is not touched.
+        case skip
+        case go
+    }
+
+    /// Whether the calendar is looked at now. `force`: the switch was just turned on, or it has been a while.
+    public static func pass(arriving: Bool, signature: String, last: String?, force: Bool) -> Pass {
+        if arriving { return .wait }
+        if !force, let last, last == signature { return .skip }
+        return .go
+    }
+
+    /// Calendars with our name: the one to keep (the remembered one when it is among them, else the first)
+    /// and the ones to join into it.
+    public static func joinPlan(_ calendars: [(id: String, title: String)], named name: String, remembered: String?) -> (keep: String, join: [String])? {
+        let same = calendars.filter { $0.title == name }.map(\.id)
+        guard let first = same.first else { return nil }
+        let keep = remembered.flatMap { same.contains($0) ? $0 : nil } ?? first
+        return (keep, same.filter { $0 != keep })
+    }
+
+    /// Switching off takes the calendar away only when nothing but Seedboard's own days were in it.
+    public static func mayRemoveCalendar(leftOver: Int) -> Bool { leftOver == 0 }
+
+    /// How far to look for our days: at least 5 years back and 10 ahead, and as far as days were ever put.
+    public static func reach(first: Day?, last: Day?, now: Day) -> (start: Day, end: Day) {
+        let back = Day(number: now.number - 5 * 366)
+        let ahead = Day(number: now.number + 10 * 366)
+        return (min(back, first ?? back), max(ahead, last ?? ahead))
     }
 
     /// The line under the switch: "14 events in the Seedboard calendar · updated 11:42".

@@ -24,6 +24,8 @@ final class BoardSession: ObservableObject {
     }
     var scale: CGFloat { CGFloat(place.scale) }
     var viewSize: CGSize { place.size }
+    /// 0.14: a thing a link led to, waiting for the view to have its room (ThingLink14.swift).
+    var thingToShow: UUID?
     /// The arrow tool is on: the next two shapes pressed are joined.
     @Published var linking = false
     @Published var linkFrom: UUID?
@@ -907,10 +909,12 @@ final class BoardSession: ObservableObject {
             // A timeline is placed by its days, not by where its things lie.
             place.size = size
             if !place.movedByOwner, size.width > 10 { timelineFit(opening: true) }
+            landWaitingThing()
             return
         }
         // The iPhone opens a board readable (75 % or more, on the main idea) instead of whole and tiny.
         place.resized(to: size, showing: board.bounds, readableAround: Finger.phone ? (board.isSequence ? board.sequenceMainFrame : board.mainThing?.frame) : nil)
+        landWaitingThing()
     }
 
     /// The room for the board changed (the window, or the keyboard coming up): what is typed stays in sight.

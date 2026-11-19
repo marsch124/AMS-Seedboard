@@ -330,7 +330,7 @@ struct BarActions {
         let session = session
         guard !session.readOnly, !session.board.placesItself else { return nil }
         if let item = session.single {
-            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(withLook(itemBar(item)), full: false))
+            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(withCopyLink(withLook(itemBar(item))), full: false))
         }
         if let id = session.selectedLink, let link = session.board.links.first(where: { $0.id == id }) {
             return ChosenBarModel(part: .arrows, label: nil, actions: linkBar(link))
@@ -350,6 +350,19 @@ struct BarActions {
         actions += todayThree()
         actions.append(remove())
         return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: withMarks(withLook(actions), full: false))
+    }
+
+    /// 0.14: "Copy link to this" goes in front of "Remove" (or last) in the bar of one chosen thing.
+    private func withCopyLink(_ list: [BarAction]) -> [BarAction] {
+        let link = copyLink()
+        guard !link.isEmpty else { return list }
+        var all = list
+        if let i = all.lastIndex(where: { if case .remove = $0.tone { return true } else { return false } }) {
+            all.insert(contentsOf: link, at: i)
+        } else {
+            all += link
+        }
+        return all
     }
 
     private func itemBar(_ item: Item) -> [BarAction] {
@@ -557,6 +570,7 @@ struct BarActions {
         if !more.isEmpty { more[0].gap = true }
         all += more
         all += moveOutLines()
+        all += copyLink(drop: 0)
         all.append(remove(gap: true))
         return withMarks(withLook(all), full: true)
     }

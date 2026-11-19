@@ -185,11 +185,33 @@ public enum SafetyRules {
 // MARK: - Links in
 
 /// `seedboard://board/<id>`: the link a PARAGON note carries back to its board.
+/// 0.14: `seedboard://board/<id>/item/<id>` leads to one thing on that board (a calendar day, "Copy link to this").
 public enum BoardLink {
-    public static func id(from url: URL) -> UUID? {
+    /// The parts after the host, without the slashes.
+    private static func parts(_ url: URL) -> [String]? {
         guard url.scheme?.lowercased() == "seedboard", url.host?.lowercased() == "board" else { return nil }
-        return UUID(uuidString: url.lastPathComponent)
+        return url.pathComponents.filter { $0 != "/" }
     }
+
+    /// The board: always the FIRST part after "board", also when a thing follows.
+    public static func id(from url: URL) -> UUID? {
+        guard let first = parts(url)?.first else { return nil }
+        return UUID(uuidString: first)
+    }
+
+    /// The thing: only in a link `…/board/<id>/item/<id>`.
+    public static func item(from url: URL) -> UUID? {
+        guard let p = parts(url), p.count >= 3, p[1].lowercased() == "item" else { return nil }
+        return UUID(uuidString: p[2])
+    }
+
+    /// The link to one thing on a board.
+    public static func link(board: UUID, item: UUID) -> String {
+        "seedboard://board/\(board.uuidString)/item/\(item.uuidString)"
+    }
+
+    /// Said when a link's thing is no longer on the board it opened.
+    public static let thingGone = "That thing is no longer on the board"
 
     public enum Answer: Equatable, Sendable {
         /// The boards are not loaded yet: the link is held and followed once they are.

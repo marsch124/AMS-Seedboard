@@ -36,9 +36,18 @@ final class CalendarFollower: ObservableObject {
     private static let idKey = "calendar.seedboardID"
     private static let lastKey = "calendar.followed"
     private static let countKey = "calendar.followCount"
+    // 0.14: the wanted days at the last complete pass, and how far our days reach (first and last day number).
+    private static let signatureKey = "calendar.wantedSignature"
+    private static let firstDayKey = "calendar.firstDay"
+    private static let lastDayKey = "calendar.lastDay"
 
     @Published private(set) var line = ""
     @Published private(set) var refused = false
+    /// 0.14: the last change was refused by the calendar; it is tried again.
+    @Published private(set) var failed = false
+    private var forceNext = false
+    private var retries = 0
+    private var lastLook: Date?
 
     private let store = EKEventStore()
     /// `-calendarTest`: the sample boards go to the calendar too (simulator only, to see it work).
@@ -66,6 +75,8 @@ final class CalendarFollower: ObservableObject {
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .sink { [weak self, weak model] _ in
                 guard let self, let model, model.loaded else { return }
+                // Looks again for real only when the last look is more than an hour old.
+                if let last = self.lastLook, Date().timeIntervalSince(last) > 3600 { self.forceNext = true }
                 self.follow(model.boards)
             }
     }
@@ -74,6 +85,8 @@ final class CalendarFollower: ObservableObject {
     func switched(_ on: Bool) {
         let model = AppModel.shared
         if on {
+            forceNext = true
+            retries = 0
             follow(model.boards)
         } else {
             Task { await takeOut() }
@@ -106,15 +119,42 @@ final class CalendarFollower: ObservableObject {
         return ok
     }
 
-    private func ourCalendar(make: Bool) -> EKCalendar? {
-        if let id = UserDefaults.standard.string(forKey: Self.idKey), let found = store.calendar(withIdentifier: id) {
-            return found
+    /// Every calendar of ours, by name, on this device.
+    private func ourCalendars() -> [EKCalendar] {
+        store.calendars(for: .event).filter { $0.title == Self.calendarName && $0.allowsContentModifications }
+    }
+
+    /// The calendar to use: the remembered one, else the first of that name. Several of that name: the others are
+    /// joined into it (their Seedboard days move over, the calendar goes only when nothing else is in it).
+    private func ourCalendar() -> EKCalendar? {
+        let all = ourCalendars()
+        let remembered = UserDefaults.standard.string(forKey: Self.idKey)
+        let rest = all.map { (id: $0.calendarIdentifier, title: $0.title) }
+        guard let plan = CalendarFollow.joinPlan(rest, named: Self.calendarName, remembered: remembered),
+              let keep = all.first(where: { $0.calendarIdentifier == plan.keep }) else { return nil }
+        UserDefaults.standard.set(keep.calendarIdentifier, forKey: Self.idKey)
+        if !plan.join.isEmpty { join(all.filter { plan.join.contains($0.calendarIdentifier) }, into: keep) }
+        return keep
+    }
+
+    private func join(_ extra: [EKCalendar], into keep: EKCalendar) {
+        do {
+            for other in extra {
+                for e in ourEvents(in: other, around: []) {
+                    e.calendar = keep
+                    try store.save(e, span: .thisEvent, commit: false)
+                }
+            }
+            try store.commit()
+            for other in extra where CalendarFollow.mayRemoveCalendar(leftOver: foreignCount(in: other)) {
+                try store.removeCalendar(other, commit: true)
+            }
+        } catch {
+            store.reset()
         }
-        if let found = store.calendars(for: .event).first(where: { $0.title == Self.calendarName && $0.allowsContentModifications }) {
-            UserDefaults.standard.set(found.calendarIdentifier, forKey: Self.idKey)
-            return found
-        }
-        guard make else { return nil }
+    }
+
+    private func makeCalendar() -> EKCalendar? {
         let made = EKCalendar(for: .event, eventStore: store)
         made.title = Self.calendarName
         // The timeline's own orange, so the days are easy to tell from his appointments.
@@ -131,6 +171,35 @@ final class CalendarFollower: ObservableObject {
         return nil
     }
 
+    /// 0.14: the calendar to use. When none is found, wait a little and look again before making one: another
+    /// device may have made it and it may be on its way here.
+    private func calendarToUse() async -> EKCalendar? {
+        if let found = ourCalendar() { return found }
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        store.refreshSourcesIfNecessary()
+        if let found = ourCalendar() { return found }
+        return makeCalendar()
+    }
+
+    /// Seedboard's own events in a calendar, from `start` to `end`.
+    private func events(in calendar: EKCalendar, from start: Date, to end: Date, ours: Bool) -> [EKEvent] {
+        let cal = Calendar.current
+        var seen = Set<String>()
+        var out: [EKEvent] = []
+        var from = start
+        // The calendar answers at most four years at a time.
+        while from < end {
+            let to = min(end, cal.date(byAdding: .year, value: 3, to: from) ?? end)
+            let ask = store.predicateForEvents(withStart: from, end: to, calendars: [calendar])
+            for e in store.events(matching: ask) where CalendarFollow.isOurs(e.url?.absoluteString) == ours {
+                let id = (e.eventIdentifier ?? UUID().uuidString) + "\(e.startDate.timeIntervalSince1970)"
+                if seen.insert(id).inserted { out.append(e) }
+            }
+            from = to
+        }
+        return out
+    }
+
     /// Seedboard's own events in its calendar, looked for from two years back to four years ahead (and the wanted days).
     private func ourEvents(in calendar: EKCalendar, around wanted: [FollowEvent]) -> [EKEvent] {
         let cal = Calendar.current
@@ -141,20 +210,23 @@ final class CalendarFollower: ObservableObject {
             start = min(start, w.first.date(calendar: cal))
             end = max(end, cal.date(byAdding: .day, value: 1, to: w.last.date(calendar: cal)) ?? end)
         }
-        var seen = Set<String>()
-        var out: [EKEvent] = []
-        var from = start
-        // The calendar answers at most four years at a time.
-        while from < end {
-            let to = min(end, cal.date(byAdding: .year, value: 3, to: from) ?? end)
-            let ask = store.predicateForEvents(withStart: from, end: to, calendars: [calendar])
-            for e in store.events(matching: ask) where CalendarFollow.isOurs(e.url?.absoluteString) {
-                let id = (e.eventIdentifier ?? UUID().uuidString) + "\(e.startDate.timeIntervalSince1970)"
-                if seen.insert(id).inserted { out.append(e) }
-            }
-            from = to
-        }
-        return out
+        let defaults = UserDefaults.standard
+        // The days ever put there (0.14): a day moved far away is still found.
+        if let first = defaults.object(forKey: Self.firstDayKey) as? Int { start = min(start, Day(number: first).date(calendar: cal)) }
+        if let last = defaults.object(forKey: Self.lastDayKey) as? Int { end = max(end, cal.date(byAdding: .day, value: 1, to: Day(number: last).date(calendar: cal)) ?? end) }
+        return events(in: calendar, from: start, to: end, ours: true)
+    }
+
+    /// How many events that are NOT Seedboard's lie in the calendar, looked for as far as our days reach (at least
+    /// 5 years back and 10 ahead).
+    private func foreignCount(in calendar: EKCalendar) -> Int {
+        let cal = Calendar.current
+        let defaults = UserDefaults.standard
+        let reach = CalendarFollow.reach(first: (defaults.object(forKey: Self.firstDayKey) as? Int).map { Day(number: $0) },
+                                         last: (defaults.object(forKey: Self.lastDayKey) as? Int).map { Day(number: $0) },
+                                         now: Day(Date(), calendar: cal))
+        let end = cal.date(byAdding: .day, value: 1, to: reach.end.date(calendar: cal)) ?? reach.end.date(calendar: cal)
+        return events(in: calendar, from: reach.start.date(calendar: cal), to: end, ours: false).count
     }
 
     private static func read(_ e: EKEvent) -> FollowEvent {
@@ -180,11 +252,41 @@ final class CalendarFollower: ObservableObject {
         e.endDate = cal.startOfDay(for: w.last.date(calendar: cal)).addingTimeInterval(12 * 3600)
     }
 
+    /// A pass that did not finish (still arriving, refused, removals held back) is tried again soon, a few times.
+    private func tryAgain(_ boards: [Board], after seconds: Double) {
+        guard retries < 15 else { return }
+        retries += 1
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard let self, Switch.isOn(Switch.calendarAuto) else { return }
+            self.follow(AppModel.shared.boards)
+        }
+    }
+
     private func match(_ boards: [Board]) async {
-        guard await allowed(), let calendar = ourCalendar(make: true) else { return }
         let wanted = CalendarFollow.wanted(boards: boards)
+        let signature = CalendarFollow.signature(of: wanted)
+        let defaults = UserDefaults.standard
+        // 0.14: nothing while boards are still arriving from iCloud; nothing when the wanted days did not change.
+        let force = forceNext
+        switch CalendarFollow.pass(arriving: AppModel.shared.boardsStillArriving, signature: signature,
+                                   last: defaults.string(forKey: Self.signatureKey), force: force) {
+        case .wait:
+            tryAgain(boards, after: 20)
+            return
+        case .skip:
+            return
+        case .go:
+            break
+        }
+        forceNext = false
+        guard await allowed(), let calendar = await calendarToUse() else { return }
+        lastLook = Date()
         let events = ourEvents(in: calendar, around: wanted)
-        let plan = CalendarFollow.plan(wanted: wanted, existing: events.map(Self.read))
+        let full = CalendarFollow.plan(wanted: wanted, existing: events.map(Self.read))
+        // 0.14: never more than a few days taken out in one pass.
+        let (plan, held) = CalendarFollow.limited(full)
+        var done = true
         if !plan.isEmpty {
             var byKey: [String: [EKEvent]] = [:]
             for e in events { byKey[e.url?.absoluteString ?? "", default: []].append(e) }
@@ -208,10 +310,31 @@ final class CalendarFollower: ObservableObject {
                 }
                 try store.commit()
             } catch {
+                // The calendar said no: nothing was written, the old "updated" time stays, and it is said.
                 store.reset()
+                done = false
+                failed = true
+                forceNext = true
+                sayLine()
+                tryAgain(boards, after: 60)
+                return
             }
         }
-        let defaults = UserDefaults.standard
+        failed = false
+        retries = 0
+        // How far our days reach, for switching off.
+        let numbers = wanted.flatMap { [$0.first.number, $0.last.number] }
+        if let low = numbers.min(), let high = numbers.max() {
+            defaults.set(min(low, defaults.object(forKey: Self.firstDayKey) as? Int ?? low), forKey: Self.firstDayKey)
+            defaults.set(max(high, defaults.object(forKey: Self.lastDayKey) as? Int ?? high), forKey: Self.lastDayKey)
+        }
+        if held > 0 {
+            // Some removals wait for the next pass.
+            done = false
+            forceNext = true
+            tryAgain(boards, after: 30)
+        }
+        if done { defaults.set(signature, forKey: Self.signatureKey) }
         defaults.set(Date(), forKey: Self.lastKey)
         defaults.set(Set(wanted.map(\.key)).count, forKey: Self.countKey)
         sayLine()
@@ -220,23 +343,38 @@ final class CalendarFollower: ObservableObject {
     /// Switched off: Seedboard's events go, and its calendar too when nothing else is in it.
     private func takeOut() async {
         defer { sayLine() }
-        UserDefaults.standard.removeObject(forKey: Self.countKey)
-        UserDefaults.standard.removeObject(forKey: Self.lastKey)
-        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess, let calendar = ourCalendar(make: false) else { return }
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: Self.countKey)
+        defaults.removeObject(forKey: Self.lastKey)
+        defaults.removeObject(forKey: Self.signatureKey)
+        failed = false
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return }
+        let calendars = ourCalendars()
+        guard !calendars.isEmpty else { return }
+        var kept = false
         do {
-            for e in ourEvents(in: calendar, around: []) { try store.remove(e, span: .thisEvent, commit: false) }
-            try store.commit()
-            let cal = Calendar.current
-            let now = Date()
-            let start = cal.date(byAdding: .year, value: -2, to: now) ?? now
-            let end = cal.date(byAdding: .year, value: 1, to: now) ?? now
-            let left = store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: [calendar]))
-            if left.isEmpty {
-                try store.removeCalendar(calendar, commit: true)
-                UserDefaults.standard.removeObject(forKey: Self.idKey)
+            for calendar in calendars {
+                for e in ourEvents(in: calendar, around: []) { try store.remove(e, span: .thisEvent, commit: false) }
             }
+            try store.commit()
+            // 0.14: the calendar goes only when nothing else is left, looked for as far as our days reach.
+            for calendar in calendars {
+                if CalendarFollow.mayRemoveCalendar(leftOver: foreignCount(in: calendar)) {
+                    try store.removeCalendar(calendar, commit: true)
+                } else {
+                    kept = true
+                }
+            }
+            defaults.removeObject(forKey: Self.idKey)
+            defaults.removeObject(forKey: Self.firstDayKey)
+            defaults.removeObject(forKey: Self.lastDayKey)
         } catch {
             store.reset()
+            kept = false
+        }
+        if kept {
+            if let id = calendars.first?.calendarIdentifier { defaults.set(id, forKey: Self.idKey) }
+            AppModel.shared.say("Seedboard's days are out of the calendar. The calendar itself stays: other days are in it.")
         }
     }
 
@@ -244,6 +382,10 @@ final class CalendarFollower: ObservableObject {
         guard Switch.isOn(Switch.calendarAuto) else {
             line = ""
             refused = false
+            return
+        }
+        if failed {
+            line = CalendarFollow.failedLine
             return
         }
         let defaults = UserDefaults.standard
@@ -274,8 +416,8 @@ struct CalendarFollowSection: View {
             } else if on && !follower.line.isEmpty {
                 Text(follower.line)
                     .font(Txt.label)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("settings.calendarLine")
+                    .foregroundStyle(follower.failed ? Part.notes.text : .secondary)
+                    .accessibilityIdentifier(follower.failed ? "settings.calendarFailed" : "settings.calendarLine")
             }
         } header: { PartHeader("Calendar", .timeline) }
         footer: {
