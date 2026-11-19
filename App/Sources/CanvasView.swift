@@ -844,11 +844,31 @@ private struct LineField: View {
 
     var body: some View {
         TextField("", text: Binding(get: { session.draft }, set: { session.typed($0) }), selection: $caret, axis: .vertical)
+            .onAppear { session.insertAtCaret = { insert($0) } }
+            .onDisappear { session.insertAtCaret = nil }
             .onKeyPress(.return, phases: .down) { press in
                 guard press.modifiers.contains(.shift) || press.modifiers.contains(.option) else { return .ignored }
                 breakLine()
                 return .handled
             }
+    }
+
+    /// 26: words (today's date) go where the cursor stands, and the cursor goes after them.
+    private func insert(_ put: String) {
+        let words = session.draft
+        var from = -1, to = -1
+        if let caret, case .selection(let chosen) = caret.indices,
+           chosen.lowerBound <= words.endIndex, chosen.upperBound <= words.endIndex {
+            from = words.utf16.distance(from: words.utf16.startIndex, to: chosen.lowerBound)
+            to = words.utf16.distance(from: words.utf16.startIndex, to: chosen.upperBound)
+        }
+        let made = Typing.insert(put, in: words, from: from, to: to)
+        session.typed(made.words)
+        DispatchQueue.main.async {
+            let now = session.draft
+            guard now == made.words, let spot = now.utf16.index(now.utf16.startIndex, offsetBy: made.cursor, limitedBy: now.utf16.endIndex) else { return }
+            caret = TextSelection(insertionPoint: spot)
+        }
     }
 
     private func breakLine() {

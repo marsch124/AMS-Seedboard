@@ -304,7 +304,7 @@ struct BarActions {
         let session = session
         guard !session.readOnly, !session.board.placesItself else { return nil }
         if let item = session.single {
-            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(itemBar(item), full: false))
+            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(withLook(itemBar(item)), full: false))
         }
         if let id = session.selectedLink, let link = session.board.links.first(where: { $0.id == id }) {
             return ChosenBarModel(part: .arrows, label: nil, actions: linkBar(link))
@@ -323,7 +323,7 @@ struct BarActions {
         actions.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }))
         actions += todayThree()
         actions.append(remove())
-        return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: withMarks(actions, full: false))
+        return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: withMarks(withLook(actions), full: false))
     }
 
     private func itemBar(_ item: Item) -> [BarAction] {
@@ -366,6 +366,7 @@ struct BarActions {
             all.append(todo(on: item.todo))
         case .text:
             all.append(words(item.id, show: .word))
+            all.append(textSizeChoice(item, drop: 2))   // 0.14 (17)
             all.append(duplicate())
             all += chooseMore()
             all.append(todo(on: item.todo))
@@ -476,7 +477,7 @@ struct BarActions {
             all += severalMenu(first: tidy.isEmpty)
             all += moveOutLines()
             all.append(remove(gap: true))
-            return withMarks(all, full: true)
+            return withMarks(withLook(all), full: true)
         }
         // A door has its own lines (0.5, Doors.swift).
         if item.kind == .door { return withMarks(doorMenu(item, [copy, cut, twin]) + [remove(gap: true)], full: true) }
@@ -512,6 +513,8 @@ struct BarActions {
             if item.parent == nil, session.board.canBalance(item.id) {
                 more.append(act("balance", "Balance", .new(.balance)) { session.balanceMap() })
             }
+        case .text:
+            more.append(textSizeChoice(item, show: .icon))   // 0.14 (17)
         case .frame:
             more.append(list("lanes", "Lanes", .new(.lanes), on: item.lanes != nil, laneChoices(item)))
             more.append(focusAction())
@@ -529,7 +532,7 @@ struct BarActions {
         all += more
         all += moveOutLines()
         all.append(remove(gap: true))
-        return withMarks(all, full: true)
+        return withMarks(withLook(all), full: true)
     }
 
     private func laneChoices(_ item: Item) -> [BarAction] {

@@ -842,6 +842,34 @@ final class BoardSession: ObservableObject {
         glide(Glide.wholeBoard) { place.fit(board.bounds) }
     }
 
+    // MARK: 0.14 look lane
+
+    /// 19: the board glides so the chosen things fill the screen, with a margin. Not on a timeline or "Who does what".
+    var canZoomToChosen: Bool {
+        !board.placesItself && board.bounds != nil && selection.contains { board.item($0) != nil }
+    }
+
+    func zoomToChosen() {
+        guard canZoomToChosen else { return }
+        var box: CGRect?
+        for id in selection {
+            guard let f = board.item(id)?.frame else { continue }
+            box = box.map { $0.union(f) } ?? f
+        }
+        guard let box else { return }
+        glide(Glide.wholeBoard) { place.fitChosen(box) }
+    }
+
+    /// 26: set by the typing field while words are typed (puts words where the cursor stands); nil when none is typing.
+    var insertAtCaret: ((String) -> Void)?
+
+    /// 26: "19 Nov 2026" goes where the cursor stands.
+    func insertToday() {
+        guard editing != nil else { return }
+        let words = DateWords.short(Date())
+        if let insertAtCaret { insertAtCaret(words) } else { typed(draft + words) }
+    }
+
     /// The board is reopened: the zoom and the spot the owner left it at come back (pick 26).
     func comeBack(to left: LeftView) { place.comeBack(to: left) }
 

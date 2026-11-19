@@ -59,6 +59,18 @@ public struct Viewport: Equatable, Sendable {
         offset = CGSize(width: Double(size.width) / 2 - Double(all.midX) * scale, height: Double(size.height) / 2 - Double(all.midY) * scale)
     }
 
+    // 0.14 (look, 19): shows the chosen things so they fill the room, with a margin. Zooms in as far as twice
+    // life size and out to a fifth, never beyond. Nothing happens for an empty box.
+    public mutating func fitChosen(_ box: CGRect?) {
+        guard let box, size.width > 10, size.height > 10 else { return }
+        movedByOwner = true
+        scaleBeforeTyping = nil
+        let room = CGSize(width: max(size.width - 120, 80), height: max(size.height - 220, 80))
+        let s = min(Double(room.width) / max(Double(box.width), 1), Double(room.height) / max(Double(box.height), 1))
+        scale = min(max(s, 0.2), 2)
+        offset = CGSize(width: Double(size.width) / 2 - Double(box.midX) * scale, height: Double(size.height) / 2 - Double(box.midY) * scale)
+    }
+
     /// The room changed (a window settling, the keyboard coming up, a page opening over the board).
     /// The board is shown whole again only while the owner has not moved it.
     /// `readableAround`: on a small screen, the main thing — the board then opens readable (see `open`).
