@@ -46,6 +46,7 @@ struct SeedMenus: Commands {
     let model: AppModel
     @FocusedObject private var session: BoardSession?
     @ObservedObject private var desk = MenuDesk.shared
+    private let desk14 = Boards14Desk.shared
 
     /// A board is open and may be changed.
     private var canChange: Bool { session.map { !$0.readOnly } ?? false }
@@ -120,6 +121,8 @@ struct SeedMenus: Commands {
             }
             .disabled(!canChange || session?.starterDraft == true)
             Button("Starters…") { model.ask(.page) }
+            // 0.14: a Markdown, text or OPML outline becomes a new mind map (Boards14.swift).
+            Button("Open Outline…") { if model.loaded { desk14.openingOutline = true } }
             Divider()
             // 0.9: out of the list, never deleted; "Put away (n)" at the bottom of the list brings it back.
             Button("Put Board Away") {

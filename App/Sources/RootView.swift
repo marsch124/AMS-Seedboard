@@ -48,6 +48,7 @@ struct RootView: View {
             SettingsView().environmentObject(model)
         }
         #endif
+        .boards14Host()   // 0.14: Join with… page, outline file chooser
         .onChange(of: model.openID) { _, new in
             compactColumn = new == nil ? .sidebar : .detail
         }
@@ -177,6 +178,16 @@ struct BoardList: View {
                 Button { showSettings = true } label: { settingsLabel }
                     .buttonStyle(PressStyle())
                     .accessibilityIdentifier("boards.settings")
+                #endif
+                #if !os(macOS)
+                // 0.14: "Open an outline file" (the Mac has File ▸ Open Outline…).
+                Menu("More") {
+                    Button("Open an outline file") { Boards14Desk.shared.openingOutline = true }
+                        .accessibilityIdentifier("boards.openOutline")
+                }
+                .font(.subheadline)
+                .foregroundStyle(Part.boards.text)
+                .accessibilityIdentifier("boards.more")
                 #endif
                 Spacer()
                 Text(version)
@@ -317,6 +328,7 @@ struct BoardList: View {
             }
             Button(board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(board.id) }
             Button("Make a copy") { model.duplicate(board.id) }
+            Boards14CardLines(board: board)   // 0.14: Join with…, Lock / Unlock
             if board.canBeChanged && !board.isPutAway { Button("Put away") { model.putAway(board.id) } }
             if board.canBeChanged {
                 Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }

@@ -154,6 +154,7 @@ struct HomeView: View {
                             }
                             Button(board.pinned ? "Unpin" : "Pin to the top") { model.togglePin(board.id) }
                             Button("Make a copy") { model.duplicate(board.id) }
+                            Boards14CardLines(board: board)   // 0.14: Join with…, Lock / Unlock
                             if board.canBeChanged && !board.isPutAway { Button("Put away") { model.putAway(board.id) } }
                             if board.canBeChanged {
                                 Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
@@ -258,9 +259,13 @@ struct BoardCard: View {
         return Button(action: open) {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
-                    BoardThumb(board: board)
+                    // 0.14: a locked board shows its title but no small picture.
+                    BoardThumb(board: board.faceLock == true ? Board() : board)
                     // 0.5: an empty board's card shows a faint sprout instead of the word "Empty".
-                    if board.isEmpty { EmptySprout() }
+                    if board.faceLock == true {
+                        Text("Private").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("card.private")
+                    } else if board.isEmpty { EmptySprout() }
                 }
                 Rectangle().fill(paint.edge).frame(height: 1)
                 VStack(alignment: .leading, spacing: 0) {
@@ -425,7 +430,7 @@ struct RowPicture: View {
 
     var body: some View {
         let outline = RoundedRectangle(cornerRadius: 6, style: .continuous)
-        return BoardThumb(board: board)
+        return BoardThumb(board: board.faceLock == true ? Board() : board)
             .frame(width: 60)
             .clipShape(outline)
             .overlay(outline.stroke(Paint(scheme).edge, lineWidth: 1))

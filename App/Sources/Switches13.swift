@@ -366,7 +366,7 @@ struct NudgeRows: View {
 
     var body: some View {
         let boards = on && model.loaded && BoardSearch.words(search).isEmpty
-            ? Nudge.boards(model.boards, now: Date(), notNow: keep.notNow) : []
+            ? Nudge.boards(model.boards.filter { $0.faceLock != true }, now: Date(), notNow: keep.notNow) : []
         if !boards.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Text(Nudge.heading.uppercased())
