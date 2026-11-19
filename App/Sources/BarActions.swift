@@ -120,7 +120,7 @@ struct BarActions {
                 AppModel.shared.copyText(words)
                 AppModel.shared.say("Words copied", seconds: 2)
             },
-            act("wordsnote", "Words to a note", .new(.makeTyped), show: .wideWord, drop: 5) {
+            act("wordsnote", "Words to a note", .new(.readThis), show: .wideWord, drop: 5) {
                 session.commitEdit()
                 var made: UUID?
                 session.change { made = $0.noteWithPictureWords(id) }
@@ -145,7 +145,7 @@ struct BarActions {
     /// "Read this" (0.11): the sketch's handwriting becomes a sticky note beside it; the sketch stays.
     private func readThis(_ id: UUID, drop: Int = 1) -> BarAction {
         let session = session
-        return act("readthis", "Read this", .new(.makeTyped), show: .wideWord, drop: drop, exact: "ink.readthis") { session.readThis(id) }
+        return act("readthis", "Read this", .new(.readThis), show: .wideWord, drop: drop, exact: "ink.readthis") { session.readThis(id) }
     }
 
     /// "Draw on it" (0.9): the Draw tool opens with this picture as its target.

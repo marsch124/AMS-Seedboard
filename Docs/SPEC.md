@@ -1,4 +1,4 @@
-# AMS Seedboard — specification, version 0.11 (build 11)
+# AMS Seedboard — specification, version 0.12 (build 12)
 
 **Version 0.11 (build 11, 2026-11-19)** is a hardening and improvement round: 38 picks from `Docs/IDEAS-0.11.md` (1–12, 14–24, 26, 27, 28, 30, 31, 33, 36–41, 43, 47). Everything is in part **17**. Item 13 was not built; item 14 needed no change. The board format is now **7** (new field `Board.due`). Where part 17 and an older part disagree, part 17 is right.
 
@@ -1611,3 +1611,9 @@ All off on timeline and Who does what boards; all go through Undo; none changes 
 - New target **AMSSeedboardStoreTests** (macOS unit tests, `StoreTests/BoardStoreTests.swift`, compiles `BoardStore.swift` only; in the AMSSeedboard scheme's tests; declared in `project.yml`). 5 tests run on a throwaway folder with a stand-in for iCloud: save and read back; newer wins and the older is kept; iCloud's " 2" copy joined and cleared; removal mark and a later change bringing the board back; a file that cannot be read left alone. About 0.3 seconds. Run: `xcodebuild test -project AMSSeedboard.xcodeproj -scheme AMSSeedboard -only-testing:AMSSeedboardStoreTests -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" CODE_SIGN_ENTITLEMENTS=""`. It does not test `PictureStore` (needs app singletons).
 - `Guide.swift`: a new 0.11 entry in What's new (above 0.10); How it works changed in: Your boards, The board, Mind maps, Marks on ideas legend focus and show, Timeline board, Drawing by hand, Pictures, Paste a list, Send to PARAGON, Safety, Share PDF and print, Menus and keys, How it feels.
 - Version 0.11 (build 11).
+
+## 18. Version 0.12 (build 12, 2026-11-19): three marks
+- AMS-Icons app marks `seedRuler` (slanted ruler with three tick marks), `seedFade` (a pencil line that breaks into shorter strokes and dots), `seedReadThis` (a scribble beside a note with two lines), drawn on the 24-point grid, stroke 1.9, round ends, no fill; picked by the owner from 2 options each (19 Nov 08:17: 1, 3, 5). `NewMark.ruler`, `.fade`, `.readThis` map to them (`NewMarks.swift`).
+- Draw plate (`InkViews.swift`): `draw.ruler` and `draw.fade` are `tile(...)` mark tiles (were `word(...)` buttons); identifiers and help texts unchanged ("Ruler: lines drawn along it come out straight", "Fade: show the pencil lines of this board lighter").
+- Bar actions (`BarActions.swift`): `readthis` "Read this" and `wordsnote` "Words to a note" show `.new(.readThis)` (were `.new(.makeTyped)`); `copywords` keeps `.makeTyped`.
+- Board format unchanged (7).

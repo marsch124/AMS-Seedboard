@@ -403,9 +403,9 @@ enum Guide {
             "Rubber: Small, Medium and Large choose how near a line it must pass. Medium is as before. It still takes whole lines.",
             "Lasso: draw a loop round pencil lines. Those with more than half of their length inside are chosen and move together; if only some lines of a sketch were chosen they are split off into a sketch of their own. A loop smaller than 12 points counts as a tap.",
             "Make typed: choose a sketch and press Make typed (mark: a squiggle turning into a typed T; Mac: Make Sketch Typed). The handwriting is read on the device and becomes a Text thing in the same place under the same name, so arrows stay. If nothing is read: No words found in this sketch.",
-            "Ruler (0.11): Draw plate, Ruler. A straight edge of 360 points lies in the middle of the board. Move it by its middle dot, turn it with two fingers on the middle dot or by the round dot at its end. A line drawn within 16 points of the edge the whole way comes out straight on the edge; one that wanders off stays as drawn. It is never saved and never in a picture. It goes when you leave Draw, or press Ruler again.",
-            "Fade (0.11): Draw plate, Fade shows every pencil line at 30 % so notes on top can be read. Press again, or press Show in the small line Pencil lines are faded after the plate is closed. Nothing is saved.",
-            "Read this (0.11): choose a sketch and press Read this; the words found come up as a yellow sticky note 16 points to its right, and the sketch stays. One Undo takes the note away. No words: the line No words found in this sketch. Make typed still replaces the sketch.",
+            "Ruler (0.11; its own mark, a slanted ruler with marks, since 0.12): Draw plate, the ruler mark. A straight edge of 360 points lies in the middle of the board. Move it by its middle dot, turn it with two fingers on the middle dot or by the round dot at its end. A line drawn within 16 points of the edge the whole way comes out straight on the edge; one that wanders off stays as drawn. It is never saved and never in a picture. It goes when you leave Draw, or press Ruler again.",
+            "Fade (0.11; its own mark, a pencil line fading into dots, since 0.12): Draw plate, the fade mark shows every pencil line at 30 % so notes on top can be read. Press again, or press Show in the small line Pencil lines are faded after the plate is closed. Nothing is saved.",
+            "Read this (0.11; its own mark since 0.12: a scribble and a note with lines): choose a sketch and press Read this; the words found come up as a yellow sticky note 16 points to its right, and the sketch stays. One Undo takes the note away. No words: the line No words found in this sketch. Make typed still replaces the sketch.",
             "Rubber size (0.11): while you rub, the ring shows its size in words: Small, Medium or Large (20, 40 or 80 points on the screen).",
         ]),
         Part(title: "Tidy shapes", text: [
@@ -827,6 +827,13 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.12", date: "2026-11-19", items: [
+            "Three buttons of 0.11 have their own hand-drawn marks now. Before: Ruler and Fade on the Draw plate were word buttons, and Read this borrowed the Make typed mark. Now: Ruler is a slanted ruler with three marks on it, Fade is a pencil line that fades into dots, and Read this is a scribble beside a note with lines.",
+            "The Draw plate: Ruler and Fade are now mark tiles like Pen, Highlighter, Rubber and Lasso (were words), so the plate is shorter: 6 mark tiles and Done, plus the pen sizes and colours. Hold the pointer over a tile on the Mac to read its name.",
+            "Words to a note (the bar of a picture whose words were found) uses the same mark as Read this, because both put found words on a note. Copy words keeps the Make typed mark.",
+            "The shared icon library holds 3 more Seedboard marks: seedRuler, seedFade and seedReadThis.",
+            "Nothing else changed: same board format (7), same data. The version shows as 0.12 (12).",
+        ]),
         Release(version: "0.11", date: "2026-11-19", items: [
             "Important: boards are now stored in format 7, because a board can have its own due day (see below). A board that 0.11 changes opens read-only in an older version, so you can look at it but not change it. Update every device (iPhone, iPad and Mac) to 0.11 before you go on. PARAGON 341, which ships the same day, is needed for the tick that travels back (see Done on a board ticks it in PARAGON).",
             "NEW. Ruler (Draw plate). Before: a line drawn by hand stayed as wobbly as your hand. Now: a new Ruler button puts a straight edge, 360 points long, in the middle of the board. Drag its middle dot to move it; turn it with two fingers on the middle dot, or by dragging the round dot at its end. A line drawn along it, staying within 16 points of the edge the whole way, comes out as one straight line laid on the edge. A line that wanders off stays as you drew it. The ruler is never saved and is not part of any picture; it goes when you leave the Draw tool, or press Ruler again.",

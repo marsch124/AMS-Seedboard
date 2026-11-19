@@ -30,6 +30,8 @@ enum NewMark: String, CaseIterable {
     case share, pdf, words, print, camera, scan
     // 0.10: the buttons of 0.9 that borrowed a neighbour's mark or showed only words.
     case balance, highlighter, lasso, makeTyped, drawOnIt, vote, tickList, legend, focus, showFrames, smallMap
+    // 0.12: the 0.11 buttons that showed only words or borrowed Make typed.
+    case ruler, fade, readThis
 
     /// The drawing in the shared icon library (AMS-Icons, the seed family).
     var standIn: AppMark {
@@ -104,6 +106,9 @@ enum NewMark: String, CaseIterable {
         case .focus: return .seedFocus
         case .showFrames: return .seedShowFrames
         case .smallMap: return .seedSmallMap
+        case .ruler: return .seedRuler
+        case .fade: return .seedFade
+        case .readThis: return .seedReadThis
         }
     }
 }

@@ -100,10 +100,10 @@ struct DrawPlate: View {
             }
             // 0.11: a ruler to draw along (picks 37) and "Fade" for every pencil line of this board (38).
             HStack(spacing: Finger.chipGap) {
-                word("Ruler", "draw.ruler", on: desk.ruler != nil, help: "Ruler: lines drawn along it come out straight") {
+                tile(.ruler, "draw.ruler", "Ruler: lines drawn along it come out straight", on: desk.ruler != nil) {
                     session.toggleRuler()
                 }
-                word("Fade", "draw.fade", on: desk.fade, help: "Fade: show the pencil lines of this board lighter") {
+                tile(.fade, "draw.fade", "Fade: show the pencil lines of this board lighter", on: desk.fade) {
                     desk.fade.toggle()
                     session.objectWillChange.send()
                 }
