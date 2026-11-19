@@ -77,7 +77,9 @@ enum Lettering {
     static func style(for item: Item, depth: Int) -> (size: CGFloat, bold: Bool) {
         switch item.kind {
         case .idea: return depth == 0 ? (17, true) : (15, depth == 1)
-        case .text: return (17, false)
+        case .text: // 0.14: Title 28, Normal 17, Small 13 (Item.textSize)
+            let own = TextSize.look(item.textSize)
+            return (CGFloat(own.size), own.bold)
         case .frame: return (13, true)
         default: return (15, false)
         }

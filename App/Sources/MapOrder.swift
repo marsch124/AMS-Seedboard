@@ -192,6 +192,13 @@ extension CanvasView {
             // 0.5: "Next note" for a sticky note, "Next shape" for a shape (Thinking.swift).
             ThinkKeyBar(session: session)
         }
+        // 0.14 (26): today's date where the cursor stands.
+        if !session.readOnly {
+            Button("Today") { session.insertToday() }
+                .font(.subheadline.weight(.medium))
+                .accessibilityLabel("Insert today's date")
+                .accessibilityIdentifier("board.key.today")
+        }
         Spacer()
         Button("Done") { session.commitEdit() }
             .fontWeight(.semibold)

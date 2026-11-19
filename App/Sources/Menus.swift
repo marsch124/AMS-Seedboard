@@ -146,6 +146,18 @@ struct SeedMenus: Commands {
             Button("Duplicate") { session?.duplicateSelection() }
                 .keyboardShortcut("d", modifiers: .command)
                 .disabled(!canChange || typing || (session?.selection.isEmpty ?? true))
+            // 0.14 (look): copy the look of one thing, paste it on the chosen ones; today's date at the cursor.
+            Divider()
+            Button("Copy Look") { session?.copyLook() }
+                .keyboardShortcut("c", modifiers: [.option, .command])
+                .disabled(!canChange || typing || !(session?.canCopyLook ?? false))
+            // ⌥⌘V is taken by Vote Dot, so Paste Look has Control as well.
+            Button("Paste Look") { session?.pasteLook() }
+                .keyboardShortcut("v", modifiers: [.control, .option, .command])
+                .disabled(!canChange || typing || !(session?.canPasteLook ?? false))
+            Button("Insert Today's Date") { session?.insertToday() }
+                .keyboardShortcut("d", modifiers: [.shift, .command])
+                .disabled(!canChange || !typing)
             // 0.9 (Marks): a dot for each chosen thing, pin it, a tick list in a note.
             Divider()
             Button("Vote Dot") { session?.vote() }
@@ -171,6 +183,10 @@ struct SeedMenus: Commands {
             Button("Show the Whole Board") { session?.fit() }
                 .keyboardShortcut("1", modifiers: .command)
                 .disabled(session == nil)
+            // 0.14 (look): the chosen things fill the screen.
+            Button("Zoom to Chosen") { session?.zoomToChosen() }
+                .keyboardShortcut("3", modifiers: .command)
+                .disabled(!(session?.canZoomToChosen ?? false) || typing)
             // 0.9: on a timeline: brings today into view (the key T does the same while the timeline has the keys).
             Button("Go to Today") { session?.timelineShowToday() }
                 .disabled(session?.board.isTimeline != true)
