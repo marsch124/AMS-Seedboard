@@ -258,7 +258,7 @@ public enum ParagonRead {
             return item.kind == .message ? ParagonExport.messageLine(item, in: board) : nil
         }
         switch item.kind {
-        case .frame, .drawing, .picture, .door, .bar, .milestone, .phase, .who, .message, .band, .section: return nil
+        case .frame, .drawing, .picture, .door, .bar, .milestone, .phase, .who, .message, .band, .section, .table, .block: return nil
         case .idea, .box, .round, .diamond, .oval, .note, .text, .person, .document, .slanted, .store:
             return ParagonExport.label(item)
         }

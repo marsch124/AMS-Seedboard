@@ -5,7 +5,7 @@ import SeedboardCore
 // call it, so the four ways a to-do can stand look the same everywhere.
 //
 //   waiting    — a hollow purple ring: to do, not sent yet
-//   inParagon  — a full purple ring with a white tick: it is a task in PARAGON
+//   inParagon  — a full purple ring with a white arrow up and out: it went on to PARAGON (0.14; a tick means done only)
 //   done       — a full green ring with a white tick, the words greyed: ticked off in PARAGON
 //   cancelled  — a full grey ring with a white dash, the words greyed: cancelled in PARAGON
 //
@@ -79,8 +79,15 @@ enum TodoMark {
             let ring = Path(ellipseIn: CGRect(x: c.x - r + line / 2, y: c.y - r + line / 2, width: r * 2 - line, height: r * 2 - line))
             ctx.stroke(ring, with: .color(purple(paint, line: true)), lineWidth: line)
         case .inParagon:
+            // 0.14 (mark check #2): a white arrow pointing up and out — "it went on to PARAGON". A tick means done only.
             ctx.fill(disc, with: .color(purple(paint, line: false)))
-            tick()
+            var arrow = Path()
+            arrow.move(to: CGPoint(x: c.x - 2.9 * k, y: c.y + 2.9 * k))
+            arrow.addLine(to: CGPoint(x: c.x + 2.9 * k, y: c.y - 2.9 * k))
+            arrow.move(to: CGPoint(x: c.x - 1.0 * k, y: c.y - 2.9 * k))
+            arrow.addLine(to: CGPoint(x: c.x + 2.9 * k, y: c.y - 2.9 * k))
+            arrow.addLine(to: CGPoint(x: c.x + 2.9 * k, y: c.y + 1.0 * k))
+            ctx.stroke(arrow, with: .color(.white), style: StrokeStyle(lineWidth: 1.7 * k, lineCap: .round, lineJoin: .round))
         case .done:
             ctx.fill(disc, with: .color(green(paint)))
             tick()

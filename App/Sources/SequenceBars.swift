@@ -86,7 +86,7 @@ struct SequenceSelectionBar: View {
                             .font(Txt.pill)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
-                        chip("To do", .control(.ticked), "sel.todo", .paragon) { session.sequenceToggleTodo() }
+                        chip("To do", .control(.circle), "sel.todo", .paragon) { session.sequenceToggleTodo() }
                         chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
                     }
                     #if !os(macOS)
@@ -120,7 +120,7 @@ struct SequenceSelectionBar: View {
             chip("Answer", .new(.answer), "sel.answer", .sequence, on: item.isAnswer) { session.toggleAnswer() }
             chip("Turn round", .app(.repeat), "sel.turn", .arrows) { session.turnMessageRound() }
             chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
-            chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.sequenceToggleTodo() }
+            chip("To do", .control(.circle), "sel.todo", .paragon, on: item.todo) { session.sequenceToggleTodo() }
             moveChips
             chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
         default:

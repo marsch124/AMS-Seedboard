@@ -191,7 +191,7 @@ struct TimelineSelectionBar: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
                         if session.selection.contains(where: { session.board.item($0)?.span != nil }) { doneChip }
-                        chip("To do", .control(.ticked), "sel.todo", .paragon) { session.toggleTodo() }
+                        chip("To do", .control(.circle), "sel.todo", .paragon) { session.toggleTodo() }
                         chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
                     }
                     #if !os(macOS)
@@ -253,7 +253,7 @@ struct TimelineSelectionBar: View {
                 dating = item.id
             }
             doneChip
-            chip("To do", .control(.ticked), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
+            chip("To do", .control(.circle), "sel.todo", .paragon, on: item.todo) { session.toggleTodo() }
         }
         // 0.9: a phase folds its rows away (a bar and a milestone have nothing to fold).
         if item.kind == .phase, session.board.canFold(item.id) {

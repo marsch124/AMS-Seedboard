@@ -161,7 +161,7 @@ struct BarActions {
 
     private func todo(on: Bool, show: BarAction.Show = .wideWord, gap: Bool = true) -> BarAction {
         let session = session
-        return act("todo", "To do", .control(.ticked), show: show, tone: .todo, on: on, gap: gap) { session.toggleTodo() }
+        return act("todo", "To do", .control(.circle), show: show, tone: .todo, on: on, gap: gap) { session.toggleTodo() }
     }
 
     /// 0.9 (pick 42): "Today's three" — up to three chosen things go to PARAGON's Inbox as tasks due today.

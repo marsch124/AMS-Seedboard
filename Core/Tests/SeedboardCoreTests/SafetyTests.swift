@@ -289,6 +289,14 @@ final class StoredFieldsTests: XCTestCase {
                   lanes: ["cuts", "names", "way"],
                   starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
                   sentTask: ["id", "place", "words"]),
+        8: Fields(board: ["backdrop", "changed", "colour", "created", "due", "faceLock", "format", "hideDone", "id", "items", "kind", "legend", "links", "numberSteps", "pinned", "putAway", "sent", "sentTasks", "sentTodos", "title"],
+                  item: ["answer", "bothSides", "cells", "colour", "crop", "doneDay", "door", "end", "folded", "from", "h", "id", "kind", "lanes", "linkTitle", "locked", "order", "parent", "picture", "pictureWords", "planEnd", "planStart", "row", "side", "start", "strokes", "text", "textSize", "tilt", "to", "todo", "votes", "w", "x", "y"],
+                  link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
+                  sent: ["kind", "path", "title", "when"],
+                  stroke: ["colour", "pen", "points", "pressure", "width"],
+                  lanes: ["cuts", "names", "way"],
+                  starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
+                  sentTask: ["id", "place", "words"]),
     ]
 
     func testAStoredFieldIsNeverAddedWithoutANewFormatNumber() throws {
@@ -328,6 +336,7 @@ final class StoredFieldsTests: XCTestCase {
         b.door = a.id
         b.doneDay = "2026-12-04"
         b.votes = 2; b.locked = true; b.linkTitle = "Page"; b.pictureWords = "words"
+        b.tilt = 4; b.textSize = "title"; b.cells = [["a"]]; b.planStart = "2026-12-01"; b.planEnd = "2026-12-03"
         var arrow = Link(from: a.id, to: b.id, text: "go")
         arrow.fromSide = .left; arrow.toSide = .right; arrow.tail = true; arrow.dashed = true
         var board = Board(title: "Full", items: [a, b], links: [arrow])
@@ -335,6 +344,7 @@ final class StoredFieldsTests: XCTestCase {
         board.sent = SentInfo(when: Date(), kind: "note", title: "Full", path: "Resources/Full.md")
         board.sentTodos = [a.id]
         board.legend = ["yellow": "Open"]; board.backdrop = "dots"; board.numberSteps = true; board.putAway = Date(); board.due = "2027-01-12"
+        board.faceLock = true; board.hideDone = true
         board.noteSent(b.id, words: "b", place: SentTask.note)
         let starter = StarterEntry(id: "own-1", name: "Mine", hint: "h", order: 1, removed: true, removedWhen: Date(),
                                    builtin: "blank", board: board, changed: Date(), boardChanged: Date())

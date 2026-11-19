@@ -203,6 +203,8 @@ public enum StepWords {
         case .drawing: return "a sketch"
         case .picture: return "a picture"
         case .door: return "a door"
+        case .table: return "a table"
+        case .block: return "a block"
         }
     }
 

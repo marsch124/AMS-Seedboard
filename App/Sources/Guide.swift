@@ -537,10 +537,10 @@ enum Guide {
             "Copy the board as an email (0.11): under Copy the board as text, More has Copy the board as an email. The first line says Here is my board “Plan”:, then comes the outline, and the last line says Made with Seedboard. Paste it into Mail.",
         ]),
         Part(title: "To do", text: [
-            "Choose any idea, shape, note or text and press To do. A small hollow purple ring appears at its corner: a to-do that is still only here. Press To do again to take it away.",
+            "Choose any idea, shape, note or text and press To do (its mark is a plain ring). A small hollow purple ring appears at its corner: a to-do that is still only here. Press To do again to take it away.",
             "Once it went to PARAGON, the mark is full. There are four marks:",
             "Hollow purple ring: to do, not sent yet.",
-            "Purple with a white tick: it is in PARAGON.",
+            "Purple with a white arrow pointing up and out: it went on to PARAGON and is open there.",
             "Green with a white tick: it is done in PARAGON. The thing's words turn grey.",
             "Grey with a white dash: it was cancelled in PARAGON. The words turn grey too.",
             "So: hollow means still only here; full means PARAGON has it, and the colour says how it stands. Seedboard learns done and cancelled by reading the note in PARAGON. See What PARAGON did with it.",

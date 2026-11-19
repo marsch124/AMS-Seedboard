@@ -1155,7 +1155,7 @@ Written from `Docs/notes-0.5/built-*.md` (door, echo, extension, feel, iphone, l
 | State (`TodoState`) | Mark | Words |
 |---|---|---|
 | `waiting` | hollow purple ring, line 1.8 | as they are |
-| `inParagon` | full purple disc, white tick | as they are |
+| `inParagon` | full purple disc, white arrow up and out (0.14; was a white tick) | as they are |
 | `done` (read back) | full green disc, white tick | greyed |
 | `cancelled` (read back) | full grey disc, white dash | greyed |
 

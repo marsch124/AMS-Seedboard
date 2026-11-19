@@ -162,6 +162,9 @@ enum Lettering {
             case .picture:
                 // As big as the owner made it; it has no words.
                 break
+            case .table, .block:
+                // 0.14: a table is as big as its cells; a block is placed by "Who does what".
+                break
             }
         }
         board.layoutMaps()
@@ -343,6 +346,9 @@ struct BoardPainter {
         case .door:
             // A door to another board (DoorDraw.swift): a card of its own, no words to type, no tick.
             drawDoor(item, ctx)
+            return
+        case .table, .block:
+            // 0.14: drawn by their own painters (table lane, Who does what lane); nothing here yet.
             return
         case .box, .round, .diamond, .oval:
             let shape: Path

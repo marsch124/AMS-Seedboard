@@ -330,7 +330,7 @@ public extension Board {
     func takesWriting(_ id: UUID) -> Bool {
         guard canBeChanged, !placesItself, let item = item(id), item.unknownKind == nil, !isHidden(id) else { return false }
         switch item.kind {
-        case .drawing, .picture, .frame, .door: return false
+        case .drawing, .picture, .frame, .door, .table, .block: return false
         case .bar, .milestone, .phase, .who, .message, .band, .section: return false
         case .idea, .box, .round, .diamond, .oval, .note, .text, .person, .document, .slanted, .store: return true
         }

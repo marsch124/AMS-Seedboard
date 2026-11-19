@@ -91,6 +91,11 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case picture
     /// A door to another board (format 5): the board it leads to is in `Item.door`. Two presses open that board.
     case door
+    /// 0.14 (format 8): a small table of cells; the words are in `Item.cells` (rows of columns).
+    case table
+    /// 0.14 (format 8): a "Who does what" block round a few messages ("repeat", "if", "else" in `text`);
+    /// the first and the last message are `from` and `to`.
+    case block
 
     /// The flowchart shapes (`ItemKind.flowShapes`).
     public var isShape: Bool { ItemKind.flowShapes.contains(self) }
@@ -119,6 +124,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .drawing: return "Sketch"
         case .picture: return "Picture"
         case .door: return "Door"
+        case .table: return "Table"
+        case .block: return "Block"
         }
     }
 
@@ -141,6 +148,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .drawing: return CGSize(width: 120, height: 80)
         case .picture: return CGSize(width: 240, height: 180)
         case .door: return CGSize(width: 190, height: 56)
+        case .table: return CGSize(width: 330, height: 120)
+        case .block: return CGSize(width: 60, height: 17)
         }
     }
 }
@@ -203,6 +212,16 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var linkTitle: String?
     /// 0.9 (format 6): a picture only — the words read inside it (for search). nil = not read yet; "" = none found.
     public var pictureWords: String?
+    /// 0.14 (format 8): turned by this many degrees round its middle (a note stuck on crooked). nil = straight.
+    public var tilt: Double?
+    /// 0.14 (format 8): free text only — "title" or "small". nil = normal.
+    public var textSize: String?
+    /// 0.14 (format 8): a table only — its cells, row by row. nil = not a table.
+    public var cells: [[String]]?
+    /// 0.14 (format 8): a timeline bar or milestone only — where it stood when "Set the plan" was pressed
+    /// ("yyyy-MM-dd"). nil = no plan set.
+    public var planStart: String?
+    public var planEnd: String?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -233,6 +252,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case crop
         case door, doneDay
         case votes, locked, linkTitle, pictureWords
+        case tilt, textSize, cells, planStart, planEnd
     }
 
     public init(from decoder: Decoder) throws {
@@ -270,6 +290,11 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         locked = try? c.decode(Bool.self, forKey: .locked)
         linkTitle = try? c.decode(String.self, forKey: .linkTitle)
         pictureWords = try? c.decode(String.self, forKey: .pictureWords)
+        if let t = try? c.decode(Double.self, forKey: .tilt), t.isFinite { tilt = max(-180, min(180, t)) }
+        textSize = try? c.decode(String.self, forKey: .textSize)
+        cells = try? c.decode([[String]].self, forKey: .cells)
+        planStart = try? c.decode(String.self, forKey: .planStart)
+        planEnd = try? c.decode(String.self, forKey: .planEnd)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -305,6 +330,11 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(locked, forKey: .locked)
         try c.encodeIfPresent(linkTitle, forKey: .linkTitle)
         try c.encodeIfPresent(pictureWords, forKey: .pictureWords)
+        try c.encodeIfPresent(tilt, forKey: .tilt)
+        try c.encodeIfPresent(textSize, forKey: .textSize)
+        try c.encodeIfPresent(cells, forKey: .cells)
+        try c.encodeIfPresent(planStart, forKey: .planStart)
+        try c.encodeIfPresent(planEnd, forKey: .planEnd)
     }
 
     public var frame: CGRect {
@@ -476,7 +506,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// `locked`, `linkTitle`, `pictureWords` on an item); the board's colour legend, background, numbered steps and
     /// "put away" (`legend`, `backdrop`, `numberSteps`, `putAway` on the board); a highlighter stroke (`pen` on a stroke).
     /// 7 (Seedboard 0.11): a board's own due day (`due` on the board, "yyyy-MM-dd").
-    public static let currentFormat = 7
+    public static let currentFormat = 8
 
     public var id: UUID
     public var title: String
@@ -509,6 +539,10 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// 0.11 (format 7): the board's own due day, "yyyy-MM-dd" (shown on its card, sorts the list, goes to PARAGON as
     /// the project's due day). nil = none.
     public var due: String?
+    /// 0.14 (format 8): the board asks for Face ID / Touch ID / the device code before it opens. nil = open.
+    public var faceLock: Bool?
+    /// 0.14 (format 8): a timeline hides its done bars and milestones. nil = all shown.
+    public var hideDone: Bool?
 
     public init(id: UUID = UUID(), title: String = "New board", created: Date = Date(), changed: Date? = nil,
                 pinned: Bool = false, colour: String = "green", items: [Item] = [], links: [Link] = []) {
@@ -530,6 +564,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         case kind
         case sentTasks
         case legend, backdrop, numberSteps, putAway, due
+        case faceLock, hideDone
     }
 
     public init(from decoder: Decoder) throws {
@@ -555,6 +590,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         numberSteps = try? c.decode(Bool.self, forKey: .numberSteps)
         putAway = try? c.decode(Date.self, forKey: .putAway)
         due = try? c.decode(String.self, forKey: .due)
+        faceLock = try? c.decode(Bool.self, forKey: .faceLock)
+        hideDone = try? c.decode(Bool.self, forKey: .hideDone)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -579,6 +616,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(numberSteps, forKey: .numberSteps)
         try c.encodeIfPresent(putAway, forKey: .putAway)
         try c.encodeIfPresent(due, forKey: .due)
+        try c.encodeIfPresent(faceLock, forKey: .faceLock)
+        try c.encodeIfPresent(hideDone, forKey: .hideDone)
     }
 
     /// True when this version of the app may change the board: it was not written by a newer one, and
