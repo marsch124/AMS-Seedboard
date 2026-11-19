@@ -87,6 +87,7 @@ struct SequenceSelectionBar: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
                         chip("To do", .control(.circle), "sel.todo", .paragon) { session.sequenceToggleTodo() }
+                        if !session.chosenMessages.isEmpty { blockMenu }
                         chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
                     }
                     #if !os(macOS)
@@ -121,14 +122,46 @@ struct SequenceSelectionBar: View {
             chip("Turn round", .app(.repeat), "sel.turn", .arrows) { session.turnMessageRound() }
             chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
             chip("To do", .control(.circle), "sel.todo", .paragon, on: item.todo) { session.sequenceToggleTodo() }
+            blockMenu
             moveChips
             chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
+        case .block:
+            chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }
+            chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
+            chip("Remove block", .app(.bin), "sel.removeBlock", .arrows) { session.sequenceRemoveBlock() }
         default:
             chip("Words", .control(.edit), "sel.words", .text) { session.beginEdit(item.id) }
             chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
             moveChips
             chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }
         }
+    }
+
+    /// Block: a frame round the chosen messages. A small menu of its words.
+    private var blockMenu: some View {
+        Menu {
+            Button("Repeat") { session.sequenceAddBlock(word: "repeat") }.accessibilityIdentifier("sel.block.repeat")
+            Button("If") { session.sequenceAddBlock(word: "if") }.accessibilityIdentifier("sel.block.if")
+            Button("Maybe") { session.sequenceAddBlock(word: "maybe") }.accessibilityIdentifier("sel.block.maybe")
+            Button("Other words…") { session.sequenceAddBlock(word: nil) }.accessibilityIdentifier("sel.block.other")
+        } label: {
+            HStack(spacing: 4) {
+                GlyphView(glyph: .app(.seedFrame), size: 15, colour: Part.frames.text)
+                Text("Block")
+                    .font(Txt.pill)
+                    .foregroundStyle(Color.primary)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .background(Part.frames.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(PressStyle(tint: Part.frames.text))
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel("Block")
+        .accessibilityIdentifier("sel.block")
     }
 
     /// Another place in the order without dragging (the Mac has Option with the arrow keys).

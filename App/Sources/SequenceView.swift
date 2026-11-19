@@ -40,7 +40,7 @@ struct SequenceView: View {
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
-    private enum Target { case who(UUID), step(UUID), line(UUID), empty }
+    private enum Target { case who(UUID), step(UUID), line(UUID), block(UUID), empty }
 
     private enum Drag {
         case idle
@@ -183,6 +183,18 @@ struct SequenceView: View {
                     .multilineTextAlignment(.center)
                     .frame(width: max(r.width - 10 * s, 60), height: r.height)
                     .position(x: r.midX, y: r.midY)
+            } else if item.kind == .block, let place = layout.blocks.first(where: { $0.id == id }) {
+                // A block's word: typed on its tab.
+                let tab = session.toScreen(SequenceLook.blockTab(item, in: place.rect))
+                let width = max(tab.width + 40 * s, 110 * s)
+                field(item)
+                    .font(.system(size: 11 * s, weight: .semibold))
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 5 * s)
+                    .frame(width: width, height: 16 * s + 8 * s)
+                    .background(paint.plate, in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(paint.chosen, lineWidth: 1.5))
+                    .position(x: tab.minX - 5 * s + width / 2, y: tab.midY)
             } else if let row = layout.row(id) {
                 // Words: typed where they stand, on a small plate.
                 let words = session.toScreen(row.words)
@@ -271,6 +283,12 @@ struct SequenceView: View {
         }
         // Nothing is pressed through the strip the pinned names stand on.
         if down > 0, p.y < CGFloat(layout.boxBottom) + down + 7 / s { return .empty }
+        // A block is pressed on its tab (the inner one first).
+        for place in layout.blocks.reversed() {
+            if let block = session.board.item(place.id), SequenceLook.blockTab(block, in: place.rect).insetBy(dx: -4 / s, dy: -4 / s).contains(p) {
+                return .block(place.id)
+            }
+        }
         let slack = 9 / s
         for row in layout.rows.reversed() where row.box.insetBy(dx: -slack * 0.6, dy: -slack * 0.4).contains(p) { return .step(row.id) }
         if p.y > CGFloat(layout.boxBottom), p.y < CGFloat(layout.lineBottom) + 16 / s,
@@ -310,7 +328,7 @@ struct SequenceView: View {
                     // Every press on the board gives it the keys.
                     keys = true
                     switch t {
-                    case .who(let id), .step(let id):
+                    case .who(let id), .step(let id), .block(let id):
                         if !session.linking, !session.selection.contains(id), !shiftDown, !session.choosingMore { session.select(id) }
                     default:
                         break
@@ -457,6 +475,18 @@ struct SequenceView: View {
             lastTapID = id
             lastTapAt = now
         case .step(let id):
+            if session.linking {
+                // A message is being made: only names count.
+            } else if double(id) {
+                session.beginEdit(id)
+            } else if shiftDown || session.choosingMore {
+                session.select(id, adding: true)
+            } else {
+                session.select(id)
+            }
+            lastTapID = id
+            lastTapAt = now
+        case .block(let id):
             if session.linking {
                 // A message is being made: only names count.
             } else if double(id) {
