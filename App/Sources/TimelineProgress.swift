@@ -56,7 +56,7 @@ extension TimelinePainter {
             diamond.move(to: CGPoint(x: box.midX, y: box.minY)); diamond.addLine(to: CGPoint(x: box.maxX, y: box.midY))
             diamond.addLine(to: CGPoint(x: box.midX, y: box.maxY)); diamond.addLine(to: CGPoint(x: box.minX, y: box.midY))
             diamond.closeSubpath()
-            ctx.stroke(diamond, with: .color(red), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+            ctx.stroke(diamond, with: .color(red), style: StrokeStyle(lineWidth: 2, lineJoin: .round, dash: patterns ? [3, 2] : []))
             return
         }
         var inner = ctx
@@ -69,6 +69,16 @@ extension TimelinePainter {
         if isLate(item) {
             let wide = min(6, box.width / 2)
             inner.fill(Path(CGRect(x: box.maxX - wide, y: box.minY, width: wide, height: box.height)), with: .color(red))
+            if patterns {
+                // 0.11: slanted white strokes across the red end, so late shows without the colour.
+                var hatch = Path()
+                var y = box.minY - wide
+                while y < box.maxY {
+                    hatch.move(to: CGPoint(x: box.maxX - wide, y: y + wide)); hatch.addLine(to: CGPoint(x: box.maxX, y: y))
+                    y += 4
+                }
+                inner.stroke(hatch, with: .color(.white.opacity(0.9)), lineWidth: 1)
+            }
         }
     }
 

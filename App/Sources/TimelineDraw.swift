@@ -31,6 +31,8 @@ struct TimelinePainter {
     /// How each to-do stands (the board's own knowledge with what was read back from PARAGON laid over it):
     /// a bar ticked off in PARAGON is drawn done (TimelineProgress.swift).
     var todoStates: [UUID: TodoState] = [:]
+    /// 0.11: "Differentiate Without Colour" is on: what is late also wears a hatch / dashes, not only red.
+    var patterns = false
 
     static let gripRadius: CGFloat = 6
     static let dotRadius: CGFloat = 5

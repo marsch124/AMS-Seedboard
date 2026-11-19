@@ -15,6 +15,7 @@ struct TimelineView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var phase
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
     @FocusState private var typing: Bool
     @FocusState private var keys: Bool
 
@@ -69,6 +70,7 @@ struct TimelineView: View {
                     painter.dropTarget = dropTarget
                     painter.rubber = rubber.map { ($0.from, $0.to) }
                     painter.showDates = showDates
+                    painter.patterns = differentiate
                     painter.todoStates = echo.marks(for: session.board)
                     painter.draw(&ctx)
                 }

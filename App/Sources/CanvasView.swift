@@ -120,7 +120,7 @@ struct CanvasView: View {
                 // iPhone and iPad: Apple's own recognisers lie over the drawing (TouchLayer.swift).
                 .overlay(touchLayer)
                 #endif
-                .accessibilityElement()
+                .accessibilityChildren { BoardAccessChildren(session: session) }
                 .accessibilityIdentifier("board.canvas")
                 .accessibilityLabel("Board")
                 .accessibilityValue(session.board.countLine)
