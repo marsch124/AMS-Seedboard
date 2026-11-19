@@ -35,8 +35,9 @@ enum BoardPicture {
         if fromFiles { PaperPictures.begin() }
         defer { if fromFiles { PaperPictures.end() } }
         let renderer = ImageRenderer(content: view)
-        // Twice the size for sharp words; a very large board is kept at its plain size.
-        renderer.scale = max(box.width, box.height) > 3000 ? 1 : 2
+        // Twice the size for sharp words; a very large board is kept at its plain size, and never more than
+        // about 100 million pixels (0.14).
+        renderer.scale = CGFloat(PictureLimit.boardScale(width: Double(box.width), height: Double(box.height)).scale)
         #if os(macOS)
         guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff) else { return nil }
@@ -44,6 +45,15 @@ enum BoardPicture {
         #else
         return renderer.uiImage?.pngData()
         #endif
+    }
+}
+
+extension BoardPicture {
+    /// 0.14: true when the picture of this board is cut to fit the size limit (the share page says "Shown smaller").
+    static func isShownSmaller(_ board: Board) -> Bool {
+        guard let all = board.bounds else { return false }
+        let box = all.insetBy(dx: -40, dy: -40)
+        return PictureLimit.boardScale(width: Double(box.width), height: Double(box.height)).smaller
     }
 }
 

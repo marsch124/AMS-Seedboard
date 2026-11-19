@@ -144,6 +144,8 @@ final class ShareInReader {
                 model.problems.append(self.unread == 1 ? "1 thing could not be read as a picture. Seedboard takes words, links and pictures."
                                                        : "\(self.unread) things could not be read as pictures. Seedboard takes words, links and pictures.")
             }
+            // 0.14: very long words are cut when they are laid on the board; the page says so.
+            if Arrivals.wasCut(model.text) { model.problems.append(Arrivals.cutLine) }
             if leftOut > 0 {
                 model.problems.append("Seedboard takes \(Arrival.mostPictures) pictures at a time. \(leftOut) more \(leftOut == 1 ? "was" : "were") left out.")
             }
