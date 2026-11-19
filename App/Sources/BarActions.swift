@@ -189,6 +189,13 @@ struct BarActions {
         return act("remove", "Remove", .app(.bin), tone: .remove, gap: gap) { session.deleteSelection() }
     }
 
+    /// 0.14 (idea 27): "Save as a piece…" keeps what is chosen (PiecesPage.swift). Not on a timeline or "Who does what" board.
+    private func savePiece(drop: Int = 0) -> [BarAction] {
+        let session = session
+        guard PieceDesk.shared.canSave(session) else { return [] }
+        return [act("savePiece", "Save as a piece…", .app(.seedStarter), show: .word, drop: drop) { PieceDesk.shared.askToSave(session) }]
+    }
+
     /// iPhone and iPad: each press adds to what is chosen, and a finger drag on empty board draws the choosing box.
     private func chooseMore(drop: Int = 3) -> [BarAction] {
         #if os(macOS)
@@ -304,7 +311,10 @@ struct BarActions {
         let session = session
         guard !session.readOnly, !session.board.placesItself else { return nil }
         if let item = session.single {
-            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(itemBar(item), full: false))
+            var one = itemBar(item)
+            // 0.14 (27): behind the "…" of an ordinary thing's bar.
+            if !one.isEmpty { one.insert(contentsOf: savePiece(drop: 6), at: max(0, one.count - 1)) }
+            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(one, full: false))
         }
         if let id = session.selectedLink, let link = session.board.links.first(where: { $0.id == id }) {
             return ChosenBarModel(part: .arrows, label: nil, actions: linkBar(link))
@@ -319,6 +329,7 @@ struct BarActions {
         // 0.5: Tidy, Colour, Make a mind map; behind "…": Turn into, By colour (Thinking.swift).
         actions += severalBar()
         actions.append(duplicate())
+        actions += savePiece(drop: 5)
         actions += chooseMore(drop: 2)
         actions.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }))
         actions += todayThree()
@@ -466,6 +477,7 @@ struct BarActions {
             all += todayThree()
             copy.gap = true
             all += [copy, cut, twin]
+            all += savePiece()
             var tidy: [BarAction] = []
             if session.tidyCount >= 2 { tidy.append(act("lineUp", "Line up", .new(.lineUp)) { session.lineUp() }) }
             if session.tidyCount >= 3 { tidy.append(act("evenGaps", "Even gaps", .new(.evenGaps)) { session.evenGaps() }) }
@@ -491,6 +503,7 @@ struct BarActions {
         all += sendFrame()
         copy.gap = true
         all += [copy, cut, twin]
+        all += savePiece()
         var more: [BarAction] = []
         if item.kind != .frame {
             more.append(act("arrow", "Arrow from here", .app(.seedArrow)) {

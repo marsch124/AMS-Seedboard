@@ -58,6 +58,8 @@ struct BoardView: View {
                 // 0.5: what PARAGON says about a board that is a note or a project there (SentLine.swift).
                 // 0.9: "Focus · name  Done" while Focus runs.
                 FocusPill(session: session)
+                // 0.14 (22): the brainstorm timer's pill (PiecesPage.swift).
+                BrainstormPill(session: session)
                 SentLine(session: session)
                 InboxWaitLine(session: session)
                 // A starter is being changed: this board is its working copy (StartersPage.swift).
@@ -208,6 +210,10 @@ struct BoardView: View {
         }
         // 0.11: "Due day" (DueDay.swift).
         .modifier(DueHost(session: session))
+        // 0.14 (27): the Pieces page and "Save as a piece" (PiecesPage.swift); (22) leaving the board stops the timer.
+        .modifier(PieceHost(session: session))
+        .onChange(of: session.board.id) { old, _ in BrainstormDesk.shared.stop(leaving: old) }
+        .onDisappear { BrainstormDesk.shared.stop(leaving: session.board.id) }
         // 0.9: "Add to Calendar" (CalendarAdd.swift).
         .sheet(isPresented: $model.showCalendar, onDismiss: { session.takeKeys() }) {
             CalendarAddSheet(session: session).environmentObject(model)
@@ -328,6 +334,15 @@ struct BoardView: View {
                     Button("Make a timeline of it…") { model.makeTimeline(of: session) }
                         .disabled(session.board.isEmpty)
                         .accessibilityIdentifier("more.makeTimeline")
+                }
+                // 0.14 (22, 27): the brainstorm timer; a saved piece goes onto the board (PiecesPage.swift).
+                if !session.board.placesItself {
+                    Button("Brainstorm timer") { BrainstormDesk.shared.offer(on: session.board.id); session.takeKeys() }
+                        .accessibilityIdentifier("more.brainstorm")
+                    if PieceDesk.shared.canAdd(session) {
+                        Button("Add a piece…") { PieceDesk.shared.openPage(session) }
+                            .accessibilityIdentifier("more.addPiece")
+                    }
                 }
                 // 0.9: the shapes of a flowchart get a number each, in the order the arrows run.
                 if !session.board.placesItself, !session.readOnly {
