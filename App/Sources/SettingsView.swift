@@ -65,6 +65,8 @@ struct SettingsView: View {
                     }
                     // Removed and earlier versions, Export all boards, Import boards (BringBackBars.swift).
                     KeptSettingsRows()
+                    // 0.11: Pictures nobody uses, with Show and Remove now (UnusedPictures11.swift).
+                    UnusedPicturesRows()
                     #if os(macOS)
                     Button("Show the boards folder") { model.showBoardsFolder() }
                         .foregroundStyle(Part.boards.text)

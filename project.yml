@@ -150,6 +150,19 @@ targets:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
               NSExtensionActivationSupportsWebPageWithMaxCount: 1
               NSExtensionActivationSupportsImageWithMaxCount: 10
+  # 0.11: the file store on a throwaway folder, no iCloud and no app running (BoardStore.swift is compiled in).
+  AMSSeedboardStoreTests:
+    type: bundle.unit-test
+    supportedDestinations: [macOS]
+    sources:
+      - path: StoreTests
+      - path: App/Sources/BoardStore.swift
+    dependencies:
+      - package: SeedboardCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.schabbauer.AMSSeedboardStoreTests
   AMSSeedboardUITests:
     type: bundle.ui-testing
     supportedDestinations: [iOS, macOS]
@@ -170,4 +183,5 @@ schemes:
     test:
       targets:
         - AMSSeedboardUITests
+        - AMSSeedboardStoreTests
         - package: SeedboardCore/SeedboardCoreTests
