@@ -14,6 +14,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var session: BoardSession?
     @Published var openID: UUID?
     @Published private(set) var loaded = false
+    /// 0.14: boards with a tick that PARAGON was not told about yet (the grey line on the board).
+    @Published private(set) var notToldBoards: Set<UUID> = DoneQueue.decoded(UserDefaults.standard.data(forKey: "paragon.doneNotTold")).boards
     @Published var paragonLine = "Looking for PARAGON…"
     @Published private(set) var paragonReady = false
     @Published var safetyLine = ""
@@ -362,7 +364,7 @@ final class AppModel: ObservableObject {
             guard let self, SafetyRules.maySave(asking: new, shown: self.session) else { return }
             self.keep(board)
         }
-        new.onTicked = { [weak self] lines in self?.tellParagonTicked(lines) }
+        new.onTicked = { [weak self, weak new] lines in self?.tellParagonTicked(lines, board: new?.board.id) }
         session = new
         // 0.9: words inside the board's pictures are read once, quietly, for the search.
         PictureWordsReader.shared.start(new)
@@ -425,21 +427,8 @@ final class AppModel: ObservableObject {
             say("This board was made by a newer Seedboard. Update the app to copy it.", tone: .problem)
             return
         }
-        copy.id = UUID()
-        let names = Set(boards.map { $0.title.lowercased() })
-        let base = copy.title + " copy"
-        copy.title = base
-        var n = 2
-        while names.contains(copy.title.lowercased()) {
-            copy.title = "\(base) \(n)"
-            n += 1
-        }
-        copy.created = Date()
-        copy.changed = Date()
-        copy.sent = nil
-        copy.sentTodos = []
-        copy.sentTasks = []
-        copy.pinned = false
+        // 0.14: also not put away (a copy of a put-away board is listed and opened).
+        copy.becomeCopy(takenTitles: boards.map(\.title))
         write(copy)
         open(copy.id)
     }
@@ -452,6 +441,12 @@ final class AppModel: ObservableObject {
         guard boards.first(where: { $0.id == id })?.canBeChanged == true else { return }
         edit(id) { PutAway.putAway(&$0) }
         say("Board put away. Find it under Put away.")
+    }
+
+    /// 0.14: put away without the line (Undo of "Move to a new board…" says its own).
+    func putAwayQuietly(_ id: UUID) {
+        guard boards.first(where: { $0.id == id })?.canBeChanged == true else { return }
+        edit(id) { PutAway.putAway(&$0) }
     }
 
     /// 0.9: the board is in the list again.
@@ -552,15 +547,42 @@ final class AppModel: ObservableObject {
 
     /// 0.11: a box ticked on a board whose task is in PARAGON: one line each on PARAGON's waiting list. Nothing is
     /// opened or changed in PARAGON's folder; no waiting list on this device (sample boards, no PARAGON) = nothing.
-    func tellParagonTicked(_ lines: [ParagonExport.DoneLine]) {
+    func tellParagonTicked(_ lines: [ParagonExport.DoneLine], board: UUID? = nil) {
         // 0.13: the switch "Done ticks the PARAGON task".
-        guard !LaunchOptions.sampleData, Switch.isOn(Switch.doneTicksParagon), let outbox = place?.outbox else { return }
-        ParagonGate.appendDone(lines, to: outbox)
+        guard !LaunchOptions.sampleData, Switch.isOn(Switch.doneTicksParagon) else { return }
+        // 0.14: a line that cannot be written is kept on this device and tried again at the next start.
+        if let outbox = place?.outbox, ParagonGate.appendDone(lines, to: outbox) { return }
+        guard let board else { return }
+        var queue = Self.doneQueue
+        queue.add(lines, board: board)
+        Self.doneQueue = queue
+        notToldBoards = queue.boards
+    }
+
+    /// 0.14: the ticks PARAGON was not told about, kept in this device's settings.
+    private static let doneQueueKey = "paragon.doneNotTold"
+    private static var doneQueue: DoneQueue {
+        get { DoneQueue.decoded(UserDefaults.standard.data(forKey: doneQueueKey)) }
+        set { UserDefaults.standard.set(newValue.encoded(), forKey: doneQueueKey) }
+    }
+
+    /// 0.14: tries again the ticks that could not be written (at the start, and at "Check again").
+    func retryNotTold() {
+        guard !LaunchOptions.sampleData else { return }
+        var queue = Self.doneQueue
+        queue.dropOld()
+        if !queue.entries.isEmpty, Switch.isOn(Switch.doneTicksParagon), let outbox = place?.outbox,
+           ParagonGate.appendDone(queue.lines, to: outbox) {
+            queue.clear()
+        }
+        Self.doneQueue = queue
+        notToldBoards = queue.boards
     }
 
     private func found(_ found: ParagonPlace?) {
         place = found
         paragonReady = found != nil
+        retryNotTold()
         if LaunchOptions.sampleData {
             paragonLine = "Sample boards: nothing is sent anywhere."
         } else if let found {

@@ -294,7 +294,7 @@ extension BoardSession {
 
     /// The chosen things move to a new board with this name; a door is left in their place and chosen.
     /// The new board is written before the things leave this one, so they are on the device at every moment.
-    /// One step for Undo on this board (the things come back, the door goes; the new board stays in the list).
+    /// One step for Undo on this board (the things come back, the door goes; the new board is put away, 0.14).
     func moveOut(_ things: Set<UUID>, named name: String) {
         guard !readOnly, !board.placesItself else { return }
         if editing != nil { commitEdit() }
@@ -305,6 +305,7 @@ extension BoardSession {
         guard let moved = left.moveToNewBoard(things, title: title, colour: colour) else { return }
         model.write(moved.board)
         guard change({ $0 = left }) else { return }
+        movedOut[moved.door] = (moved.board.id, moved.board.title)
         selectedLink = nil
         selection = [moved.door]
         reveal(moved.door)

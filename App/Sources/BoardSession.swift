@@ -189,6 +189,27 @@ final class BoardSession: ObservableObject {
         undoCount = undoStack.count
         redoCount = redoStack.count
         onChange?(board)
+        followMovedOut(saying: true)
+    }
+
+    /// 0.14: the new boards that "Move to a new board…" made on this board, by the door that leads to each.
+    /// Undo puts such a board away (never deletes it); Redo brings back one that Undo put away.
+    var movedOut: [UUID: (board: UUID, title: String)] = [:]
+    private var putAwayByUndo: Set<UUID> = []
+
+    private func followMovedOut(saying: Bool) {
+        let model = AppModel.shared
+        for (door, made) in movedOut {
+            let there = board.item(door) != nil
+            let away = model.boards.first(where: { $0.id == made.board })?.putAway != nil
+            if !there, !away {
+                model.putAwayQuietly(made.board)
+                putAwayByUndo.insert(made.board)
+                if saying { tell(MoveOutUndo.words(for: made.title)) }
+            } else if there, away, putAwayByUndo.remove(made.board) != nil {
+                model.unputAway(made.board)
+            }
+        }
     }
 
     /// 0.9: the last steps, newest first, each with a plain name and its time (the rule is `StepWords`).
@@ -213,6 +234,7 @@ final class BoardSession: ObservableObject {
         undoCount = undoStack.count
         redoCount = redoStack.count
         onChange?(board)
+        followMovedOut(saying: false)
     }
 
     /// A newer version of this board arrived from another device.

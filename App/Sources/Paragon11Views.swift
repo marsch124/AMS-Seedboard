@@ -47,3 +47,22 @@ struct InboxWaitLine: View {
         }
     }
 }
+
+// 0.14 (idea 12): a bar was ticked but the line "this bar is done" could not be written into PARAGON's folder.
+// It is kept on the device and tried again at the next start; until it went through, this small grey line shows.
+struct NotToldLine: View {
+    @ObservedObject var session: BoardSession
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        if !session.starterDraft, model.notToldBoards.contains(session.board.id) {
+            Text(DoneQueue.notToldLine)
+                .font(Txt.pill)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 2)
+                .accessibilityIdentifier("board.notTold")
+        }
+    }
+}

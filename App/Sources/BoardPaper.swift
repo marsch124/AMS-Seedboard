@@ -99,17 +99,27 @@ extension BoardPicture {
             let images = await Task.detached(priority: .userInitiated) { PaperPictures.readFiles(names) }.value
             PaperPictures.use(images)
             let fit = sheet.fit(on: paper)
-            let page = PaperPage(sheet: sheet, fit: fit, name: SharePlan.nameLine(title),
-                                 date: SharePlan.dateLine(now, page: n + 1, of: sheets.count))
-            let renderer = ImageRenderer(content: page)
-            // What cannot be a drawn line (a photo's edge, a see-through layer) is at least print-sharp.
-            renderer.render(rasterizationScale: 4) { _, draw in
-                var box = CGRect(origin: .zero, size: fit.paper)
-                let info = [kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)] as CFDictionary
-                pdf.beginPDFPage(info)
-                draw(pdf)
-                pdf.endPDFPage()
+            var box = CGRect(origin: .zero, size: fit.paper)
+            let info = [kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)] as CFDictionary
+            pdf.beginPDFPage(info)
+            // 0.14: a very large page is drawn in strips, one after the other, so its memory is not used all at once.
+            let strips = PageStrips.strips(paperHeight: Double(fit.paper.height), scale: fit.scale, items: sheet.board.items.count)
+            for strip in strips {
+                let part = PaperPage(sheet: sheet, fit: fit, name: SharePlan.nameLine(title),
+                                     date: SharePlan.dateLine(now, page: n + 1, of: sheets.count),
+                                     strip: strips.count > 1 ? CGRect(x: 0, y: strip.y, width: fit.paper.width, height: strip.height) : nil)
+                let renderer = ImageRenderer(content: part)
+                // What cannot be a drawn line (a photo's edge, a see-through layer) is at least print-sharp.
+                renderer.render(rasterizationScale: 4) { _, draw in
+                    pdf.saveGState()
+                    // PDF counts up from the bottom of the paper.
+                    pdf.translateBy(x: 0, y: fit.paper.height - CGFloat(strip.y) - CGFloat(strip.height))
+                    draw(pdf)
+                    pdf.restoreGState()
+                }
+                if strips.count > 1 { await Task.yield() }
             }
+            pdf.endPDFPage()
             PaperPictures.use([:])
             await Task.yield()
         }
@@ -151,9 +161,16 @@ private struct PaperPage: View {
     let fit: PageFit
     let name: String
     let date: String
+    /// 0.14: only this band of the page (from the page's top) is drawn; nil = the whole page.
+    var strip: CGRect?
 
     var body: some View {
-        Canvas { ctx, size in
+        Canvas { ctx, _ in
+            var ctx = ctx
+            let size = fit.paper
+            if let strip {
+                ctx.translateBy(x: 0, y: -strip.minY)
+            }
             ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white))
             let edge = CGFloat(SharePlan.edge)
             let grey = Color(red: 0.42, green: 0.45, blue: 0.50)
@@ -174,7 +191,7 @@ private struct PaperPage: View {
             painter.ground = .white
             painter.draw(&page)
         }
-        .frame(width: fit.paper.width, height: fit.paper.height)
+        .frame(width: fit.paper.width, height: strip?.height ?? fit.paper.height)
         .environment(\.colorScheme, .light)
     }
 }

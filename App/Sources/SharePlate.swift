@@ -162,6 +162,12 @@ struct SharePlate: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("share.leftOut")
             }
+            if form == .picture, session.board.sharePages(what, chosen: session.selection).contains(where: { BoardPicture.isShownSmaller($0.board) }) {
+                Text(PictureLimit.smallerLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("share.shownSmaller")
+            }
             if let problem {
                 Text(problem)
                     .font(Txt.label)

@@ -60,6 +60,7 @@ struct BoardView: View {
                 FocusPill(session: session)
                 SentLine(session: session)
                 InboxWaitLine(session: session)
+                NotToldLine(session: session)
                 // A starter is being changed: this board is its working copy (StartersPage.swift).
                 if session.starterDraft { StarterChangeBanner() }
                 if HandoffDesk.shared.waiting == session.board.id {
