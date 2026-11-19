@@ -204,6 +204,8 @@ struct BoardView: View {
         .sheet(isPresented: $model.showSend, onDismiss: { session.takeKeys() }) {
             SendSheet(session: session).environmentObject(model)
         }
+        // 0.11: "Due day" (DueDay.swift).
+        .modifier(DueHost(session: session))
         // 0.9: "Add to Calendar" (CalendarAdd.swift).
         .sheet(isPresented: $model.showCalendar, onDismiss: { session.takeKeys() }) {
             CalendarAddSheet(session: session).environmentObject(model)
@@ -307,6 +309,11 @@ struct BoardView: View {
                         Button("Add to Calendar…") { session.commitEdit(); model.showCalendar = true }
                             .accessibilityIdentifier("more.calendar")
                     }
+                }
+                // 0.11: the board's own due day (DueDay.swift).
+                if !session.readOnly && !session.starterDraft {
+                    Button("Due day…") { session.commitEdit(); DueDesk.shared.show = true }
+                        .accessibilityIdentifier("more.dueDay")
                 }
                 // 0.5: a new timeline board from this board's ideas and shapes (not on a board that places its things itself).
                 if !session.board.placesItself && !session.starterDraft {

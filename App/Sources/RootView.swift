@@ -281,6 +281,7 @@ struct BoardList: View {
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .lineLimit(1)
+                    DueWords(board: board)
                 }
                 Spacer(minLength: 0)
                 if phone { RowPicture(board: board) }

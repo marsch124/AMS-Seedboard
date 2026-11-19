@@ -77,7 +77,7 @@ struct TimelinePainter {
         let back = ground ?? paint.canvas
         let chart = CGRect(x: names, y: header, width: max(size.width - names, 0), height: max(size.height - header, 0))
         let first = g.day(atX: Double(names)) - 1
-        let last = g.day(atX: Double(size.width)) + 1
+        let last = DayRange.drawEnd(from: first, to: g.day(atX: Double(size.width)) + 1)
         let groups = board.shownPhaseGroups
         let byID = rows.enumerated().reduce(into: [UUID: (item: Item, row: Int)]()) { $0[$1.element.id] = ($1.element, $1.offset) }
 

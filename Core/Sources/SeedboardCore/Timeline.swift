@@ -268,19 +268,19 @@ public struct TimelineGeometry: Equatable, Sendable {
         switch scale {
         case .days:
             var day = first
-            while day <= last {
+            while day <= last, ticks.count < DayRange.mostMarks {
                 ticks.append(TimeTick(day: day, label: "\(day.parts.day)", strong: day.weekday == 0))
                 day = day + 1
             }
         case .weeks:
             var day = first.weekday == 0 ? first : first.weekStart + 7
-            while day <= last {
+            while day <= last, ticks.count < DayRange.mostMarks {
                 ticks.append(TimeTick(day: day, label: day.short, strong: false))
                 day = day + 7
             }
         case .months:
             var day = first.parts.day == 1 ? first : first.nextMonthStart
-            while day <= last {
+            while day <= last, ticks.count < DayRange.mostMarks {
                 ticks.append(TimeTick(day: day, label: "\(day.monthWord) \(day.parts.year)", strong: day.parts.month == 1))
                 day = day.nextMonthStart
             }
@@ -692,6 +692,7 @@ public extension Board {
     /// Sets both days at once (the Dates page). Returns how many bars were pushed along.
     @discardableResult
     mutating func setDates(_ id: UUID, start: Day, end: Day) -> Int {
+        guard DayRange.sane(start), DayRange.sane(end) else { return 0 }
         guard let i = index(of: id), items[i].span != nil else { return 0 }
         items[i].setSpan(start, max(start, end))
         return settle([id])

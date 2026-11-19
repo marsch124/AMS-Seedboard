@@ -325,6 +325,8 @@ struct TimelineDatesSheet: View {
 
     @State private var start: Date
     @State private var end: Date
+    /// 0.11: a date outside the sane years is refused with a plain line.
+    @State private var problem: String?
 
     init(session: BoardSession, id: UUID) {
         self.session = session
@@ -378,6 +380,13 @@ struct TimelineDatesSheet: View {
                     .foregroundStyle(Part.timeline.text)
                     .accessibilityIdentifier("dates.done")
             }
+            if let problem {
+                Text(problem)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("dates.problem")
+            }
             if let earliest {
                 Text("It comes after \(forerunners), so it cannot start before \(earliest.long).")
                     .font(.caption)
@@ -424,6 +433,7 @@ struct TimelineDatesSheet: View {
 
     private func save() {
         let first = Day(start), last = Day(end)
+        guard DayRange.sane(first), DayRange.sane(last) else { problem = DayRange.refusal; return }
         var pushed = 0
         session.change { pushed = $0.setDates(id, start: first, end: max(first, last)) }
         if let words = TimelineWords.pushed(pushed) { model.say(words) }

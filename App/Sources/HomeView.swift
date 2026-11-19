@@ -282,6 +282,8 @@ struct BoardCard: View {
                         .lineLimit(1)
                         .padding(.leading, 15)
                         .accessibilityIdentifier("home.line.\(board.title)")
+                    DueWords(board: board)
+                        .padding(.leading, 15)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
