@@ -159,6 +159,7 @@ struct TimelinePainter {
 
         for (row, item) in rows.enumerated() {
             guard let box = rect(of: item, row: row), box.maxX > names - 40, box.minX < size.width + 40 else { continue }
+            drawPlanGhost(item, row: row, &days)
             drawBar(item, box, &days)
             drawState(item, box, &days)
         }
@@ -201,6 +202,13 @@ struct TimelinePainter {
             }
             let indent: CGFloat = grouped.contains(item.id) ? 20 : 10
             var right = names - 8
+            // 0.14: "2 days late" / "3 days early" against the plan, small and grey, at the right of the name.
+            if let slip = item.slipWords {
+                let words = column.resolve(Text(slip).font(.system(size: 10)).foregroundColor(paint.faint))
+                let wide = words.measure(in: CGSize(width: 200, height: 30)).width
+                column.draw(words, at: CGPoint(x: right, y: top + height / 2), anchor: .trailing)
+                right -= wide + 6
+            }
             // 0.5: the to-do mark by how it stands (TodoMark.swift).
             let todo = item.kind == .phase ? nil : TodoMark.state(of: item, in: todoMarks)
             if let todo {
@@ -288,6 +296,23 @@ struct TimelinePainter {
         ctx.stroke(edges, with: .color(paint.edge), lineWidth: 1)
     }
 
+    /// 0.14: where a bar was planned ("Set the plan"), when it now stands elsewhere: a faint dashed outline in
+    /// the bar's own colour.
+    private func drawPlanGhost(_ item: Item, row: Int, _ ctx: inout GraphicsContext) {
+        guard item.movedFromPlan, let plan = item.planSpan else { return }
+        let box = item.kind == .milestone ? geometry.diamond(on: plan.start, row: row) : geometry.bar(from: plan.start, to: plan.end, row: row)
+        let line = colour(of: item).opacity(paint.night ? 0.50 : 0.45)
+        let style = StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round, dash: [3, 3])
+        if item.kind == .milestone {
+            var d = Path()
+            d.move(to: CGPoint(x: box.midX, y: box.minY)); d.addLine(to: CGPoint(x: box.maxX, y: box.midY))
+            d.addLine(to: CGPoint(x: box.midX, y: box.maxY)); d.addLine(to: CGPoint(x: box.minX, y: box.midY)); d.closeSubpath()
+            ctx.stroke(d, with: .color(line), style: style)
+        } else {
+            ctx.stroke(Path(roundedRect: box, cornerRadius: min(7, box.width / 2)), with: .color(line), style: style)
+        }
+    }
+
     /// The small chevron before a phase's name: pointing down while it is open, right while it is folded.
     private func drawChevron(open: Bool, at c: CGPoint, colour: Color, _ ctx: inout GraphicsContext) {
         var path = Path()
@@ -311,13 +336,14 @@ struct TimelinePainter {
     static func linkPlaces(_ board: Board, geometry g: TimelineGeometry) -> [UUID: CGRect] {
         let rows = board.timelineRows
         let hidden = board.hiddenTimelineIDs
+        let doneAway = board.hiddenDoneIDs
         let shownIndex = board.shownTimelineRows.enumerated().reduce(into: [UUID: Int]()) { $0[$1.element.id] = $1.offset }
         let groups = board.shownPhaseGroups
         var places: [UUID: CGRect] = [:]
         var current: PhaseGroup?
         for item in rows {
             if item.kind == .phase { current = groups.first { $0.id == item.id }; continue }
-            guard let span = item.span else { continue }
+            guard let span = item.span, !doneAway.contains(item.id) else { continue }
             if hidden.contains(item.id) {
                 if let group = current, let band = foldBand(of: group, geometry: g) { places[item.id] = band }
             } else if let row = shownIndex[item.id] {

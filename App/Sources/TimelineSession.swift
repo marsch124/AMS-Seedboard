@@ -265,6 +265,35 @@ extension BoardSession {
         clampTimeline()
     }
 
+    // MARK: 0.14: Hide done, and the plan
+
+    /// "Hide done" / "Show done": leaves the done bars out of the rows, or brings them back. Nothing is removed.
+    func toggleHideDone() {
+        guard !readOnly, board.isTimeline else { return }
+        if editing != nil { commitEdit() }
+        let on = !board.hidesDone
+        change { $0.hideDone = on ? true : nil }
+        dropHiddenChoices()
+        clampTimeline()
+    }
+
+    /// "Set the plan": writes where every bar and milestone stands now. Returns the line to say.
+    @discardableResult
+    func setTimelinePlan() -> String? {
+        guard !readOnly, board.isTimeline, board.timelineRows.contains(where: { $0.span != nil }) else { return nil }
+        if editing != nil { commitEdit() }
+        var n = 0
+        change { n = $0.setPlan() }
+        return "The plan is set: \(n) \(n == 1 ? "row" : "rows") as they stand today."
+    }
+
+    /// "Clear the plan": takes the planned days away again.
+    func clearTimelinePlan() {
+        guard !readOnly, board.isTimeline, board.hasPlan else { return }
+        if editing != nil { commitEdit() }
+        change { $0.clearPlan() }
+    }
+
     /// The chosen rows that a fold hides are let go.
     private func dropHiddenChoices() {
         let hidden = board.hiddenTimelineIDs

@@ -64,6 +64,55 @@ struct TimelineZoomCluster: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            if session.board.hidesDone { hiddenLine }
+            plate
+        }
+    }
+
+    /// 0.14: while "Hide done" is on, one small line says how many are left out, and brings them back.
+    private var hiddenLine: some View {
+        let n = session.board.hiddenDoneCount
+        return HStack(spacing: 4) {
+            Text("\(n) done hidden ·").foregroundStyle(.secondary)
+            Button("Show") { session.toggleHideDone(); session.takeKeys() }
+                .buttonStyle(.plain)
+                .foregroundStyle(Part.timeline.text)
+                .disabled(session.readOnly)
+                .accessibilityIdentifier("timeline.showDone")
+        }
+        .font(.caption2.weight(.medium))
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .background(Theme.plate, in: Capsule())
+        .overlay(Capsule().stroke(Color.primary.opacity(0.10)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("timeline.doneHidden")
+    }
+
+    /// "Hide done": only when something is done (or the hiding is on, so it can be turned off).
+    private var hideDone: some View {
+        Button {
+            session.toggleHideDone()
+            session.takeKeys()
+        } label: {
+            Text(session.board.hidesDone ? "Show done" : "Hide done")
+                .font(Txt.pill)
+                .foregroundStyle(Part.timeline.text)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 7)
+                .frame(height: 26)
+                .background(Part.timeline.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle(tint: Part.timeline.text))
+        .help("Hide the done bars and milestones; press again to show them")
+        .accessibilityLabel(session.board.hidesDone ? "Show done" : "Hide done")
+        .accessibilityIdentifier("timeline.hideDone")
+        .padding(.leading, 3)
+    }
+
+    private var plate: some View {
         HStack(spacing: 2) {
             button(.app(.zoomOut), "zoom.out", "Further away: weeks, then months", on: session.timeline.scale.further != nil) {
                 withAnimation(.easeOut(duration: 0.2)) { session.stepTimeScale(closer: false) }
@@ -99,6 +148,7 @@ struct TimelineZoomCluster: View {
             .padding(.leading, 3)
             // 0.5: Catch up, only while something is late (TimelineProgress.swift).
             if !session.readOnly, session.timelineLateCount > 0 { catchUp }
+            if !session.readOnly, session.board.hidesDone || session.board.timelineRows.contains(where: { $0.isDone }) { hideDone }
         }
         .padding(4)
         .fixedSize()
