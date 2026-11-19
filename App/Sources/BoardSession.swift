@@ -78,6 +78,8 @@ final class BoardSession: ObservableObject {
 
     /// Called with the board after every change that should be kept.
     var onChange: ((Board) -> Void)?
+    /// 0.11: called with the lines for PARAGON's waiting list when a change ticked things that went to PARAGON.
+    var onTicked: (([ParagonExport.DoneLine]) -> Void)?
 
     init(board: Board) {
         var fitted = board
@@ -134,6 +136,10 @@ final class BoardSession: ObservableObject {
         pushUndo(old)
         set(new, room: old, widen: widen)
         onChange?(board)
+        if let onTicked {
+            let lines = board.doneLines(since: old, now: Date())
+            if !lines.isEmpty { onTicked(lines) }
+        }
         return true
     }
 

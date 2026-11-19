@@ -245,6 +245,18 @@ enum ParagonGate {
 
     // MARK: PARAGON's waiting list
 
+    /// 0.11: the "ticked on the board" lines, added at the end like any other (a failure is silent: the tick on
+    /// the board stands, PARAGON just is not told).
+    static func appendDone(_ lines: [ParagonExport.DoneLine], to url: URL) {
+        guard let data = try? ParagonExport.doneData(lines) else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
+        guard fd >= 0 else { return }
+        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+        defer { try? handle.close() }
+        try? handle.write(contentsOf: data)
+    }
+
     /// The lines are made in SeedboardCore (`ParagonExport.WaitingLine`), exactly the way PARAGON's own
     /// Share button writes them; a test there reads them with a copy of PARAGON's reader.
     private static func append(_ lines: [ParagonExport.WaitingLine], to url: URL) throws {
