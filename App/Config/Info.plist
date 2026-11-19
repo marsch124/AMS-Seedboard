@@ -51,6 +51,8 @@
 	<string>To put a timeline's milestones into your calendar.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>To put a photo straight onto a board.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>To open boards you locked.</string>
 	<key>NSServices</key>
 	<array>
 		<dict>

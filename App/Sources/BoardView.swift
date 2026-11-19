@@ -276,6 +276,14 @@ struct BoardView: View {
                         model.togglePin(session.board.id)
                         session.takeKeys()
                     }
+                    // 0.14: Lock with Face ID / Unlock (Boards14.swift).
+                    if !session.readOnly {
+                        Button(session.board.faceLock == true ? "Unlock" : "Lock with \(FaceGuard.word)") {
+                            model.setLock(session.board.id, on: session.board.faceLock != true)
+                            session.takeKeys()
+                        }
+                        .accessibilityIdentifier("more.lock")
+                    }
                     if !session.readOnly {
                         Button("Save as a starter…") {
                             session.commitEdit()

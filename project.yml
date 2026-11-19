@@ -87,6 +87,7 @@ targets:
         # 0.5: a photo straight onto a board (iPhone and iPad), and a photo or scan from the iPhone on the Mac.
         NSCameraUsageDescription: To put a photo straight onto a board.
         # 0.9: a timeline's milestones into the calendar (write-only: Seedboard can add events, never read them).
+        NSFaceIDUsageDescription: To open boards you locked.
         NSCalendarsWriteOnlyAccessUsageDescription: To put a timeline's milestones into your calendar.
         NSCalendarsFullAccessUsageDescription: To keep your timeline days in the Seedboard calendar, and move them when you move a bar.
         # 0.5, the Mac: words marked in another app become a board (right-click ▸ Services). `MacDelegate` answers.

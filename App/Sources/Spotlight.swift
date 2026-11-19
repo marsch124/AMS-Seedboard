@@ -66,7 +66,9 @@ final class SpotlightIndex {
         UserDefaults.standard.set(stored, forKey: SpotlightIndex.key)
     }
 
-    private func tell(_ boards: [Board]) {
+    private func tell(_ all: [Board]) {
+        // 0.14: a board locked with Face ID is left out of the search (and is forgotten when it gets locked).
+        let boards = all.filter { $0.faceLock != true }
         // The names Siri and Shortcuts offer for "Open board" follow the list.
         let names = boards.map(\.title)
         if names != titles {

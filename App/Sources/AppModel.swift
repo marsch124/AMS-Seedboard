@@ -331,7 +331,13 @@ final class AppModel: ObservableObject {
     var sent: [Board] { boards.filter { !$0.pinned && $0.sent != nil && !$0.isPutAway } }
     var putAwayBoards: [Board] { PutAway.away(boards) }
 
+    // 0.14: a locked board asks before it opens (Boards14.swift).
     func open(_ id: UUID?) {
+        guard openGate(id) else { return }
+        openNow(id)
+    }
+
+    func openNow(_ id: UUID?) {
         guard id != openID || session == nil else { return }
         // Going to another board (or back to the list) while a starter is being changed keeps what was
         // changed, like everything else in the app: only Cancel throws it away.
@@ -459,7 +465,7 @@ final class AppModel: ObservableObject {
 
     func setColour(_ id: UUID, _ name: String) { edit(id) { $0.colour = name } }
 
-    private func edit(_ id: UUID, _ work: @escaping (inout Board) -> Void) {
+    func edit(_ id: UUID, _ work: @escaping (inout Board) -> Void) {
         if openID == id, let session {
             session.change(work)
             return
