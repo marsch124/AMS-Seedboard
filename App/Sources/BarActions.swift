@@ -181,6 +181,23 @@ struct BarActions {
         return [act("sendFrame", "Send this frame to PARAGON…", .app(.send), show: .wideWord, tone: .todo, drop: drop) { ParagonDesk.shared.sendFrame(session) }]
     }
 
+    // MARK: 0.14 — a table
+
+    /// "Add row", "Add column", "Remove row", "Remove column": they act on the row and the column of the cell typed in
+    /// last, else on the last row and the last column. A table keeps at least one row and one column.
+    private func tableLines(_ item: Item, menu: Bool = false) -> [BarAction] {
+        let session = session, id = item.id
+        let canRow = TableRules.canRemoveRow(TableRules.squared(item.cells)), canColumn = TableRules.canRemoveColumn(TableRules.squared(item.cells))
+        var all = [
+            act("table.addRow", "Add row", .control(.add), show: .word) { session.tableStep(id, .addRow) },
+            act("table.addColumn", "Add column", .control(.add), show: .word) { session.tableStep(id, .addColumn) },
+            act("table.removeRow", "Remove row", .control(.minusCircle), show: .wideWord, enabled: canRow, drop: 1) { session.tableStep(id, .removeRow) },
+            act("table.removeColumn", "Remove column", .control(.minusCircle), show: .wideWord, enabled: canColumn, drop: 1) { session.tableStep(id, .removeColumn) },
+        ]
+        if !menu { all.append(words(id, show: .wideWord)) }
+        return all
+    }
+
     private func duplicate(drop: Int = 4) -> BarAction {
         let session = session
         return act("copy", "Duplicate", .app(.duplicate), show: .wideWord, drop: drop) { session.duplicateSelection() }
@@ -430,6 +447,14 @@ struct BarActions {
             all += sendFrame()
             all.append(remove(gap: true))
             return all
+        case .table:
+            // 0.14: Add row, Add column, Remove row, Remove column, then Colour, Duplicate, Remove (no tick: a table is no to-do).
+            all += tableLines(item)
+            all.append(colour(for: item, show: .wideWord, drop: 2))
+            all.append(duplicate())
+            all += chooseMore()
+            all.append(remove(gap: true))
+            return all
         case .picture:
             // A picture has no words, no tick and no colour: a caption under it, a crop, copy it, line it up, remove it.
             all.append(drawOn(item.id, drop: 1))
@@ -530,6 +555,8 @@ struct BarActions {
             all.append(remove(gap: true))
             return withMarks(withLook(all), full: true)
         }
+        // 0.14: a table has its own lines.
+        if item.kind == .table { return withMarks(tableLines(item, menu: true) + [colour(for: item), copy, cut, twin, remove(gap: true)], full: true) }
         // A door has its own lines (0.5, Doors.swift).
         if item.kind == .door { return withMarks(doorMenu(item, [copy, cut, twin]) + [remove(gap: true)], full: true) }
         // (A sketch has no words and carries no tick.)
@@ -643,6 +670,7 @@ struct BarActions {
             all.append(act("box", "New box here", .app(.seedBox)) { session.add(.box, at: spot) })
             all.append(act("idea", "New idea here", .app(.seedMindMap)) { session.add(.idea, at: spot) })
             all.append(act("picture", "Picture…", .new(.picture)) { PictureDesk.shared.ask.send(spot) })
+            all.append(act("table", "New table here", .control(.add)) { session.add(.table, at: spot) })   // 0.14
             all += doorMenuLines(at: spot)
         }
         all.append(act("selectAll", "Select all", .app(.seedSelectAll), enabled: !session.board.isEmpty, gap: !all.isEmpty) { session.selectAll() })

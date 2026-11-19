@@ -164,8 +164,13 @@ enum Lettering {
             case .picture:
                 // As big as the owner made it; it has no words.
                 break
-            case .table, .block:
-                // 0.14: a table is as big as its cells; a block is placed by "Who does what".
+            case .table:
+                // 0.14: a table is as big as its cells (TableDraw.swift).
+                let size = TableLook.size(of: item)
+                board.items[i].w = Double(size.width)
+                board.items[i].h = Double(size.height)
+            case .block:
+                // A block is placed by "Who does what".
                 break
             }
         }
@@ -245,6 +250,8 @@ struct BoardPainter {
     var selectedLink: UUID?
     /// The item being typed in: the text field shows its words.
     var editing: UUID?
+    /// 0.14: the cell of a table being typed in (its words are shown by the text field).
+    var editingCell: TableSpot?
     /// An idea being dragged to a new place: drawn where the finger is.
     var ghost: (id: UUID, offset: CGSize)?
     /// The idea a dragged idea would hang under.
@@ -349,8 +356,12 @@ struct BoardPainter {
             // A door to another board (DoorDraw.swift): a card of its own, no words to type, no tick.
             drawDoor(item, ctx)
             return
-        case .table, .block:
-            // 0.14: drawn by their own painters (table lane, Who does what lane); nothing here yet.
+        case .table:
+            // 0.14: a table of cells (TableDraw.swift): no tick, its words are in its cells.
+            drawTable(item, &ctx)
+            return
+        case .block:
+            // 0.14: drawn by the Who does what painter.
             return
         case .box, .round, .diamond, .oval:
             let shape: Path

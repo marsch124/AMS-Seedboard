@@ -277,11 +277,13 @@ public enum ParagonExport {
     /// Is this thing one line under "Notes"? A sticky note or free text with words, a drawing, a picture.
     static func isNoteThing(_ item: Item) -> Bool {
         ((item.kind == .note || item.kind == .text) && !oneLine(item.text).isEmpty) || item.kind == .drawing || item.kind == .picture
+            || (item.kind == .table && !TableRules.words(item.cells).isEmpty)   // 0.14: a table
     }
 
     /// The line of one such thing. A drawing has no words: one plain line stands in its place.
     static func noteBullet(_ item: Item, picture: Bool) -> String {
-        item.kind == .drawing ? "- " + sketchLine(picture: picture)
+        item.kind == .table ? TableRules.lines(item.cells).joined(separator: "\n")   // 0.14: a table as a plain list (Table14.swift)
+            : item.kind == .drawing ? "- " + sketchLine(picture: picture)
             : (item.kind == .picture ? "- " + pictureLine(for: item, picture: picture)
                // 0.9: a note with tick lines goes line by line, "- [ ] words" / "- [x] words" (Marks09.swift).
                : (item.kind == .note && TickList.hasTicks(item.text) ? TickList.bullets(item.text).joined(separator: "\n") : "- \(oneLine(item.text))"))

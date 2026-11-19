@@ -31,7 +31,7 @@ public enum BoardSearch {
 public extension Board {
     /// Everything that can be read on the board: its name, then the words on its things and on its arrows.
     var readableText: String {
-        ([title] + items.map(\.text) + links.map(\.text)).filter { !$0.isEmpty }.joined(separator: "\n")
+        ([title] + items.map(\.searchableWords) + links.map(\.text)).filter { !$0.isEmpty }.joined(separator: "\n")
     }
 
     /// True when every word of the query is found in the board's name or in the words on it.

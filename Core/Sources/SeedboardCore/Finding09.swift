@@ -100,7 +100,8 @@ public extension Board {
     /// timeline and "Who does what" things are counted in their own ways.
     private var carriesWords: [Item] {
         let others: Set<ItemKind> = [.frame, .bar, .milestone, .phase, .who, .message, .band, .section, .drawing, .picture, .door]
-        return items.filter { !others.contains($0.kind) && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        // 0.14: a table counts as one thing when any of its cells has words.
+        return items.filter { !others.contains($0.kind) && !$0.searchableWords.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     /// The one small line under a board in the list, e.g. "34 ideas · 12 done · 3 late".

@@ -84,6 +84,7 @@ struct CanvasView: View {
                     painter.selection = session.selection
                     painter.selectedLink = session.selectedLink
                     painter.editing = session.editing
+                    painter.editingCell = session.cell
                     painter.dropTarget = dropTarget
                     painter.handles = !session.readOnly
                     painter.inkOpacity = session.ink.fade ? Fade.opacity : 1
@@ -251,6 +252,8 @@ struct CanvasView: View {
                     if isIdea, let id = session.editing { session.moveOut(id) }
                     return .handled
                 }
+                // 0.14: Tab in a table's cell goes on to the next cell (TableSession.swift).
+                if session.nextCell() { return .handled }
                 // 0.5: Tab in a sticky note keeps the words and starts the next note beside it (Thinking.swift).
                 if session.nextNote() { return .handled }
                 session.commitEdit(then: isIdea ? .child : .nothing)
@@ -311,6 +314,18 @@ struct CanvasView: View {
             pad = 12 * s
         }
         let size = item.kind == .frame ? 13 : (item.kind == .picture ? PictureCaption.size : look.size)
+        if item.kind == .table, let spot = session.cell {
+            // 0.14: the field lies exactly on the cell being typed in, words at the left, bold in the heading row.
+            let box = session.toScreen(TableLook.box(of: spot, in: item))
+            return field(isIdea: false)
+                .font(Lettering.font(size: TableLook.size * s, bold: spot.row == 0))
+                .multilineTextAlignment(.leading)
+                .foregroundStyle(paint.ink)
+                .padding(.horizontal, CGFloat(TableRules.padX) * s)
+                .padding(.vertical, CGFloat(TableRules.padY) * s)
+                .frame(width: max(box.width, 40), height: max(box.height, 20), alignment: .topLeading)
+                .position(x: box.midX, y: box.midY)
+        }
         return field(isIdea: item.kind == .idea)
             .font(Lettering.font(size: size * s, bold: look.bold))
             .multilineTextAlignment(textAlign)
@@ -593,7 +608,9 @@ struct CanvasView: View {
                 // Two presses on a lane's name band: its name is typed in place (LanesView.swift).
             } else if double(id) {
                 // Two presses on a door open its board (Doors.swift).
-                if session.board.item(id)?.kind == .picture { session.beginCaption(id) } else if !session.goThroughDoor(id) { session.beginEdit(id) }
+                if session.board.item(id)?.kind == .picture { session.beginCaption(id) }
+                else if session.board.item(id)?.kind == .table { session.beginCell(id, at: p) }   // 0.14: the cell pressed
+                else if !session.goThroughDoor(id) { session.beginEdit(id) }
             } else if shiftDown || session.choosingMore {
                 session.select(id, adding: true)
             } else {

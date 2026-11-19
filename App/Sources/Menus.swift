@@ -210,6 +210,9 @@ struct SeedMenus: Commands {
             Divider()
             // A picture (letter P), then the Draw tool (letter S, for Sketch): on boards that have them.
             PictureInsertLine(enabled: canChange && session?.board.placesItself != true, letter: lettersAreTools)
+            // 0.14: a table of cells (3 × 3, empty).
+            Button("Table") { session?.add(.table); session?.takeKeys() }
+                .disabled(!canChange || session?.board.placesItself == true)
             drawLine
             // 0.9: the chosen picture takes drawing; the chosen sketch's handwriting becomes typed words.
             // 0.14 (27): a saved piece goes onto the board (PiecesPage.swift).
