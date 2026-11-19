@@ -1,4 +1,6 @@
-# AMS Seedboard — specification, version 0.10 (build 10)
+# AMS Seedboard — specification, version 0.11 (build 11)
+
+**Version 0.11 (build 11, 2026-11-19)** is a hardening and improvement round: 38 picks from `Docs/IDEAS-0.11.md` (1–12, 14–24, 26, 27, 28, 30, 31, 33, 36–41, 43, 47). Everything is in part **17**. Item 13 was not built; item 14 needed no change. The board format is now **7** (new field `Board.due`). Where part 17 and an older part disagree, part 17 is right.
 
 **Version 0.9 (build 9, 2026-11-18)** is a big round: 40 picks (A, B and 38 numbered ideas from `Docs/IDEAS-0.9.md`) in eight lanes: timeline, marks, views, maps, pencil, PARAGON, finding. Everything is in part **15**. Where part 15 and an older part disagree about a thing 0.9 changed, part 15 is right. Everything of 0.8 that 0.9 does not name is as it was. The board format is now **6**.
 
@@ -1528,3 +1530,84 @@ All off on timeline and Who does what boards; all go through Undo; none changes 
 - Version 0.10 (build 10).
 - `Guide.swift`: a new 0.10 entry in What's new (above 0.9); How it works changed in: The board, Mind maps, Drawing by hand, Pictures, Marks on ideas, legend, focus and show.
 - `Docs/WHAT-TO-TEST-0.10.txt` is new.
+
+## 17. New in 0.11
+
+**Version 0.11 (build 11, 2026-11-19).** Board format **7**: the one new stored field is `Board.due` ("yyyy-MM-dd"; a stored day outside 1900–2200 is ignored). An older version opens a 0.11-changed board read-only. Notes of each lane are in `Docs/notes-0.11/built-*.md`. Not built: 13 (timeline bars and Who does what messages for VoiceOver). 14: all 29 fixed letter sizes were checked (drawn board text, an invisible 1-point test label, or a typing field that must match drawn text; none is a button, chip or bar label; those use Apple text styles in 96 places), so nothing changed.
+
+### 17.1 Pencil (31, 36, 37, 38)
+- Core `Pencil11.swift`: `Ruler` (centre, angle in radians, length; `start`, `end`, `snapped(_:reach:)`, `Ruler.screenReach` 16, `defaultLength` 360), `Board.addReadNote(besideDrawing:words:)` (yellow note at x = drawing.x + w + 16, y = drawing.y; nil for no words, not a drawing, board cannot change, or a map-placed thing).
+- `snapped`: nil unless 2 or more finite points, every point within reach of the ruler's line, and the snapped length at least 4; else [start foot, end foot]. Applied in `InkDesk.inkEnded` before thinning (pressure dropped for a snapped line).
+- App: `Ruler11.swift` (`RulerLayer`, `BoardSession.toggleRuler`), `InkDesk.ruler`, `InkDesk.fade`, `Fade.opacity` 0.3 (InkDraw.swift), `BoardPainter.inkOpacity`, `BoardSession.readThis` (InkWords.swift). The ruler is cleared by `InkDesk.leave()`; fade is not cleared by leaving the tool. Neither is saved.
+- Words: plate buttons Ruler and Fade; line Pencil lines are faded with Show; bar action Read this (mark of Make typed; no new mark); No words found in this sketch; rubber ring word Small, Medium or Large (ring reach 20 / 40 / 80 points).
+- Identifiers: `draw.ruler`, `draw.fade`, `draw.fadeLine`, `draw.fadeOff`, `ruler.move`, `ruler.turn`, `ink.readthis`.
+- Test: Core `Pencil11Tests`.
+
+### 17.2 Pictures (21, 22, 23, 24, 39)
+- Core `Pictures11.swift`: `Item.captionMeasure` (default 6.6 points a letter; the app installs `PictureCaption.install()` at start with `Lettering.measure` at size 12), `Item.captionWrapped(_:width:)` (one function for drawing and layout), `Item.captionLines`, `Item.foundWords`, `Board.noteWithPictureWords(_:)` (yellow note 24 points right of the picture and its caption).
+- `Tidy.swift` lineUp / evenGaps use `Item.reach` (picture plus caption). `ParagonExport.whereLine(_:picture:)` is the one wording rule: A picture (on the board), A picture: After the makeover (see the picture), A sketch (on the board); the words did not change.
+- Bar ids `<prefix>copywords` (Copy words; flash Words copied) and `<prefix>wordsnote` (Words to a note); not shown without found words; mark is the Make typed stand-in.
+- Legend card: `GlyphView(.new(.legend), 14)` at its top left (`LegendCardRow`, MarksViews.swift).
+- Test: `Pictures11Tests` (4).
+
+### 17.3 Paragon (5, 26, 27, 40)
+- Core `Paragon11.swift`: `SendCause` (`classify(Error)`, `words(_:what:)`, `words(for:what:)`, `inboxFolderMissing`). Mapping: POSIX 28/69 disk full; 1/13/30 locked; 16/26/11/35 in use; 2/20 missing; Cocoa 640 disk full, 513/642 locked, 4/260/2 missing, 4354 iCloud full, 4352/4353/4355 iCloud unavailable; the underlying error is looked at too (4 levels); else a plain line with the system's reason.
+- `SendProblem.because(String)`; `.noInbox` says: PARAGON's Inbox folder is missing on this device. Open PARAGON once, then check again in Settings. A note or a project can still be sent. Note, picture and Inbox write failures use `because`; `append` throws the POSIX error of `open`. Example: The Inbox could not be saved: the disk is full. Free some space, then send again. Nothing was changed.
+- `InboxWait` (`waitingTexts(in:)`, states waiting / filed / late, `lateAfter` 86,400 s, `state(of:in:seen:waiting:now:)`, `line(for:seen:waiting:now:)`). Reads (never changes) `capture-outbox.jsonl`: a sent line no longer in it is filed. Lines: N waiting for PARAGON, N in PARAGON, N not filed yet — open PARAGON. Unreadable list: only waiting. Time base: `board.sent.when`, else `board.changed`; seen = `ParagonEcho.read[board.id]`.
+- App `Paragon11Views.swift` `InboxWaitLine` (ids `board.inboxWait`, `board.inboxWait.words`) after `SentLine` in BoardView (`low: true` for timeline and Who does what).
+- `Board.chosenOnly(_:)`, `Board.chosenWords(_:)`; Send page `SendSwitch` id `send.chosenOnly`, label The N chosen things, caption Just these things are sent, as a note or as to-dos. The board is not marked as sent.; Project and Add what is new are hidden; `AppModel.send(... chosen:)`.
+- `Board.emailText`: first line `Here is my board “Title”:`, the outline, last line `Made with Seedboard`. More line Copy the board as an email; flash The board is copied as an email.
+- Test: `Paragon11Tests` (3). Known limits: Inbox-only boards are never read back, so they show waiting then not filed yet; no Open button on the line.
+
+### 17.4 Done reaches PARAGON (28; needs PARAGON 341)
+- Core `Tick11.swift`: `ParagonExport.DoneLine`, `doneData`, `Board.doneLines(since:now:)`; hook `BoardSession.change` (`onTicked`), `AppModel.tellParagonTicked`, `ParagonGate.appendDone`. Appends to the same `capture-outbox.jsonl` (O_APPEND). Nothing for sample boards or without a waiting list; undo and redo write nothing; taking Done off writes nothing.
+- Line: `{"kind":"seedboardDone","words":"<SentTask.words>","board":"<title>","place":"inbox"|"note","path":"Projects/X.md"(note only),"when":"<ISO 8601>"}`; no `id`, no `text`. A note-place task needs `Board.sent.path`.
+- Only timeline bars and milestones marked Done (`doneDay`) write a line; the to-do ring and tick lines in notes are not tied to PARAGON tasks.
+- PARAGON 341: `CaptureItem.seedboardDone`, `Vault.tickSeedboardDone`, used in `AppModel.drainOutbox`; ticks only when exactly one open task has exactly those words (ignoring id, box, done) in the Inbox or the named note or project, with `Note.complete`. An older PARAGON (340) skips the unknown kind. Tests: Seedboard `Tick11Tests`, PARAGON `SeedboardDoneTests`.
+
+### 17.5 Memory (6, 7, 8, 9, 19)
+- Core `Memory11.swift`: `UndoBudget` (120 steps, 40 × 1024 × 1024 bytes; `weight(of:)` rough size: 2000 + 200 per link + 700 + text bytes per item + 100 + 8 per point (+8 per pressure) per stroke; `toLetGo(weights:)`; words Older steps were let go to save memory.), the newest step is always kept. `PictureKeeping.sharpMost` 12, `sharpToKeep(_:most:)` (most recently asked for).
+- `BoardSession.undoWeights`, `@Published undoLetGo` (reset when another device's version replaces the board); `UndoListPage` id `undoList.letGo`.
+- `PictureStore.sharpImage` gate at 12 (sharp plus loading); after a load, extras beyond `sharpToKeep` go.
+- Export: `BoardArchive.make(name:files:fetched:fetch:missing:in:)` overload writes fetched files one by one; `ExportFile` has `url` + `place`; `ZipDocument(url:)`; `ExportPlace.clear()`.
+- PDF: `BoardPicture.pdf` is async; `PaperPictures.readFiles` (off the main thread, `kCGImageSourceShouldCacheImmediately`), `PaperPictures.use(_:)` per page; `ShareMaker.files` async; `BoardPrint.ask` flash Making the pages… (60 s, cleared when done); Share plate says Making….
+- Test: `Memory11Tests` (2). Limits: one very big page is drawn in one go; undo weights are an estimate.
+
+### 17.6 Access (12, 14, 15)
+- Core `Access11.swift`: `Board.spoken(_:)`, `Board.spokenThings` → `[SpokenThing]` (id, isArrow, sentence, canMove, canEdit). Sentence: kind word + ": " + words (lines joined by a space), then ", done", ", to do", ", 1 vote" / ", N votes", ", pinned", ", folded". Arrow: Arrow from A to B: words (a thing with no words is named by its kind, lowercase). Timeline and Who does what give an empty list.
+- App `Access11.swift`: `BoardAccessChildren` used by `CanvasView` via `.accessibilityChildren`; identifier `board.canvas`, label Board and the count value stay on the canvas. Actions Choose, Edit words, Move left, Move right, Move up, Move down (10 points, the arrow-key nudge). Order: mind maps first branch by branch, then the rest row by row, then arrows.
+- 15: `TimelinePainter.patterns` (from `accessibilityDifferentiateWithoutColor`); hatch in `TimelineProgress.drawState`; colour word in `LegendCardRow` (Yellow: Ideas). Off by default.
+- Test: `Access11Tests.testSpokenSentenceAndOrder`. Not tried with VoiceOver on a device.
+
+### 17.7 Store and unused pictures (16, 18)
+- `UnusedPictures11.swift` (Core): `PictureKeeping.unusedNow(files:named:now:complete:)` (plain `.jpg` name, not named, date known, older than `freshHours` 1; `complete` false gives nothing), `unusedLine` (Pictures nobody uses: 3 (12 MB)), `sizeWords` (under 1 MB, 4.2 MB, 12 MB), `removeQuestion` (Remove 3 pictures nobody uses? This cannot be undone.).
+- App `UnusedPictures11.swift`: `PictureStore.unusedPictures()`, `removeUnusedPictures()` (scans again at removal; coordinated delete in the device and iCloud Pictures folders), `UnusedPicturesRows`, `UnusedPicturesPage` (title Pictures nobody uses). Ids `settings.unusedLine`, `settings.unusedShow`, `settings.unusedRemove`, `settings.unusedTold`, `unused.page`. Results: 1 picture removed. / N pictures removed. / Nothing was removed: Seedboard could not be sure. If unsure: cannot tell right now. The weekly clean-up is unchanged (30 days, two looks a week apart).
+- `PictureStore.keptBlobs(folders:places:)` is shared with the weekly tidy. `BoardDisk` is no longer private and has `init(support:cloudDocuments:)` (both nil in the app).
+- Test: `UnusedPictures11Tests` (1).
+
+### 17.8 Safety (1, 2, 4, 10, 11, 17)
+- Core `Safe11.swift`: `SafeNumber` (`farthest` 100,000, `biggest` 20,000, `int`, `position`, `size`), `Board.unreadableCount(in:)`, `Board.fileDateKey` (decoder userInfo), `SafetyWords` (`damaged`, `importSkipped`, `incompleteLink`).
+- `Item.init(from:)` cleans x, y, w, h. `DotGrid.dots` returns [] for a non-finite rect or more than 400,000 dots. `TimelineGeometry.day(atX:)`, `row(atY:)`, `days(forDrag:)` use `SafeNumber.int`.
+- `BoardStore.interpret(_:fileDate:)` keeps the original bytes with `setAside(..., "seedboard")` and reports `.damaged`; the warning shows after write problems. Words: 1 thing on “Plan” could not be read. The whole board as it was is kept under Earlier versions. (N things on …); 1 board was made by a newer Seedboard — update Seedboard first.; red flash That board link is not complete. A missing created time takes the file's modification date (readLocal, readCloud, parked versions); import paths other than the disk readers still use 1970.
+- The line lasts for this run of the app. The board stays editable. Timeline year 0001/9999 is item 3.
+- Test: about ten damaged files in one test (17).
+
+### 17.9 Timeline and due day (3, 20, 47)
+- Core `Timeline11.swift`: `DayRange` (`firstYear` 1900, `lastYear` 2200, `mostMarks` 1500, `refusal`, `drawEnd`), `StarterShelf.shownBoard` (dates moved to from today), `Board.dueDay`, `Board.dueWords(today:)` (Due 12 Jan; with the year when not this year, Due 12 Jan 2027; past = before today), `Board.setDue(_:)`, `ParagonExport.withBoardDue` (replaces or adds `due:` in the project's front matter in `projectHandover`; on a timeline it replaces the last bar's day). `TimelineGeometry.ticks` stops at 1500 marks; `Board.setDates` returns 0 for an insane day.
+- Dates page: the refusal Pick a date between the years 1900 and 2200. shows on Save (id `dates.problem`).
+- App `DueDay.swift`: `DueDesk`, `DueWords` (id `home.due.<title>`), `DueHost`, `DueSheet` (ids `due.picker`, `due.none`, `due.cancel`, `due.save`, `due.problem`); More menu id `more.dueDay` (Due day…); Mac File menu Due Day… (beside Rename). Page: date picker, Cancel, Save, No due day. Setting a due day touches the board's changed time. The list order is not changed.
+- Test: Core `Timeline11Tests`.
+
+### 17.10 Extras (30, 33, 41, 43)
+- Core `Extras11.swift`: `Board.legendWord(forColour:)`, `legendWord(ofNote:)`; `ParagonExport.namedBullet(_:in:picture:)` (used by `notesBody` in SendFrames.swift for loose and per-frame notes: - Call Alex (Question); tick-list notes and project task lines get no word); `Board.showsMainBranchesOnly(_:)`, `canFoldToMainBranches(_:)`, `toggleMainBranchesOnly(_:)` (uses `Item.folded`); `RecentBoards.limit` 5, `.opened(_:in:)`, `.shown(_:among:)`.
+- `Remembered.recent: [UUID]` (device settings key `seedboard.remembered`; not in the board file; not synced; tolerant decode; gone boards dropped). `Remember` is an ObservableObject with `@Published recent`.
+- App `Extras11.swift`: `TickSound` (ambient, mixWithOthers, two notes 1318.5 and 1975.5 Hz, volume 0.5; UserDefaults key `tickSound`; default on for iOS, off for macOS; silent with `-sampleData` or `-uiTesting`; follows the silent switch), `SoundsSection` (id `settings.tickSound`, header Sounds, switch Tick sound), `OpenRecentMenu`, `RecentDesk`, `BoardSession.toggleMainBranches`; bar action id `mainBranches` (Main branches only / Open all; chevron mark; shown when the middle of a map with something to fold is chosen). Mac: File, Open Recent; Dock menu ends with Opened Recently (boards already higher in the Dock menu left out); Board menu Main Branches Only / Open All Branches.
+- Ticking: `toggleTodo` and `sequenceToggleTodo` call `TickSound.play()` when ticking on; `pressMark` when a tick-list line goes from unticked to ticked.
+- Colour dots: `.help` and accessibility label carry the legend word; caption id `colour.legendWord` under the dots.
+- Test: `Extras11Tests` (3).
+
+### 17.11 Tests
+- Data tests added in 0.11 (Core): `Access11Tests`, `Extras11Tests` 3, `Memory11Tests` 2, `Paragon11Tests` 3, `Pencil11Tests`, `Pictures11Tests` 4, `Timeline11Tests`, `Tick11Tests`, `UnusedPictures11Tests` 1, a damaged-files test for Safe11; Core total 507 at the time of the store lane.
+- New target **AMSSeedboardStoreTests** (macOS unit tests, `StoreTests/BoardStoreTests.swift`, compiles `BoardStore.swift` only; in the AMSSeedboard scheme's tests; declared in `project.yml`). 5 tests run on a throwaway folder with a stand-in for iCloud: save and read back; newer wins and the older is kept; iCloud's " 2" copy joined and cleared; removal mark and a later change bringing the board back; a file that cannot be read left alone. About 0.3 seconds. Run: `xcodebuild test -project AMSSeedboard.xcodeproj -scheme AMSSeedboard -only-testing:AMSSeedboardStoreTests -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" CODE_SIGN_ENTITLEMENTS=""`. It does not test `PictureStore` (needs app singletons).
+- `Guide.swift`: a new 0.11 entry in What's new (above 0.10); How it works changed in: Your boards, The board, Mind maps, Marks on ideas legend focus and show, Timeline board, Drawing by hand, Pictures, Paste a list, Send to PARAGON, Safety, Share PDF and print, Menus and keys, How it feels.
+- Version 0.11 (build 11).
