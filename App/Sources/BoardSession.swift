@@ -14,6 +14,10 @@ final class BoardSession: ObservableObject {
     /// The item or arrow being typed in.
     @Published private(set) var editing: UUID?
     @Published private(set) var draft = ""
+    // 0.14 (table): the cell being typed in, and the cell typed in last on each table (TableSession.swift).
+    @Published private(set) var cell: TableSpot?
+    var lastCell: [UUID: TableSpot] = [:]
+    var cellWanted: TableSpot?
     /// Where the board stands on screen, and whether the owner has moved it.
     @Published private(set) var place = Viewport()
     /// Where the board's zero point is on screen, and how big one board point is.
@@ -283,7 +287,16 @@ final class BoardSession: ObservableObject {
         guard board.item(id)?.kind != .drawing, board.item(id)?.kind != .door, caption || board.item(id)?.kind != .picture else { return }
         if editing != nil { commitEdit() }
         if let item = board.item(id) {
-            draft = item.text
+            if item.kind == .table {
+                // 0.14: the words of one cell (the one pressed, else the one typed in last, else the first).
+                let spot = (cellWanted ?? lastCell[id] ?? TableSpot(row: 0, column: 0)).clamped(to: item.cells)
+                cell = spot
+                cellWanted = nil
+                draft = TableRules.squared(item.cells)[spot.row][spot.column]
+            } else {
+                cell = nil
+                draft = item.text
+            }
             selection = [id]
             selectedLink = nil
         } else if let link = board.links.first(where: { $0.id == id }) {
@@ -347,7 +360,9 @@ final class BoardSession: ObservableObject {
     private func apply(_ text: String, to id: UUID) {
         var new = board
         new.touch()
-        if let i = new.index(of: id) {
+        if let i = new.index(of: id), new.items[i].kind == .table, let spot = cell {
+            new.items[i].cells = TableRules.setting(text, at: spot, in: new.items[i].cells)
+        } else if let i = new.index(of: id) {
             new.items[i].text = text
         } else if let l = new.links.firstIndex(where: { $0.id == id }) {
             new.links[l].text = text
@@ -364,7 +379,14 @@ final class BoardSession: ObservableObject {
         var new = board
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         var removed = false
-        if let i = new.index(of: id) {
+        if let i = new.index(of: id), new.items[i].kind == .table {
+            // 0.14: the words go into the cell that was typed in; it is remembered for Add row / Remove row.
+            if let spot = cell {
+                new.items[i].cells = TableRules.setting(trimmed, at: spot, in: new.items[i].cells)
+                lastCell[id] = spot
+            }
+            cell = nil
+        } else if let i = new.index(of: id) {
             new.items[i].text = trimmed
             let item = new.items[i]
             // A new idea left empty was not meant: it goes again.
@@ -403,6 +425,7 @@ final class BoardSession: ObservableObject {
     func cancelEdit() {
         guard let id = editing else { return }
         editing = nil
+        cell = nil
         lineBreakWanted = false
         draft = ""
         var back = editBase ?? board
@@ -455,7 +478,8 @@ final class BoardSession: ObservableObject {
         change { board in
             made = board.add(kind, centre: spot)
         }
-        if let made { beginEdit(made, isNew: true) }
+        // 0.14: a new table is only chosen (its bar says what to do); the other things are typed in at once.
+        if let made { if kind == .table { selection = [made]; selectedLink = nil } else { beginEdit(made, isNew: true) } }
     }
 
     func addChild(of id: UUID) {

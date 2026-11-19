@@ -14,6 +14,12 @@ public extension Board {
         if kind == .idea { return addCentre(at: centre, text: text) }
         var item = Item(kind: kind, text: text, colour: colour)
         if kind == .note && colour.isEmpty { item.colour = "yellow" }
+        // 0.14: a new table is 3 columns × 3 rows, empty (Table14.swift).
+        if kind == .table {
+            item.cells = TableRules.blank()
+            item.w = Double(TableRules.newColumns) * TableRules.minColumn
+            item.h = Double(TableRules.newRows) * (18 + 2 * TableRules.padY)
+        }
         item.x = Double(centre.x) - item.w / 2
         item.y = Double(centre.y) - item.h / 2
         if kind == .frame {

@@ -36,7 +36,7 @@ public enum Outside {
     public static func searchWords(of board: Board, limit: Int = 300) -> String {
         var out = ""
         for item in board.items {
-            let words = ParagonExport.oneLine(item.text)
+            let words = ParagonExport.oneLine(item.searchableWords)
             guard !words.isEmpty else { continue }
             let next = out.isEmpty ? words : out + " · " + words
             if next.count > limit {

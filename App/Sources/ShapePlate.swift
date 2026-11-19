@@ -130,6 +130,8 @@ struct ShapePlate: View {
     let prefix: String
     let pick: (ItemKind) -> Void
     let cancel: () -> Void
+    /// 0.14: "Table" as a word line under the shapes (only where a new thing is added).
+    var pickTable: (() -> Void)?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -157,6 +159,21 @@ struct ShapePlate: View {
                     .accessibilityLabel(kind.word)
                     .accessibilityIdentifier(prefix + kind.rawValue)
                 }
+            }
+            // 0.14: a table of cells is added from here, as a word line.
+            if let pickTable {
+                Button(action: pickTable) {
+                    Text("Table")
+                        .font(Txt.pill)
+                        .foregroundStyle(Color.primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 34)
+                        .background(Part.shapes.soft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle(tint: Part.shapes.text))
+                .accessibilityLabel("Table")
+                .accessibilityIdentifier(prefix + "table")
             }
         }
         .padding(12)
@@ -233,7 +250,7 @@ struct ShapeTool: View {
         .modifier(PlatePresenter(shown: $shown, edge: PlateEdge.overTile, closed: {
             if let kind = picked {
                 picked = nil
-                choice.used(kind)
+                if kind != .table { choice.used(kind) }
                 session.add(kind)
             }
             session.takeKeys()
@@ -241,7 +258,10 @@ struct ShapeTool: View {
             ShapePlate(title: "Add a shape", prefix: "plate.shape.", pick: { kind in
                 picked = kind
                 shown = false
-            }, cancel: { shown = false })
+            }, cancel: { shown = false }, pickTable: {
+                picked = .table
+                shown = false
+            })
         })
     }
 
