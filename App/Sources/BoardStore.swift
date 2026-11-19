@@ -30,6 +30,8 @@ final class BoardStore {
     /// The `changed` of each board as the app shows it: the version every next save grows from.
     private var known: [UUID: Date] = [:]
     private var query: NSMetadataQuery?
+    /// 0.14: iCloud's first look at the folder has finished.
+    private var gathered = false
     private var observers: [NSObjectProtocol] = []
     private var checking = false
     private var polling = false
@@ -303,7 +305,10 @@ final class BoardStore {
         let center = NotificationCenter.default
         for name in [NSNotification.Name.NSMetadataQueryDidFinishGathering, .NSMetadataQueryDidUpdate] {
             observers.append(center.addObserver(forName: name, object: q, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.checkCloud() }
+                Task { @MainActor in
+                    if name == .NSMetadataQueryDidFinishGathering { self?.gathered = true }
+                    self?.checkCloud()
+                }
             })
         }
         #if os(macOS)
@@ -316,6 +321,22 @@ final class BoardStore {
         })
         query = q
         q.start()
+    }
+
+    /// 0.14: boards are still coming from iCloud — the first look has not finished, or a board file is not
+    /// on this device yet. The calendar that follows the timelines waits for this to be over.
+    var stillArriving: Bool {
+        guard cloudIsOn else { return false }
+        guard let q = query, gathered else { return true }
+        q.disableUpdates()
+        defer { q.enableUpdates() }
+        for case let item as NSMetadataItem in q.results {
+            guard let name = item.value(forAttribute: NSMetadataItemFSNameKey) as? String, name.hasSuffix(".seedboard") else { continue }
+            let status = item.value(forAttribute: NSMetadataUbiquitousItemDownloadingStatusKey) as? String
+            if let status, status != NSMetadataUbiquitousItemDownloadingStatusCurrent,
+               status != NSMetadataUbiquitousItemDownloadingStatusDownloaded { return true }
+        }
+        return false
     }
 
     /// Looks at iCloud; whatever is newer than what the app shows goes to `onCloudChange`.

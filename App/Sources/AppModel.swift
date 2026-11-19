@@ -72,6 +72,8 @@ final class AppModel: ObservableObject {
     /// A `seedboard://board/<id>` link that could not be followed yet (the boards were still loading,
     /// or the board has not arrived on this device).
     private var waitingLink: UUID?
+    /// 0.14: the thing a link `…/item/<id>` leads to, shown once its board is open.
+    private var waitingThing: (board: UUID, item: UUID)?
     private var sending = false
 
     init() {
@@ -206,7 +208,7 @@ final class AppModel: ObservableObject {
         // A link was waiting for this board to arrive.
         if let id = waitingLink, loaded, boards.contains(where: { $0.id == id }) {
             waitingLink = nil
-            open(id)
+            openLinked(id)
         }
         return taken
     }
@@ -482,6 +484,7 @@ final class AppModel: ObservableObject {
             say(SafetyWords.incompleteLink, tone: .problem)   // 0.11: a damaged link says so
             return
         }
+        waitingThing = BoardLink.item(from: url).map { (id, $0) }
         guard loaded else {
             waitingLink = id
             return
@@ -489,10 +492,21 @@ final class AppModel: ObservableObject {
         follow(id)
     }
 
+    /// Opens the board a link led to, and shows the thing when the link names one (ThingLink14.swift).
+    private func openLinked(_ id: UUID) {
+        open(id)
+        guard let thing = waitingThing, thing.board == id else { return }
+        waitingThing = nil
+        session?.showThing(thing.item)
+    }
+
+    /// 0.14: iCloud is still bringing boards (the calendar waits for it).
+    var boardsStillArriving: Bool { store.stillArriving }
+
     private func follow(_ id: UUID) {
         if boards.contains(where: { $0.id == id }) {
             waitingLink = nil
-            open(id)
+            openLinked(id)
             return
         }
         // Not here: removed, or not arrived yet. If iCloud brings it, it opens then (`cloudBrought`).
@@ -506,7 +520,7 @@ final class AppModel: ObservableObject {
                 break
             case .open:
                 waitingLink = nil
-                open(id)
+                openLinked(id)
             case .removed(let date):
                 waitingLink = nil
                 // Shown as a line with a "Bring back" button (BringBack.swift).
