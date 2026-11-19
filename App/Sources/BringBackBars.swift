@@ -134,6 +134,7 @@ struct KeptSettingsRows: View {
 
     @State private var working = false
     @State private var file: ZipDocument?
+    @State private var exportPlace: ExportPlace?
     @State private var fileName = ""
     @State private var showExporter = false
     @State private var exportProblem: String?
@@ -171,6 +172,8 @@ struct KeptSettingsRows: View {
                     exportProblem = nil
                 }
                 file = nil
+                exportPlace?.clear()
+                exportPlace = nil
             }
             Text(exportProblem ?? exportSummary ?? ExportRules.lastExportLine(lastExport > 0 ? Date(timeIntervalSince1970: lastExport) : nil, now: Date()))
                 .font(.caption)
@@ -203,7 +206,9 @@ struct KeptSettingsRows: View {
         working = true
         Task {
             if let made = await model.exportAllBoards() {
-                file = ZipDocument(data: made.data)
+                file = ZipDocument(url: made.url)
+                exportPlace?.clear()
+                exportPlace = ExportPlace(url: made.place)
                 fileName = made.name
                 exportSummary = made.summary
                 exportProblem = nil
@@ -219,15 +224,24 @@ struct KeptSettingsRows: View {
 /// The finished zip, handed to the system's save place (Files on iPhone and iPad, a save panel on the Mac).
 struct ZipDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.zip] }
-    var data: Data
+    var data: Data?
+    /// 0.11: a zip lying on disk; it is read from there when saved, not held in memory.
+    var url: URL?
 
-    init(data: Data) { self.data = data }
+    init(url: URL) { self.url = url }
 
     init(configuration: ReadConfiguration) throws {
         data = configuration.file.regularFileContents ?? Data()
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: data)
+        if let url { return try FileWrapper(url: url, options: []) }
+        return FileWrapper(regularFileWithContents: data ?? Data())
     }
+}
+
+/// The throwaway folder of an export, cleared away when the file is saved or given up.
+struct ExportPlace {
+    let url: URL
+    func clear() { try? FileManager.default.removeItem(at: url) }
 }

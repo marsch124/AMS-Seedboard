@@ -317,7 +317,10 @@ final class PictureStore: @unchecked Sendable {
         // (that would make pictures flicker), this one stays as it is.
         let inUse = sharp.values.filter { now.timeIntervalSince($0.wanted) < 2 }.reduce(0) { $0 + $1.cost }
         let guess = PictureKeeping.memoryCost(width: Self.longestSide, height: Self.longestSide * 3 / 4)
-        if sharpLoading.contains(name) || inUse + guess * (sharpLoading.count + 1) > PictureKeeping.sharpRoom
+        // 0.11: at most 12 full-size pictures open at once; while all 12 are on screen, the next keeps its small copy.
+        let full = sharp.count + sharpLoading.count >= PictureKeeping.sharpMost
+            && !sharp.values.contains { now.timeIntervalSince($0.wanted) >= 2 }
+        if full || sharpLoading.contains(name) || inUse + guess * (sharpLoading.count + 1) > PictureKeeping.sharpRoom
             || (sharpTried[name].map { now.timeIntervalSince($0) < 10 } ?? false) {
             lock.unlock()
             return nil
@@ -338,6 +341,8 @@ final class PictureStore: @unchecked Sendable {
                     show = true
                     // What was not asked for the longest goes until all fit; what nobody asked for in half a minute goes too.
                     for (other, entry) in sharp where other != name && Date().timeIntervalSince(entry.wanted) > 30 { sharp[other] = nil }
+                    let keep = PictureKeeping.sharpToKeep(sharp.map { (name: $0.key, wanted: $0.value.wanted) })
+                    for other in Array(sharp.keys) where other != name && !keep.contains(other) { sharp[other] = nil }
                     while sharp.values.reduce(0, { $0 + $1.cost }) > PictureKeeping.sharpRoom,
                           let oldest = sharp.filter({ $0.key != name }).min(by: { $0.value.wanted < $1.value.wanted }) {
                         sharp[oldest.key] = nil

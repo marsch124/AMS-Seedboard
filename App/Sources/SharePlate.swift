@@ -246,7 +246,7 @@ struct SharePlate: View {
         Task { @MainActor in
             // One turn of the screen first, so "Making…" shows while a big board is drawn.
             try? await Task.sleep(nanoseconds: 40_000_000)
-            let files = ShareMaker.files(of: session.board, what: what, form: form, chosen: session.selection)
+            let files = await ShareMaker.files(of: session.board, what: what, form: form, chosen: session.selection)
             busy = false
             guard !files.isEmpty else {
                 problem = ShareMaker.problem(form)
@@ -286,7 +286,7 @@ enum ShareMaker {
 
     /// Makes the files that are shared: one picture (one per frame for "Each frame a page"), one PDF, or one
     /// text file. Empty when it could not be made. `into`: another folder (for pictures of the launch words).
-    static func files(of board: Board, what: ShareWhat, form: ShareForm, chosen: Set<UUID>, into place: URL? = nil) -> [URL] {
+    static func files(of board: Board, what: ShareWhat, form: ShareForm, chosen: Set<UUID>, into place: URL? = nil) async -> [URL] {
         let folder = place ?? Self.folder
         let manager = FileManager.default
         try? manager.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -315,7 +315,7 @@ enum ShareMaker {
             }
             return made
         case .pdf:
-            guard let pdf = BoardPicture.pdf(of: board.sharePages(what, chosen: chosen), title: board.title),
+            guard let pdf = await BoardPicture.pdf(of: board.sharePages(what, chosen: chosen), title: board.title),
                   let file = write(pdf, SharePlan.fileName(board.title, part: part, form: .pdf)) else { return [] }
             return [file]
         case .words:
@@ -467,13 +467,15 @@ enum ShareLaunch {
             let what = LaunchOptions.value(for: "-shareWhat").flatMap { ShareWhat(rawValue: $0) }.flatMap { choices.contains($0) ? $0 : nil } ?? .whole
             if let folder {
                 let form = LaunchOptions.value(for: "-shareAs").flatMap { ShareForm(rawValue: $0) } ?? .pdf
-                let made = ShareMaker.files(of: session.board, what: what, form: form, chosen: session.selection,
+                Task { @MainActor in
+                let made = await ShareMaker.files(of: session.board, what: what, form: form, chosen: session.selection,
                                             into: URL(fileURLWithPath: folder, isDirectory: true))
                 // Beside the files: what was made, and how many pictures came straight from their stored files.
                 let note = "made: " + made.map(\.lastPathComponent).joined(separator: ", ") + "\npictures read from their stored files: \(PaperPictures.read)\n"
                 try? note.write(to: URL(fileURLWithPath: folder, isDirectory: true).appendingPathComponent("made.txt"), atomically: true, encoding: .utf8)
                 AppModel.shared.say(made.isEmpty ? ShareMaker.problem(form) : "Made: " + made.map(\.lastPathComponent).joined(separator: ", "),
                                     tone: made.isEmpty ? .problem : .good, seconds: 30)
+                }
             } else if plate {
                 ShareDesk.shared.ask(session, what: what)
             } else {
