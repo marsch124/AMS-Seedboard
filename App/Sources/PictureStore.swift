@@ -62,7 +62,7 @@ final class PictureStore: @unchecked Sendable {
     private static let container = "iCloud.com.schabbauer.AMSSeedboard"
 
     /// iCloud is switched on for this device (never with the example boards).
-    private var cloudOn: Bool { !sample && FileManager.default.ubiquityIdentityToken != nil }
+    var cloudOn: Bool { !sample && FileManager.default.ubiquityIdentityToken != nil }
 
     let sample = LaunchOptions.sampleData
 
@@ -97,7 +97,7 @@ final class PictureStore: @unchecked Sendable {
         return base
     }
 
-    private var cloud: URL? {
+    var cloud: URL? {
         lock.lock(); defer { lock.unlock() }
         return cloudPictures
     }
@@ -570,20 +570,8 @@ final class PictureStore: @unchecked Sendable {
         let old = Set(PictureKeeping.deletable(files: candidates, named: inUse, now: now))
         guard !old.isEmpty else { return (0, complete ? [:] : seen) }
         // Every file that can name a picture, read as plain bytes: boards, removed boards, safety copies, earlier versions.
-        var roots = places.boards + places.removed
-        roots.append(places.safety)
-        // Starters sit in a folder beside each Pictures folder; a starter's board may name a picture too.
-        roots += folders.map { $0.deletingLastPathComponent().appendingPathComponent("Starters", isDirectory: true) }
-        var blobs: [Data] = []
-        for root in roots {
-            guard let walk = fm.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey], options: []) else { continue }
-            for case let url as URL in walk {
-                if url.lastPathComponent.hasSuffix(".icloud") { complete = false; continue }
-                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
-                guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { complete = false; continue }
-                blobs.append(data)
-            }
-        }
+        let (blobs, readAll) = keptBlobs(folders: folders, places: places)
+        if !readAll { complete = false }
         var named = inUse
         // Only the files old enough are looked for in the copies.
         for file in candidates where old.contains(file.name) {
@@ -605,5 +593,28 @@ final class PictureStore: @unchecked Sendable {
             }
         }
         return (gone, pass.seen)
+    }
+
+    /// Every file that can name a picture, read as plain bytes: boards, removed boards, safety copies, earlier
+    /// versions and the starters beside each Pictures folder. `complete` is false when anything could not be read
+    /// (then nothing may be decided from the bytes).
+    static func keptBlobs(folders: [URL], places: KeptPlaces) -> (blobs: [Data], complete: Bool) {
+        let fm = FileManager.default
+        var complete = true
+        var roots = places.boards + places.removed
+        roots.append(places.safety)
+        // Starters sit in a folder beside each Pictures folder; a starter's board may name a picture too.
+        roots += folders.map { $0.deletingLastPathComponent().appendingPathComponent("Starters", isDirectory: true) }
+        var blobs: [Data] = []
+        for root in roots {
+            guard let walk = fm.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey], options: []) else { continue }
+            for case let url as URL in walk {
+                if url.lastPathComponent.hasSuffix(".icloud") { complete = false; continue }
+                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { complete = false; continue }
+                blobs.append(data)
+            }
+        }
+        return (blobs, complete)
     }
 }

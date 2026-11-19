@@ -349,7 +349,7 @@ final class BoardStore {
 /// `local` for the device's own folders (fast, never waits for iCloud) and `cloud` for iCloud's.
 /// The device's board files are only ever WRITTEN on `local`; `cloud` hands such a write over and waits.
 /// `local` never waits for `cloud`.
-private final class BoardDisk: @unchecked Sendable {
+final class BoardDisk: @unchecked Sendable {
     static let container = "iCloud.com.schabbauer.AMSSeedboard"
     static let keepSafetyDays = 14
     static let keepRemovedDays: Double = 30
@@ -394,6 +394,16 @@ private final class BoardDisk: @unchecked Sendable {
     // Only on `cloud`:
     private var cloudRoot: URL?
     private var cloudAsked = Date.distantPast
+    /// 0.11 (tests): another place for the device's folders, and a stand-in for iCloud's Documents folder.
+    /// Both nil in the app itself.
+    private let supportOverride: URL?
+    private let cloudOverride: Bool
+
+    init(support: URL? = nil, cloudDocuments: URL? = nil) {
+        supportOverride = support
+        cloudOverride = cloudDocuments != nil
+        cloudRoot = cloudDocuments
+    }
     /// The `changed` of the version iCloud's folder was last seen to hold.
     private var cloudStamp: [UUID: Date] = [:]
 
@@ -431,7 +441,8 @@ private final class BoardDisk: @unchecked Sendable {
     // MARK: Folders
 
     private var support: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        if let supportOverride { return supportOverride }
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     }
 
     private func folder(_ name: String) -> URL {
@@ -446,7 +457,7 @@ private final class BoardDisk: @unchecked Sendable {
 
     /// iCloud's Documents folder. Asked again now and then, so signing in later is noticed without a restart.
     private func cloudDocuments() -> URL? {
-        if cloudRoot == nil, Date().timeIntervalSince(cloudAsked) > 30 {
+        if !cloudOverride, cloudRoot == nil, Date().timeIntervalSince(cloudAsked) > 30 {
             cloudAsked = Date()
             if let root = FileManager.default.url(forUbiquityContainerIdentifier: Self.container) {
                 cloudRoot = root.appendingPathComponent("Documents", isDirectory: true)
