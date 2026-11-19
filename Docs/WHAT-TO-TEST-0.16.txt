@@ -1,0 +1,9 @@
+Seedboard 0.16 — what to try.
+1. Have a timeline with a purple milestone (an old one). Open Seedboard: after the boards load, the question "Make purple milestones orange?" comes up, with the counts.
+2. Press Make Orange: the milestones turn orange, other colours stay, a line says how many.
+3. On an open board, press Undo: the milestones are purple again.
+4. On a second device (or after a fresh purple one): choose Keep Purple (Mac: Escape). Nothing changes and the question does not come again.
+5. Colour in the bar still changes a single milestone.
+6. On another device that shares the boards: nothing purple, no question.
+7. Settings ▸ How it works ▸ Timeline board: the new text about old purple milestones.
+8. Settings ▸ What's new: Version 0.16 is at the top.

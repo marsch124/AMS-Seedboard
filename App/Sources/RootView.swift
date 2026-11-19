@@ -49,6 +49,7 @@ struct RootView: View {
         }
         #endif
         .boards14Host()   // 0.14: Join with… page, outline file chooser
+        .orangeHost()     // 0.16: purple milestones → orange, asked once
         .onChange(of: model.openID) { _, new in
             compactColumn = new == nil ? .sidebar : .detail
         }

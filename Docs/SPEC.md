@@ -1771,3 +1771,20 @@ Version 0.15 (build 15): colour, tilt and lock fixes. Where this part and an old
 ### 21.4 Course and texts
 - The course (the tour web page) gets a chapter "New in 0.14" (outside the app; What's new says it in one line).
 - `Guide.swift`: new 0.15 entry in What's new (above 0.14); How it works changed in: Timeline (milestone, bar and phase colours), Sticky notes text and frames (tilt), Your boards (lock), Signs in this app (purple = PARAGON only, orange diamond, red).
+
+## 22. New in 0.16 (build 16, 19 Nov 2026)
+Version 0.16 (build 16): one question about old purple milestones. Where this part and an older part disagree, this part is right. Board format stays 8; no new stored fields.
+
+### 22.1 Make purple milestones orange?
+- Background: before 0.15 a new milestone was purple; since 0.15 it is orange, because purple means PARAGON only. Milestones made earlier kept their purple.
+- When: once the boards have loaded, if any timeline that can be changed (not read-only) has at least one purple milestone, a question comes up ONCE per device.
+- Heading: "Make purple milestones orange?" Words, for example: "5 milestones on 2 timelines are purple. Purple means PARAGON in Seedboard, and new milestones are orange." The numbers are the real counts.
+- Buttons: "Make Orange" (the main, full-colour button) and "Keep Purple" (Escape on the Mac).
+- Make Orange: every purple milestone on every such timeline becomes orange; milestones of other colours stay as they are. A line says, for example, "5 milestones are orange now." On a board that is open, Undo takes it back for that board (one Undo step per board).
+- Keep Purple: nothing changes. The question does not come again on this device. Colour in the bar still changes any single milestone.
+- Once per device: the answer is remembered on this device after either button. Boards sync, so after Make Orange on one device the others find nothing purple and do not ask. Timelines that cannot be changed (read-only, for example made by a newer Seedboard) are left out and are not counted.
+- A milestone with no colour is still drawn orange (21.1); only a stored purple colour counts as purple.
+
+### 22.2 Course and texts
+- The course (the tour web page) draws a tilted note in its Tilt step and a locked board's card with the word Private in its Lock step (outside the app; What's new says it in one line).
+- `Guide.swift`: new 0.16 entry in What's new (above 0.15); How it works changed in Timeline board (the milestone-colour text). Signs in this app is unchanged: it already says purple = PARAGON only.
