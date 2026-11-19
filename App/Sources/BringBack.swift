@@ -182,10 +182,15 @@ extension AppModel {
         }.value
         var made = 0
         var skipped = read.skipped
+        var newer = 0
         let pictures = read.pictures
         for data in read.boards {
-            guard let board = store.board(from: data), board.canBeChanged else {
+            guard let board = store.board(from: data) else {
                 skipped += 1
+                continue
+            }
+            guard board.canBeChanged else {
+                newer += 1   // 0.11: made by a newer Seedboard: said so, not "not a board"
                 continue
             }
             write(ExportRules.imported(board, taken: Set(boards.map(\.title)), now: Date()))
@@ -194,7 +199,7 @@ extension AppModel {
         var words: [String] = []
         if made > 0 { words.append(made == 1 ? "1 board came in as a new board." : "\(made) boards came in as new boards.") }
         if pictures > 0 { words.append(pictures == 1 ? "1 picture came in." : "\(pictures) pictures came in.") }
-        if skipped > 0 { words.append(skipped == 1 ? "1 file was not a board this Seedboard can read." : "\(skipped) files were not boards this Seedboard can read.") }
+        if let line = SafetyWords.importSkipped(notBoards: skipped, newer: newer) { words.append(line) }
         return words.isEmpty ? "Nothing was chosen." : words.joined(separator: " ")
     }
 }

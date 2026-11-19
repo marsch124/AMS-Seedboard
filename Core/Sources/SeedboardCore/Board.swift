@@ -243,10 +243,10 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         unknownKind = ItemKind(rawValue: kindWord) == nil ? kindWord : nil
         extra = unknownFields(of: decoder, known: CodingKeys.allCases.map(\.rawValue))
         text = (try? c.decode(String.self, forKey: .text)) ?? ""
-        x = (try? c.decode(Double.self, forKey: .x)) ?? 0
-        y = (try? c.decode(Double.self, forKey: .y)) ?? 0
-        w = (try? c.decode(Double.self, forKey: .w)) ?? Double(kind.defaultSize.width)
-        h = (try? c.decode(Double.self, forKey: .h)) ?? Double(kind.defaultSize.height)
+        x = SafeNumber.position((try? c.decode(Double.self, forKey: .x)) ?? 0)
+        y = SafeNumber.position((try? c.decode(Double.self, forKey: .y)) ?? 0)
+        w = SafeNumber.size((try? c.decode(Double.self, forKey: .w)) ?? Double(kind.defaultSize.width), fallback: Double(kind.defaultSize.width))
+        h = SafeNumber.size((try? c.decode(Double.self, forKey: .h)) ?? Double(kind.defaultSize.height), fallback: Double(kind.defaultSize.height))
         colour = (try? c.decode(String.self, forKey: .colour)) ?? ""
         todo = (try? c.decode(Bool.self, forKey: .todo)) ?? false
         parent = try? c.decode(UUID.self, forKey: .parent)
@@ -536,7 +536,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
         title = (try? c.decode(String.self, forKey: .title)) ?? "Board"
-        created = (try? c.decode(Date.self, forKey: .created)) ?? Date(timeIntervalSince1970: 0)
+        // An unreadable "created" takes the file's own date when the reader gave it, so "newer wins" stays right.
+        created = (try? c.decode(Date.self, forKey: .created)) ?? (decoder.userInfo[Board.fileDateKey] as? Date) ?? Date(timeIntervalSince1970: 0)
         changed = (try? c.decode(Date.self, forKey: .changed)) ?? created
         format = (try? c.decode(Int.self, forKey: .format)) ?? 1
         pinned = (try? c.decode(Bool.self, forKey: .pinned)) ?? false

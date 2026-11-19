@@ -31,11 +31,12 @@ public enum DotGrid {
 
     /// The dots inside the part of the board that can be seen, in board points.
     public static func dots(in visible: CGRect, scale: CGFloat) -> [CGPoint] {
-        guard strength(scale: scale) > 0, visible.width > 0, visible.height > 0 else { return [] }
+        guard strength(scale: scale) > 0, visible.width > 0, visible.height > 0,
+              visible.minX.isFinite, visible.maxX.isFinite, visible.minY.isFinite, visible.maxY.isFinite else { return [] }
         let step = step(scale: scale)
-        let x0 = Int((visible.minX / step).rounded(.up)), x1 = Int((visible.maxX / step).rounded(.down))
-        let y0 = Int((visible.minY / step).rounded(.up)), y1 = Int((visible.maxY / step).rounded(.down))
-        guard x0 <= x1, y0 <= y1 else { return [] }
+        let x0 = SafeNumber.int((visible.minX / step).rounded(.up)), x1 = SafeNumber.int((visible.maxX / step).rounded(.down))
+        let y0 = SafeNumber.int((visible.minY / step).rounded(.up)), y1 = SafeNumber.int((visible.maxY / step).rounded(.down))
+        guard x0 <= x1, y0 <= y1, (x1 - x0 + 1) <= 20_000, (y1 - y0 + 1) <= 20_000, (x1 - x0 + 1) * (y1 - y0 + 1) <= 400_000 else { return [] }
         var points: [CGPoint] = []
         points.reserveCapacity((x1 - x0 + 1) * (y1 - y0 + 1))
         for y in y0...y1 {
