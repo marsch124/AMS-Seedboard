@@ -317,16 +317,16 @@ struct CanvasView: View {
         if item.kind == .table, let spot = session.cell {
             // 0.14: the field lies exactly on the cell being typed in, words at the left, bold in the heading row.
             let box = session.toScreen(TableLook.box(of: spot, in: item))
-            return field(isIdea: false)
+            return AnyView(field(isIdea: false)
                 .font(Lettering.font(size: TableLook.size * s, bold: spot.row == 0))
                 .multilineTextAlignment(.leading)
                 .foregroundStyle(paint.ink)
                 .padding(.horizontal, CGFloat(TableRules.padX) * s)
                 .padding(.vertical, CGFloat(TableRules.padY) * s)
                 .frame(width: max(box.width, 40), height: max(box.height, 20), alignment: .topLeading)
-                .position(x: box.midX, y: box.midY)
+                .position(x: box.midX, y: box.midY))
         }
-        return field(isIdea: item.kind == .idea)
+        return AnyView(field(isIdea: item.kind == .idea)
             .font(Lettering.font(size: size * s, bold: look.bold))
             .multilineTextAlignment(textAlign)
             .foregroundStyle(item.kind == .frame ? paint.line(item.colour.isEmpty ? "teal" : item.colour)
@@ -337,7 +337,7 @@ struct CanvasView: View {
             .frame(width: max(width, 40), height: max(r.height, 20), alignment: align)
             // 0.15: a tilted thing is typed in at its tilt, turned round the thing's own middle.
             .rotationEffect(.degrees(item.turn))
-            .position(Self.turnedSpot(CGPoint(x: x, y: r.midY), around: session.toScreen(item.frame), by: item.turn))
+            .position(Self.turnedSpot(CGPoint(x: x, y: r.midY), around: session.toScreen(item.frame), by: item.turn)))
     }
 
     /// Where the middle of the typing field goes once its thing is turned round its own middle.
