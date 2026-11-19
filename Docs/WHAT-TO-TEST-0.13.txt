@@ -1,0 +1,4 @@
+Seedboard 0.13 — switches in Settings.
+1. Settings ▸ Calendar: switch on "Timeline days in Calendar", allow full access. A "Seedboard" calendar appears with your timeline milestones and bars. Move a bar: its event moves. Mark one Done: its name ends with "(done)". Switch off: the events go again.
+2. Boards not changed for 2 weeks come up under "Still thinking about these?" (at most 3). Try Put away and Not now.
+3. New switches: Taps you feel, Done ticks the PARAGON task, Read back from PARAGON, Boards in search.
