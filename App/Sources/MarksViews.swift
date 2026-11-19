@@ -42,6 +42,7 @@ struct MarksMoreLines: View {
 struct LegendCardRow: View {
     @ObservedObject var session: BoardSession
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     var body: some View {
         let rows = session.board.placesItself ? [] : session.board.legendRows
@@ -61,7 +62,8 @@ struct LegendCardRow: View {
                                     .fill(Paint(scheme).note(row.colour))
                                     .overlay(Circle().stroke(Paint(scheme).edge, lineWidth: 1))
                                     .frame(width: 10, height: 10)
-                                Text(row.words)
+                                // 0.11: with "Differentiate Without Colour" the colour's name stands before its words.
+                                Text(differentiate ? "\(row.colour.capitalized): \(row.words)" : row.words)
                                     .font(.caption)
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
