@@ -90,7 +90,7 @@ struct BarActions {
         }
     }
 
-    private func act(_ key: String, _ word: String, _ glyph: Glyph, show: BarAction.Show = .icon, tone: BarAction.Tone = .plain,
+    func act(_ key: String, _ word: String, _ glyph: Glyph, show: BarAction.Show = .icon, tone: BarAction.Tone = .plain,
                      on: Bool = false, enabled: Bool = true, drop: Int = 0, gap: Bool = false, exact: String? = nil,
                      _ run: @escaping () -> Void) -> BarAction {
         let session = session
@@ -258,7 +258,9 @@ struct BarActions {
             all.append(none)
         }
         for name in names {
-            var one = act("colour.\(name)", name.capitalized, .control(.circle), on: inUse == name) { session.setColour(name) }
+            // 0.11: a note's colour carries the legend's word when the board names it ("Question", not "Yellow").
+            let word = (isNote ? session.board.legendWord(forColour: name) : nil) ?? name.capitalized
+            var one = act("colour.\(name)", word, .control(.circle), on: inUse == name) { session.setColour(name) }
             one.swatch = isNote ? paint.note(name) : paint.line(name)
             all.append(one)
         }
@@ -342,6 +344,8 @@ struct BarActions {
                 if session.board.canBalance(item.id) {
                     all.append(act("balance", "Balance", .new(.balance), show: .wideWord, drop: 3) { session.balanceMap() })
                 }
+                // 0.11: one press folds the map to its main branches; pressed again it opens all (Extras11.swift).
+                if let overview = mainBranchesAction(item) { all.append(overview) }
             } else {
                 all.append(colour(for: item))
                 #if !os(macOS)

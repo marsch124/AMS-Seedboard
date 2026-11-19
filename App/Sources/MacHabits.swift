@@ -419,8 +419,16 @@ final class MacDelegate: NSObject, NSApplicationDelegate {
         let model = AppModel.shared
         guard model.loaded else { return menu }
         let lists = MacHabits.dockBoards(model.boards)
-        for group in [lists.pinned, lists.recent] where !group.isEmpty {
+        // 0.11: the last five boards opened, as in File ▸ Open Recent.
+        let listed = Set((lists.pinned + lists.recent).map(\.id))
+        let opened = RecentDesk.boards().filter { !listed.contains($0.id) }
+        for (at, group) in [lists.pinned, lists.recent, opened].enumerated() where !group.isEmpty {
             menu.addItem(.separator())
+            if at == 2 {
+                let head = NSMenuItem(title: "Opened Recently", action: nil, keyEquivalent: "")
+                head.isEnabled = false
+                menu.addItem(head)
+            }
             for board in group {
                 let item = line(board.title, #selector(dockOpen(_:)), "dock.board.\(board.title)")
                 item.representedObject = board.id.uuidString

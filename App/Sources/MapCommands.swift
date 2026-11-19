@@ -16,6 +16,12 @@ struct MapCommands: View {
             .disabled(!canChange || chosenIdea.map { !(session?.board.canBalance($0.id) ?? false) } ?? true)
         Button(chosenIdea?.folded == true ? "Unfold Branch" : "Fold Branch") { session?.toggleFold(); session?.takeKeys() }
             .disabled(!canChange || chosenIdea.map { (session?.facts.children[$0.id] ?? 0) == 0 } ?? true)
+        // 0.11: the whole map at once, to its main branches and back.
+        Button(chosenIdea.map { session?.board.showsMainBranchesOnly(session?.board.centre(of: $0.id) ?? $0.id) } == true ? "Open All Branches" : "Main Branches Only") {
+            if let idea = chosenIdea, let session { session.toggleMainBranches(session.board.centre(of: idea.id)) }
+            session?.takeKeys()
+        }
+        .disabled(!canChange || chosenIdea.map { !(session?.board.canFoldToMainBranches(session?.board.centre(of: $0.id) ?? $0.id) ?? false) } ?? true)
         Button("Unfold All") { session?.unfoldAll(); session?.takeKeys() }
             .disabled(!canChange || session?.board.hasFolded != true)
         Button(session?.board.numberSteps == true ? "Stop Numbering the Steps" : "Number the Steps") {

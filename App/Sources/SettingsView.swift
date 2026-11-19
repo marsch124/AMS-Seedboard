@@ -22,6 +22,9 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings.whatsNew")
                 } header: { PartHeader("Help", .boards) }
 
+                // 0.11: the tick sound (Extras11.swift).
+                SoundsSection()
+
                 Section {
                     Text(model.paragonLine)
                         .fixedSize(horizontal: false, vertical: true)

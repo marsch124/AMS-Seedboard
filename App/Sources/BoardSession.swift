@@ -611,7 +611,7 @@ final class BoardSession: ObservableObject {
         let ids = selection.filter { board.item($0)?.kind != .drawing && board.item($0)?.kind != .picture && board.item($0)?.kind != .phase && board.item($0)?.kind != .door }
         guard !ids.isEmpty else { return }
         let allOn = ids.allSatisfy { board.item($0)?.todo == true }
-        if !allOn { Feel.todoOn() }
+        if !allOn { Feel.todoOn(); TickSound.play() }
         change { board in
             for id in ids {
                 if let i = board.index(of: id), board.items[i].kind != .frame { board.items[i].todo = !allOn }

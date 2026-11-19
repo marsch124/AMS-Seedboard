@@ -12,11 +12,13 @@ import UIKit
 
 /// Writes down where the owner is, and brings a board back to the view it was left at.
 @MainActor
-final class Remember {
+final class Remember: ObservableObject {
     static let shared = Remember()
 
     private static let key = "seedboard.remembered"
     private var state = Remember.read()
+    /// 0.11: the boards opened last, newest first, at most five (the Mac's "Open Recent", Extras11.swift).
+    @Published private(set) var recent: [UUID] = Remember.read().recent
     private weak var model: AppModel?
     private weak var session: BoardSession?
     private var watches = Set<AnyCancellable>()
@@ -81,6 +83,7 @@ final class Remember {
         // Before the boards are read nothing is open yet: what was remembered must not be wiped.
         if model?.loaded == true {
             state.open = new?.board.id
+            noteOpened(new?.board.id)
             save()
         }
     }
@@ -95,8 +98,15 @@ final class Remember {
         guard let model, model.loaded else { return }
         note()
         state.open = model.session?.board.id
+        noteOpened(state.open)
         state = state.keeping(Set(model.boards.map(\.id)))
         save()
+    }
+
+    private func noteOpened(_ id: UUID?) {
+        guard let id, state.recent.first != id else { return }
+        state.recent = RecentBoards.opened(id, in: state.recent)
+        recent = state.recent
     }
 
     private func save() {
