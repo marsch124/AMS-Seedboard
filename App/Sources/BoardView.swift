@@ -313,6 +313,13 @@ struct BoardView: View {
                             .disabled(!session.board.canUnfoldAny)
                             .accessibilityIdentifier("more.unfoldAll")
                     }
+                    if !session.readOnly {
+                        Button("Set the plan") { if let w = session.setTimelinePlan() { model.say(w) }; session.takeKeys() }
+                            .accessibilityIdentifier("more.setPlan")
+                        Button("Clear the plan") { session.clearTimelinePlan(); session.takeKeys() }
+                            .disabled(!session.board.hasPlan)
+                            .accessibilityIdentifier("more.clearPlan")
+                    }
                     if session.canAddToCalendar {
                         Button("Add to Calendar…") { session.commitEdit(); model.showCalendar = true }
                             .accessibilityIdentifier("more.calendar")

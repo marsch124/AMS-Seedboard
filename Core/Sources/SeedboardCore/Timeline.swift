@@ -504,8 +504,35 @@ public extension Board {
         for item in timelineRows {
             if item.kind == .phase { folded = item.folded } else if folded { hidden.insert(item.id) }
         }
+        hidden.formUnion(hiddenDoneIDs)
         return hidden
     }
+
+    // MARK: Hide done (0.14, pick 18)
+
+    /// True when "Hide done" is on for this timeline.
+    var hidesDone: Bool { isTimeline && hideDone == true }
+
+    /// With "Hide done" on: every done bar and milestone, and a phase whose rows are all done (it must
+    /// have at least one). Nothing is removed; this is only what is left out of the rows.
+    var hiddenDoneIDs: Set<UUID> {
+        guard hidesDone else { return [] }
+        var out = Set<UUID>()
+        var phase: Item?
+        var under: [Item] = []
+        func close() {
+            if let p = phase, !under.isEmpty, under.allSatisfy({ $0.isDone }) { out.insert(p.id) }
+        }
+        for item in timelineRows {
+            if item.kind == .phase { close(); phase = item; under = [] }
+            else { if item.isDone { out.insert(item.id) }; under.append(item) }
+        }
+        close()
+        return out
+    }
+
+    /// How many done bars and milestones "Hide done" leaves out (phases are not counted); 0 when it is off.
+    var hiddenDoneCount: Int { hiddenDoneIDs.filter { item($0)?.kind != .phase }.count }
 
     /// The rows that are in sight, from the top: `timelineRows` without what a folded phase hides.
     var shownTimelineRows: [Item] {
@@ -529,7 +556,7 @@ public extension Board {
         let rows = timelineRows
         var out: [PhaseGroup] = []
         var counted = 0
-        for g in phaseGroups {
+        for g in phaseGroups where !hidden.contains(g.id) {
             // Rows above this phase that are in sight, then the phase's own and the ones under it that stay.
             counted = rows[..<g.firstRow].filter { !hidden.contains($0.id) }.count
             let kept = rows[g.firstRow...g.lastRow].filter { !hidden.contains($0.id) }.count

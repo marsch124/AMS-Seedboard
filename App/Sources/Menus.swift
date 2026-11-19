@@ -102,6 +102,13 @@ struct SeedMenus: Commands {
                 .disabled(session == nil || session?.readOnly == true || session?.board.canFoldAny != true)
             Button("Unfold All Phases") { session?.foldAllTimelinePhases(false) }
                 .disabled(session == nil || session?.readOnly == true || session?.board.canUnfoldAny != true)
+            // 0.14: Hide done bars; Set / Clear the plan (a timeline).
+            Button(session?.board.hidesDone == true ? "Show Done Bars" : "Hide Done Bars") { session?.toggleHideDone() }
+                .disabled(session == nil || session?.readOnly == true || session?.board.isTimeline != true)
+            Button("Set the Plan") { if let w = session?.setTimelinePlan() { model.say(w) } }
+                .disabled(session == nil || session?.readOnly == true || session?.board.isTimeline != true)
+            Button("Clear the Plan") { session?.clearTimelinePlan() }
+                .disabled(session == nil || session?.readOnly == true || session?.board.hasPlan != true)
             Button("Add to Calendar…") {
                 session?.commitEdit()
                 model.showCalendar = true
