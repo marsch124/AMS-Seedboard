@@ -59,6 +59,7 @@ struct BoardView: View {
                 // 0.9: "Focus · name  Done" while Focus runs.
                 FocusPill(session: session)
                 SentLine(session: session)
+                InboxWaitLine(session: session)
                 // A starter is being changed: this board is its working copy (StartersPage.swift).
                 if session.starterDraft { StarterChangeBanner() }
                 if HandoffDesk.shared.waiting == session.board.id {
@@ -124,6 +125,7 @@ struct BoardView: View {
                 }
                 // On a timeline and a "Who does what" board the top holds the dates and the names: the line sits down here.
                 SentLine(session: session, low: true)
+                InboxWaitLine(session: session, low: true)
                 if session.board.isTimeline && !session.linking { TimelineSelectionBar(session: session) }
                 if session.board.isSequence && !session.linking { SequenceSelectionBar(session: session) }
                 // The one line at the bottom (FeelLooks.swift); with no board in sight the window shows it (RootView).
@@ -293,6 +295,12 @@ struct BoardView: View {
                 Button("Copy the board as text") {
                     model.copyText(session.board.outlineText)
                     model.say("The board's words are copied.")
+                    session.takeKeys()
+                }
+                // 0.11 (pick 40): the same words with a short first line and "Made with Seedboard".
+                Button("Copy the board as an email") {
+                    model.copyText(session.board.emailText)
+                    model.say("The board is copied as an email.")
                     session.takeKeys()
                 }
                 // 0.9, a timeline: phases fold away, and milestones go into the calendar.

@@ -19,6 +19,8 @@ struct SendSheet: View {
     @State private var branchOnly = false
     /// 0.9: only what lies inside the chosen frame is sent. On at first when one frame is chosen.
     @State private var frameOnly = false
+    /// 0.11 (pick 27): only the things chosen on the board are sent (two or more chosen).
+    @State private var chosenOnly = false
 
     /// What a look at the note the board became found (reading only); nil while that is not known, and for a
     /// board that was never sent as a note or a project.
@@ -33,12 +35,19 @@ struct SendSheet: View {
     /// 0.9: the one chosen frame, when the page can offer "Only this frame (…)".
     private var frame: Item? { session.frameToSend }
     /// A part of the board is sent (a branch or a frame), not the whole of it.
-    private var partOnly: Bool { (branchOnly && branch != nil) || (frameOnly && frame != nil) }
+    private var partOnly: Bool { (branchOnly && branch != nil) || (frameOnly && frame != nil) || chosenActive }
+    /// 0.11: how many things are chosen when the page can offer "The 3 chosen things" (two or more, no single branch or frame).
+    private var chosenCount: Int? {
+        guard branch == nil, frame == nil, session.selection.count >= 2, session.board.chosenOnly(session.selection) != nil else { return nil }
+        return session.selection.count
+    }
+    private var chosenActive: Bool { chosenOnly && chosenCount != nil }
     /// The whole board (for pictures: the sample board shown as sent before, SendParts.swift).
     private var whole: Board { SendSample.board(session.board) }
     /// What is sent: the whole board, or the chosen branch as a small map of its own.
     private var subject: Board {
         if frameOnly, let frame, let part = session.board.frameOnly(frame.id) { return part }
+        if chosenActive, let part = session.board.chosenOnly(session.selection) { return part }
         guard branchOnly, let branch, let part = session.board.branchOnly(branch.id) else { return whole }
         return part
     }
@@ -133,17 +142,26 @@ struct SendSheet: View {
                    session.board.isTimeline
                    ? "The timeline's picture and its bars with their dates. It goes to Resources, and one line in the Inbox points to it."
                    : "The board's picture and its words as a tidy outline. It goes to Resources, and one line in the Inbox points to it.")
-            choice(.project, "As a project",
+            if !chosenActive { choice(.project, "As a project",
                    session.board.isSequence ? SequenceWords.sendProject :
                    session.board.isTimeline
                    ? "The phases become headings, the bars become tasks with their start and due day. It goes to Projects."
-                   : "The branches become headings. The ideas you ticked To do become tasks; with nothing ticked, all of them do. It goes to Projects.")
+                   : "The branches become headings. The ideas you ticked To do become tasks; with nothing ticked, all of them do. It goes to Projects.") }
             choice(.todos, "Only the to-do boxes", todosWords)
 
             if let frame {
                 FrameSwitch(words: session.frameSwitchWords(frame), on: $frameOnly)
                 if frameOnly {
                     Text("Just what lies inside this frame is sent, with a picture of the frame alone. The board is not marked as sent.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if let count = chosenCount {
+                SendSwitch(words: Board.chosenWords(count), on: $chosenOnly, identifier: "send.chosenOnly")
+                if chosenOnly {
+                    Text("Just these things are sent, as a note or as to-dos. The board is not marked as sent.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -191,7 +209,7 @@ struct SendSheet: View {
             }
 
             let made = gets
-            ParagonGetsBox(rows: made.rows, picture: frameOnly && frame != nil ? (frame.flatMap { session.board.frameOnly($0.id, keepFrame: true) } ?? session.board) : (branchOnly ? nil : session.board),
+            ParagonGetsBox(rows: made.rows, picture: chosenActive ? subject : frameOnly && frame != nil ? (frame.flatMap { session.board.frameOnly($0.id, keepFrame: true) } ?? session.board) : (branchOnly ? nil : session.board),
                            countLine: ParagonExport.countLine(made.rows, inInbox: made.inInbox))
 
             if let sent = whole.sent, let news,
@@ -285,6 +303,11 @@ struct SendSheet: View {
             let part = frame.map { ParagonExport.noteTitle(for: session.board.frameName($0.id).isEmpty ? session.board.title : session.board.frameName($0.id)) } ?? whole
             if title.isEmpty || title == (on ? whole : part) { title = on ? part : whole }
         }
+        .onChange(of: chosenOnly) { _, on in
+            // Chosen things are a small board of their own: nothing is added to the note the whole board became,
+            // and they go as a note or as to-dos, not as a project.
+            if on, kind == .add || kind == .project { kind = .note }
+        }
         .onChange(of: branchOnly) { _, on in
             // A branch is a small map of its own: nothing is added to the note the whole board became.
             if on, kind == .add { kind = .note }
@@ -330,7 +353,8 @@ struct SendSheet: View {
         problem = nil
         Task {
             let failure = await model.send(kind: kind, title: title, branch: branchOnly ? branch?.id : nil,
-                                             frame: frameOnly ? frame?.id : nil, choices: choices)
+                                             frame: frameOnly ? frame?.id : nil,
+                                             chosen: chosenActive ? session.selection : nil, choices: choices)
             busy = false
             if let failure {
                 problem = failure
