@@ -11,7 +11,7 @@ final class Pictures14UITests: XCTestCase {
 
     private func launch(_ extra: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        var arguments = ["-sampleData", "-board", "balcony"] + extra
+        var arguments = ["-board", "balcony"] + extra + ["-sampleData"]
         #if os(macOS)
         arguments += ["-ApplePersistenceIgnoreState", "YES"]
         #endif

@@ -11,3 +11,5 @@ build-mac-signed/
 build-ios-signed/
 build-ios2/
 build-uitest/
+build-ios-test/
+build-texts/

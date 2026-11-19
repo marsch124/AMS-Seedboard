@@ -1,0 +1,24 @@
+Seedboard 0.14 — what to try.
+1. Calendar: press a day in the Seedboard calendar, it opens that bar's board. Switch it off and on again.
+2. Press and hold an idea ▸ Copy link to this. Paste it in Notes, open it: the board opens at that thing.
+3. Tilt: choose a note, press Tilt three times. On iPhone twist two fingers on a note.
+4. Copy look on one note, choose three others, Paste look. Mac: ⌃⌥⌘V.
+5. Free text ▸ Size ▸ Title, Normal, Small.
+6. Picture ▸ Lift out (use a photo of a plant). Undo takes the new one away.
+7. Drop a PDF with several pages: the question This PDF has N pages.
+8. Timeline: Hide done, Show done. More ▸ Set the plan, move a bar, see the dashed outline and 2 days late. Clear the plan.
+9. Choose a few ideas ▸ Zoom to these (Mac ⌘3).
+10. Who does what: choose two messages ▸ Block ▸ Repeat. Move a message; the frame follows. Remove block.
+11. Insert ▸ Table (or the plate ▸ Table). Type in cells with Tab. Add row, Remove column.
+12. Board menu ▸ Join with… another board. The first one goes under Put away.
+13. Lock with Face ID on a board. Close, open: it asks. The card says Private. Search by a word inside: not found.
+14. File ▸ Open Outline… (Mac) or More ▸ Open an outline file with a .md file.
+15. More ▸ Brainstorm timer ▸ 5 min. Stop it.
+16. Typing in a note: Today puts the date.
+17. Choose things ▸ Save as a piece…; then More ▸ Add a piece… in another board.
+18. Move to a new board, then Undo: the new board is under Put away.
+19. Make a copy of a put-away board: the copy is in the list.
+20. Share as picture of a very big board: grey line Shown smaller.
+21. A to-do sent to PARAGON shows a purple ring with a white arrow; done is a green tick.
+22. Settings ▸ How it works ▸ Signs in this app: read the new signs.
+23. Old devices: a board changed in 0.14 opens read-only in 0.13.
