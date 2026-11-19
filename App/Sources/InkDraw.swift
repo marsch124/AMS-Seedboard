@@ -6,6 +6,9 @@ import SeedboardCore
 // runs under the Pencil while it is down. The way of a line (its rounded corners, its widths under
 // pressure) is worked out in SeedboardCore (`Ink.runs`); here it only becomes paint.
 
+/// 0.11 (pick 38): "Fade" draws pencil lines at 30 %.
+enum Fade { static let opacity = 0.3 }
+
 enum InkDraw {
     /// A stroke's colour: a palette name, by day and by night; no name is plain ink.
     static func colour(_ name: String, paint: Paint) -> Color {
@@ -68,6 +71,8 @@ extension BoardPainter {
     /// A drawing: every stroke in its own colour and thickness, in the order they were drawn.
     func drawInk(_ item: Item, _ ctx: GraphicsContext) {
         let corner = CGPoint(x: item.x, y: item.y)
+        var ctx = ctx
+        ctx.opacity = inkOpacity
         // The highlighter lies under the ordinary ink of the same drawing (Ink.swift: `paintedStrokes`).
         for stroke in item.paintedStrokes { InkDraw.paint(stroke, from: corner, paint: paint, in: ctx) }
     }
@@ -76,6 +81,7 @@ extension BoardPainter {
     func drawPictureMarks(_ item: Item, _ ctx: GraphicsContext) {
         guard let marks = item.strokes, !marks.isEmpty else { return }
         var inside = ctx
+        inside.opacity = inkOpacity
         inside.clip(to: Path(roundedRect: item.frame, cornerRadius: 4))
         let corner = CGPoint(x: item.x, y: item.y)
         for stroke in item.paintedStrokes { InkDraw.paint(stroke, from: corner, paint: paint, in: inside) }

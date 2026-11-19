@@ -129,6 +129,10 @@ final class InkDesk: ObservableObject {
         didSet { if !LaunchOptions.sampleData { UserDefaults.standard.set(colour, forKey: InkDesk.colourKey) } }
     }
     let wet = WetLine()
+    /// 0.11 (pick 37): the ruler lying on the board (board points). View only: never saved, gone when the Draw tool is left.
+    @Published var ruler: Ruler?
+    /// 0.11 (pick 38): "Fade": every pencil line of this board shows at 30 %. View only: never saved.
+    @Published var fade = false
     /// Tidy shapes (InkTidy.swift): the switch in the plate, and whether the tip has come to rest.
     @Published var tidyShapes = TidyShapes.stored { didSet { TidyShapes.keep(tidyShapes) } }
     var rest = InkRest()
@@ -156,6 +160,7 @@ final class InkDesk: ObservableObject {
         if lasso { lasso = false }
         target = nil
         lassoed = []
+        ruler = nil
     }
 
     func pick(width new: InkWidth) {
@@ -322,8 +327,14 @@ extension BoardSession {
             liveEnd(keep: !cancelled)
             return
         }
-        let points = desk.wet.points
-        let force = desk.wet.pressed ? desk.wet.pressure : nil
+        var points = desk.wet.points
+        var force = desk.wet.pressed ? desk.wet.pressure : nil
+        // 0.11 (pick 37): a line drawn along the ruler becomes one straight line on its edge.
+        if let ruler = desk.ruler, !desk.wet.lasso,
+           let straight = ruler.snapped(points, reach: Ruler.screenReach / Double(scale)) {
+            points = straight
+            force = nil
+        }
         let highlighted = desk.wet.highlighter
         let looped = desk.wet.lasso
         desk.wet.clear()

@@ -245,6 +245,8 @@ struct BoardPainter {
     /// The idea a dragged idea would hang under.
     var dropTarget: UUID?
     var handles = true
+    /// 0.11 (pick 38): how strongly pencil lines show (1; 0.3 while "Fade" is on). View only.
+    var inkOpacity = 1.0
     /// Frames and lanes that light up, and the lane whose name is being typed (LanesView.swift).
     var frames = FrameShow()
     /// 0.5: how each to-do thing stands (waiting, in PARAGON, done, cancelled) — `ParagonEcho.marks(for:)`.

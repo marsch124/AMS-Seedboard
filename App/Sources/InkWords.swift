@@ -77,4 +77,29 @@ extension BoardSession {
             selection = [id]
         }
     }
+
+    /// "Read this" (0.11, pick 31): like "Make typed", but the words come up as a sticky note beside the sketch and
+    /// the sketch stays. One step for Undo takes the note away again.
+    func readThis(_ id: UUID) {
+        guard !readOnly, !board.placesItself, let item = board.item(id), item.kind == .drawing else { return }
+        commitEdit()
+        guard let image = InkWords.image(of: item) else {
+            AppModel.shared.say(InkText.noWords, tone: .problem, seconds: 4)
+            return
+        }
+        Task { @MainActor in
+            let words = InkText.clean(await InkWords.read(image))
+            guard !readOnly, let now = board.item(id), now.kind == .drawing, now.strokes == item.strokes else { return }
+            guard !words.isEmpty else {
+                AppModel.shared.say(InkText.noWords, tone: .problem, seconds: 4)
+                return
+            }
+            var made: UUID?
+            change { made = $0.addReadNote(besideDrawing: id, words: words) }
+            if let made {
+                selectedLink = nil
+                selection = [made]
+            }
+        }
+    }
 }
