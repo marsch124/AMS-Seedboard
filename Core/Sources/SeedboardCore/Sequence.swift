@@ -14,7 +14,7 @@ public extension ItemKind {
     /// A message, a note across the lines or a section heading: what stands in the order from top to bottom.
     var isStep: Bool { self == .message || self == .band || self == .section }
     /// A name with its line, or a step: the four things of a "Who does what" board.
-    var isSequence: Bool { self == .who || isStep }
+    var isSequence: Bool { self == .who || isStep || self == .block }
 }
 
 public extension Item {
@@ -70,6 +70,12 @@ public struct SequenceMetrics: Equatable, Sendable {
     public var sectionBottom = 8.0
     /// How far the dashed lines go on under the last step: room to drop the next message.
     public var tail = 40.0
+    /// 0.14, a block: the room above its first message (for its tab) and under its last, the room
+    /// its frame keeps from the messages, and how much more each block it holds adds to that.
+    public var blockHead = 20.0
+    public var blockFoot = 8.0
+    public var blockPad = 12.0
+    public var blockNest = 8.0
     /// The dashed lines are never shorter than this.
     public var leastLine = 96.0
     /// Under the ends of the dashed lines.
@@ -115,8 +121,18 @@ public struct SequenceLayout: Equatable, Sendable {
     public var x: [UUID: Double] = [:]
     /// The name boxes, where they stand when nothing is pinned.
     public var boxes: [UUID: CGRect] = [:]
+    /// 0.14: a block's place round its messages.
+    public struct Block: Equatable, Sendable {
+        public var id: UUID
+        public var rect: CGRect
+        /// 0 for a block with no block in it, 1 for one that holds such a block …
+        public var level: Int
+    }
+
     /// The steps from the top (a message that has lost one of its names is left out).
     public var rows: [Row] = []
+    /// The blocks, the outer ones first.
+    public var blocks: [Block] = []
     /// The left and the right edge of what is drawn (inside the margins).
     public var left = 0.0
     public var right = 0.0
@@ -387,11 +403,13 @@ public extension Board {
     @discardableResult
     mutating func removeFromSequence(_ ids: Set<UUID>) -> Int {
         let names = Set(ids.filter { item($0)?.kind == .who })
+        let held = Dictionary(uniqueKeysWithValues: blocks.map { ($0.id, messages(in: $0.id)) })
         let along = items.filter { item in
             item.kind == .message && !ids.contains(item.id)
                 && (item.from.map(names.contains) == true || item.to.map(names.contains) == true)
         }.map(\.id)
         remove(ids.union(along))
+        keepBlocks(held: held)
         number(whos.map(\.id))
         number(steps.map(\.id))
         return along.count
@@ -478,10 +496,16 @@ public extension Board {
         layout.boxBottom = m.top + boxHeight
         layout.firstTop = layout.boxBottom + m.headGap
 
-        // The steps, one under the other.
+        // The steps, one under the other. A block leaves room above its first message for its tab
+        // and under its last for its frame.
+        let frames = sequenceBlockFrames()
+        var opens: [Int: Int] = [:], closes: [Int: Int] = [:]
+        for frame in frames { opens[frame.lo, default: 0] += 1; closes[frame.hi, default: 0] += 1 }
+        var rowOfStep: [Int: Int] = [:]
         var top = layout.firstTop
         var number = 0
-        for step in all {
+        for (at, step) in all.enumerated() {
+            top += Double(opens[at] ?? 0) * m.blockHead
             let high = max(step.h, m.lineHeight)
             switch step.kind {
             case .message:
@@ -525,8 +549,29 @@ public extension Board {
             default:
                 continue
             }
-            top = layout.rows[layout.rows.count - 1].bottom
+            rowOfStep[at] = layout.rows.count - 1
+            top = layout.rows[layout.rows.count - 1].bottom + Double(closes[at] ?? 0) * m.blockFoot
         }
+
+        // The blocks, each round its messages from the first to the last, across every name they touch.
+        let levels = Board.blockLevels(frames)
+        for (i, frame) in frames.enumerated() {
+            guard let a = rowOfStep[frame.lo], let b = rowOfStep[frame.hi] else { continue }
+            let held = layout.rows[a...b].filter { $0.kind == .message }
+            guard !held.isEmpty else { continue }
+            let level = levels[frame.id] ?? 0
+            let pad = m.blockPad + m.blockNest * Double(level)
+            let minX = held.map { min($0.fromX, $0.toX, Double($0.box.minX)) }.min() ?? 0
+            let maxX = held.map { max($0.fromX, $0.toX, Double($0.box.maxX)) }.max() ?? 0
+            let sameStart = frames.filter { $0.lo == frame.lo }
+            let k = sameStart.firstIndex { $0.id == frame.id } ?? 0
+            let inner = frames[(i + 1)...].filter { $0.hi == frame.hi }.count
+            let y0 = layout.rows[a].top - m.blockHead * Double(sameStart.count - k) + 3
+            let y1 = layout.rows[b].bottom + m.blockFoot * Double(inner) + 4
+            layout.blocks.append(.init(id: frame.id, rect: CGRect(x: minX - pad, y: y0, width: maxX - minX + 2 * pad, height: y1 - y0), level: level))
+            right = max(right, maxX + pad)
+        }
+        layout.right = max(layout.right, right)
 
         layout.lineBottom = max(top + m.tail, layout.boxBottom + m.leastLine)
         layout.size = CGSize(width: right + m.margin, height: layout.lineBottom + m.bottom)
@@ -542,7 +587,8 @@ public extension Board {
             return n == 0 ? nil : (n == 1 ? "1 \(one)" : "\(n) \(many)")
         }
         let parts = [count(.who, "person", "people"), count(.message, "message", "messages"),
-                     count(.band, "note", "notes"), count(.section, "section", "sections")].compactMap { $0 }
+                     count(.band, "note", "notes"), count(.section, "section", "sections"),
+                     count(.block, "block", "blocks")].compactMap { $0 }
         return parts.isEmpty ? "Empty" : parts.joined(separator: " · ")
     }
 
@@ -559,13 +605,16 @@ public extension Board {
         let names = whos.map { ParagonExport.whoName($0) }
         if !names.isEmpty { lines.append("Who: " + names.joined(separator: ", ")); lines.append("") }
         let numbers = messageNumbers
-        for step in steps {
+        let writing = ParagonExport.blockWriting(self)
+        for (at, step) in steps.enumerated() {
             let words = ParagonExport.oneLine(step.text)
+            lines.append(contentsOf: writing.heads[at] ?? [])
+            let indent = String(repeating: "   ", count: writing.depth[at] ?? 0)
             switch step.kind {
             case .message:
-                if let n = numbers[step.id] { lines.append("\(n). " + ParagonExport.messageLine(step, in: self)) }
+                if let n = numbers[step.id] { lines.append(indent + "\(n). " + ParagonExport.messageLine(step, in: self)) }
             case .band:
-                lines.append("   Note: " + (words.isEmpty ? "(empty)" : words))
+                lines.append(indent + "   Note: " + (words.isEmpty ? "(empty)" : words))
             default:
                 lines.append("")
                 lines.append((words.isEmpty ? "Section" : words) + ":")
@@ -608,12 +657,15 @@ public extension ParagonExport {
     static func sequenceList(_ board: Board) -> [String] {
         let numbers = board.messageNumbers
         var lines: [String] = []
-        for step in board.steps {
+        let writing = blockWriting(board)
+        for (at, step) in board.steps.enumerated() {
+            lines.append(contentsOf: writing.heads[at] ?? [])
+            let indent = String(repeating: "   ", count: writing.depth[at] ?? 0)
             switch step.kind {
             case .message:
-                if let n = numbers[step.id] { lines.append("\(n). " + messageLine(step, in: board)) }
+                if let n = numbers[step.id] { lines.append(indent + "\(n). " + messageLine(step, in: board)) }
             case .band:
-                lines.append(contentsOf: ["", "> " + label(step), ""])
+                lines.append(contentsOf: ["", indent + "> " + label(step), ""])
             default:
                 lines.append(contentsOf: ["", "### " + label(step), ""])
             }

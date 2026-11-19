@@ -181,6 +181,30 @@ extension BoardSession {
         }
     }
 
+    // MARK: Blocks
+
+    /// The messages among the chosen things: what a block can be put round.
+    var chosenMessages: Set<UUID> { Set(selection.filter { id in board.item(id).map { board.isDrawnMessage($0) } ?? false }) }
+
+    /// The Block chip: a frame round the chosen messages, from the first to the last of them, with
+    /// the word "repeat", "if" or "maybe". With `nil` the words are typed at once ("Other words…").
+    func sequenceAddBlock(word: String?) {
+        let messages = chosenMessages
+        guard !messages.isEmpty, ready() else { return }
+        var new: UUID?
+        change { new = $0.addBlock(round: messages, word: word ?? "") }
+        guard let new else { return }
+        selection = [new]
+        if word == nil { beginEdit(new, isNew: true) }
+    }
+
+    /// Remove block: only the frame goes, the messages stay.
+    func sequenceRemoveBlock() {
+        guard let item = single, item.kind == .block, editing == nil else { return }
+        change { $0.removeFromSequence([item.id]) }
+        selection = []
+    }
+
     /// Answer on or off for the chosen message: an answer is drawn with dashes.
     func toggleAnswer() {
         guard let item = single, item.kind == .message else { return }

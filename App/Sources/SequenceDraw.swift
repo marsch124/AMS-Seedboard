@@ -29,6 +29,17 @@ enum SequenceLook {
         }
     }
 
+    /// A block's tab: its word on a small plate at the top-left of the frame (a block without a
+    /// word says "block").
+    static func blockWord(_ block: Item) -> String {
+        ParagonExport.blockTabWord(block)
+    }
+
+    static func blockTab(_ block: Item, in rect: CGRect) -> CGRect {
+        let size = Lettering.measure(blockWord(block), size: 11, bold: true, maxWidth: 200)
+        return CGRect(x: rect.minX + 10, y: rect.minY, width: size.width + 14, height: 16)
+    }
+
     static func font(_ kind: ItemKind, scale: CGFloat = 1) -> Font {
         let look = style(kind)
         return .system(size: look.size * scale, weight: look.bold ? .semibold : .regular)
@@ -105,6 +116,12 @@ struct SequencePainter {
                        style: StrokeStyle(lineWidth: 1.3, lineCap: .round, dash: [5, 5]))
         }
 
+        // Blocks lie under everything but the dashed lines: a thin frame, its word in a small tab.
+        for place in layout.blocks {
+            guard let block = items[place.id] else { continue }
+            drawBlock(block, place.rect, &ctx)
+        }
+
         // Sections and notes lie under the messages.
         for row in layout.rows where row.kind != .message {
             guard let item = items[row.id] else { continue }
@@ -119,6 +136,10 @@ struct SequencePainter {
             drawRow(row, item, &layer)
         }
         for row in layout.rows where selection.contains(row.id) { drawChosen(row, &ctx) }
+        for place in layout.blocks where selection.contains(place.id) {
+            if let block = items[place.id] { ring(SequenceLook.blockTab(block, in: place.rect).insetBy(dx: -3, dy: -3), radius: 8, &ctx) }
+            ring(place.rect.insetBy(dx: -3, dy: -3), radius: 12, &ctx)
+        }
 
         // The names. Slid up, they stay at the top edge, on a strip of the board's own colour.
         let down = shift
@@ -299,6 +320,23 @@ struct SequencePainter {
         default:
             break
         }
+    }
+
+    /// A block: a thin rounded frame in its colour (grey with none) and its word in a tab on the
+    /// top edge. Nothing is filled, so the dashed lines and the messages show through.
+    private func drawBlock(_ block: Item, _ rect: CGRect, _ ctx: inout GraphicsContext) {
+        let name = block.colour.isEmpty ? "grey" : block.colour
+        let line = paint.line(name)
+        ctx.stroke(Path(roundedRect: rect, cornerRadius: 10), with: .color(line.opacity(0.85)),
+                   style: StrokeStyle(lineWidth: 1.3, lineJoin: .round))
+        let tab = SequenceLook.blockTab(block, in: rect)
+        let shape = Path(roundedRect: tab, cornerRadius: 6)
+        ctx.fill(shape, with: .color(back))
+        ctx.fill(shape, with: .color(paint.soft(name)))
+        ctx.stroke(shape, with: .color(line), lineWidth: 1.1)
+        guard editing != block.id else { return }
+        let text = ctx.resolve(Text(SequenceLook.blockWord(block)).font(.system(size: 11, weight: .semibold)).foregroundColor(paint.ink))
+        ctx.draw(text, at: CGPoint(x: tab.midX, y: tab.midY), anchor: .center)
     }
 
     private func ring(_ box: CGRect, radius: CGFloat, dashed: Bool = false, _ ctx: inout GraphicsContext) {
