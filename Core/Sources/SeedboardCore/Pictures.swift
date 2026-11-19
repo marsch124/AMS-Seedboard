@@ -110,6 +110,16 @@ public enum PictureKeeping {
     /// A fresh name for a new picture file: `<UUID>.jpg`.
     public static func freshName(_ id: UUID = UUID()) -> String { id.uuidString + ".jpg" }
 
+    /// 0.14 (lift out): a fresh name for a picture with a clear background: `<UUID>.png`.
+    public static func freshPNGName(_ id: UUID = UUID()) -> String { id.uuidString + ".png" }
+
+    /// 0.14: a plain name that ends in `.jpg` or `.png` — the two kinds of picture file the Pictures folder holds.
+    public static func isPictureFileName(_ name: String) -> Bool {
+        guard isPlainName(name) else { return false }
+        let low = name.lowercased()
+        return low.hasSuffix(".jpg") || low.hasSuffix(".png")
+    }
+
     /// The files to delete. `files`: each file in the Pictures folder with its date (nil when it could not be read).
     /// `named`: every name any board, removed board, safety copy or earlier version uses.
     /// `complete`: false when some kept copy could not be read — then nothing is deleted.

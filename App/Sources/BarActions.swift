@@ -131,6 +131,15 @@ struct BarActions {
         ]
     }
 
+    // MARK: 0.14 (16) — Lift out
+    /// "Lift out": the picture's subject becomes a new picture beside it (PicturesFrom14.swift). Greyed while the file is not here yet.
+    private func liftOut(_ item: Item, drop: Int = 6) -> BarAction {
+        let session = session, id = item.id
+        let here = item.picture.map { PictureStore.shared.image($0) != nil } ?? false
+        return act("liftout", "Lift out", .new(.picture), show: .wideWord, enabled: here, drop: drop, exact: "picture.liftout") { session.liftOut(id) }
+    }
+    // MARK: end 0.14 (16)
+
     /// Crop a picture (0.4): opens "Crop the picture". Greyed while the picture's file is not here yet.
     private func crop(_ item: Item, drop: Int = 2) -> BarAction {
         let session = session, id = item.id
@@ -463,6 +472,7 @@ struct BarActions {
             all.append(drawOn(item.id, drop: 1))
             all.append(caption(item.id, drop: 2))
             all.append(crop(item, drop: 3))
+            all.append(liftOut(item))
             // 0.11: the words found inside the picture; only offered when there are some.
             if !item.foundWords.isEmpty { all += pictureWordsActions(item) }
             all.append(duplicate(drop: 0))
@@ -564,7 +574,7 @@ struct BarActions {
         if item.kind == .door { return withMarks(doorMenu(item, [copy, cut, twin]) + [remove(gap: true)], full: true) }
         // (A sketch has no words and carries no tick.)
         if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
-        if item.kind == .picture { all += [drawOn(item.id), caption(item.id), crop(item)] }
+        if item.kind == .picture { all += [drawOn(item.id), caption(item.id), crop(item), liftOut(item)] }
         if item.kind == .drawing { all.append(makeTyped(item.id)); all.append(readThis(item.id)) }
         let isBranch = item.kind == .idea && item.parent != nil
         if item.kind.isShape || item.kind == .note || item.kind == .frame || item.kind == .drawing || isBranch { all.append(colour(for: item)) }

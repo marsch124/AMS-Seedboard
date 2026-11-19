@@ -172,7 +172,7 @@ extension AppModel {
                 defer { if allowed { file.stopAccessingSecurityScopedResource() } }
                 guard let data = try? Data(contentsOf: file) else { skipped += 1; continue }
                 // A picture file from an export: it comes back under its own name, so the boards that show it find it.
-                if file.pathExtension.lowercased() == "jpg" {
+                if ["jpg", "png"].contains(file.pathExtension.lowercased()) {
                     if PictureStore.shared.adopt(data, named: file.lastPathComponent) { pictures += 1 } else { skipped += 1 }
                 } else if ExportRules.looksLikeBoard(data) {
                     boards.append(data)

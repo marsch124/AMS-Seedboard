@@ -99,7 +99,7 @@ public enum PictureFiles {
         case here
         /// It was written onto the device, byte for byte as it came.
         case written
-        /// Not a plain `.jpg` name, not a picture, or it could not be written.
+        /// Not a plain `.jpg` or `.png` name, not a picture, or it could not be written.
         case refused
     }
 
@@ -107,7 +107,7 @@ public enum PictureFiles {
     /// is here already stays as it is, and a new one keeps its bytes exactly (it is not unpacked and saved again).
     /// `cloud`: iCloud's Pictures folder when there is one. `isPicture`: do the bytes open as a picture?
     public static func adopt(_ data: Data, named name: String, device: URL, cloud: URL?, isPicture: (Data) -> Bool) -> Adopted {
-        guard PictureKeeping.isPlainName(name), name.lowercased().hasSuffix(".jpg") else { return .refused }
+        guard PictureKeeping.isPictureFileName(name) else { return .refused }
         let fm = FileManager.default
         if fm.fileExists(atPath: device.appendingPathComponent(name).path) { return .here }
         if let cloud, fm.fileExists(atPath: cloud.appendingPathComponent(name).path)

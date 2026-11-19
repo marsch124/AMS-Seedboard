@@ -292,7 +292,7 @@ final class Safety05Tests: XCTestCase {
         // Not a picture, or not a plain picture name: refused.
         XCTAssertEqual(PictureFiles.adopt(bytes, named: "D.jpg", device: device, cloud: nil, isPicture: { _ in false }), .refused)
         XCTAssertEqual(PictureFiles.adopt(bytes, named: "../E.jpg", device: device, cloud: nil, isPicture: { _ in true }), .refused)
-        XCTAssertEqual(PictureFiles.adopt(bytes, named: "F.png", device: device, cloud: nil, isPicture: { _ in true }), .refused)
+        XCTAssertEqual(PictureFiles.adopt(bytes, named: "F.gif", device: device, cloud: nil, isPicture: { _ in true }), .refused)
     }
 
     // 11

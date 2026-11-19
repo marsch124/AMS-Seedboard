@@ -442,7 +442,7 @@ final class PictureStore: @unchecked Sendable {
             var waiting: Set<String> = []
             for url in (try? fm.contentsOfDirectory(at: local, includingPropertiesForKeys: nil)) ?? [] {
                 let name = url.lastPathComponent
-                guard PictureKeeping.isPlainName(name), name.lowercased().hasSuffix(".jpg") else { continue }
+                guard PictureKeeping.isPictureFileName(name) else { continue }
                 switch self.uploadState(name, in: cloud) {
                 case .sent: break
                 case .waiting: waiting.insert(name)
@@ -621,5 +621,36 @@ final class PictureStore: @unchecked Sendable {
             }
         }
         return (blobs, complete)
+    }
+
+    // MARK: 0.14 — pictures made here (lift out, PDF pages) — kept apart from the rest of the store
+
+    /// A picture made on the device from pixels (the lifted subject): its long side at most 2048, transparency kept,
+    /// saved as PNG under a fresh `<UUID>.png` name, on the device and in iCloud, like any picture. nil when it
+    /// could not be saved.
+    func takePNG(_ image: CGImage) -> (name: String, pixels: CGSize)? {
+        let long = max(image.width, image.height)
+        var kept = image
+        if long > Self.longestSide {
+            let k = Double(Self.longestSide) / Double(long)
+            let w = max(1, Int((Double(image.width) * k).rounded())), h = max(1, Int((Double(image.height) * k).rounded()))
+            guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.interpolationQuality = .high
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+            guard let small = ctx.makeImage() else { return nil }
+            kept = small
+        }
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, UTType.png.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, kept, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        let bytes = out as Data
+        let name = PictureKeeping.freshPNGName()
+        guard (try? bytes.write(to: local.appendingPathComponent(name), options: .atomic)) != nil else { return nil }
+        sendUp(name)
+        if let copy = Self.picture(from: bytes, side: PictureKeeping.memorySide) { keep(copy, as: name) }
+        return (name, CGSize(width: kept.width, height: kept.height))
     }
 }

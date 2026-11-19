@@ -7,7 +7,7 @@ public extension PictureKeeping {
     static let freshHours: Double = 1
 
     /// The pictures nobody uses right now: not named by any board, removed board, safety copy, earlier version
-    /// or starter (`named` holds every such name), a plain `.jpg` name, with a known date that is not brand new.
+    /// or starter (`named` holds every such name), a plain `.jpg` or `.png` name, with a known date that is not brand new.
     /// `complete`: false when anything could not be read or still lies only in iCloud — then nothing is counted.
     /// Unlike the weekly tidy this does not wait 30 days: the owner asks for it.
     static func unusedNow(files: [(name: String, date: Date?, bytes: Int)], named: Set<String>,
@@ -17,7 +17,7 @@ public extension PictureKeeping {
         var names: [String] = []
         var bytes = 0
         for file in files {
-            guard isPlainName(file.name), file.name.lowercased().hasSuffix(".jpg"),
+            guard isPictureFileName(file.name),
                   !named.contains(file.name), let date = file.date, date < limit else { continue }
             if !names.contains(file.name) { names.append(file.name) }
             bytes += max(file.bytes, 0)

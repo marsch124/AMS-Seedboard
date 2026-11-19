@@ -93,17 +93,17 @@ enum ClipBoard {
     private static var hasPicture: Bool {
         #if os(macOS)
         let types = NSPasteboard.general.types ?? []
-        if types.contains(.png) || types.contains(.tiff) || types.contains(NSPasteboard.PasteboardType("public.jpeg")) { return true }
+        if types.contains(.png) || types.contains(.tiff) || types.contains(NSPasteboard.PasteboardType("public.jpeg")) || types.contains(.pdf) { return true }  // 0.14: .pdf
         return !readFilePictures().isEmpty
         #else
-        return UIPasteboard.general.hasImages
+        return UIPasteboard.general.hasImages || UIPasteboard.general.contains(pasteboardTypes: [UTType.pdf.identifier])  // 0.14: a PDF
         #endif
     }
 
     /// Image files copied in the Finder (the Mac only).
     private static func readFilePictures() -> [Data] {
         #if os(macOS)
-        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingContentsConformToTypes: [UTType.image.identifier]]
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingContentsConformToTypes: [UTType.image.identifier, UTType.pdf.identifier]]  // 0.14: PDF files too
         let urls = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
         return urls.prefix(12).compactMap { try? Data(contentsOf: $0) }
         #else
@@ -118,12 +118,14 @@ enum ClipBoard {
         for type in [NSPasteboard.PasteboardType.png, NSPasteboard.PasteboardType("public.jpeg"), .tiff] {
             if let data = board.data(forType: type) { return data }
         }
+        if let pdf = board.data(forType: .pdf) { return pdf }  // 0.14
         return nil
         #else
         let board = UIPasteboard.general
         for type in [UTType.png, .jpeg, .heic, .tiff] {
             if let data = board.data(forPasteboardType: type.identifier) { return data }
         }
+        if let pdf = board.data(forPasteboardType: UTType.pdf.identifier) { return pdf }  // 0.14
         return board.image?.pngData()
         #endif
     }
@@ -223,12 +225,13 @@ enum ClipBoard {
     static func drop(_ providers: [NSItemProvider], at location: CGPoint, into session: BoardSession) -> Bool {
         guard !session.readOnly, !session.board.placesItself else { return false }
         // Pictures first: an image file or an image from another app (a page brings its address along as words).
-        let pictures = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+        // 0.14 (28): a PDF (Finder, Files, Mail) comes as pictures too.
+        let pictures = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) || $0.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) }
         if !pictures.isEmpty {
             Task { @MainActor in
                 var all: [Data] = []
                 for provider in pictures {
-                    if let data = await imageBytes(of: provider) { all.append(data) }
+                    if let data = await imageBytes(of: provider) { all.append(data) }  // (a PDF's bytes too)
                 }
                 session.commitEdit()
                 if all.isEmpty { AppModel.shared.say("That could not be read as a picture.", tone: .problem) }
@@ -253,7 +256,8 @@ enum ClipBoard {
     /// The bytes of a dropped image; a file's own bytes when it comes as a file.
     private static func imageBytes(of provider: NSItemProvider) async -> Data? {
         await withCheckedContinuation { (done: CheckedContinuation<Data?, Never>) in
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in done.resume(returning: data) }
+            let kind = provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) ? UTType.image : UTType.pdf
+            provider.loadDataRepresentation(forTypeIdentifier: kind.identifier) { data, _ in done.resume(returning: data) }
         }
     }
 
@@ -329,7 +333,7 @@ struct ClipKeys: ViewModifier {
             .onCommand(#selector(NSText.paste(_:)),
                        perform: !session.readOnly && session.editing == nil && !session.board.placesItself ? { ClipBoard.paste(session) } : nil)
             #endif
-            .onDrop(of: [UTType.image, UTType.plainText, UTType.utf8PlainText, UTType.text], isTargeted: nil) { providers, location in
+            .onDrop(of: [UTType.image, UTType.pdf, UTType.plainText, UTType.utf8PlainText, UTType.text], isTargeted: nil) { providers, location in
                 ClipBoard.drop(providers, at: location, into: session)
             }
             // Pictures (PictureViews.swift): the picker, a redraw when one arrives.

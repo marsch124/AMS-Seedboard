@@ -72,7 +72,11 @@ struct PictureHost: ViewModifier {
         let base = content
             .onReceive(PictureStore.shared.arrived) { _ in session.objectWillChange.send() }
             .onReceive(PictureDesk.shared.ask) { place in ask(at: place) }
+            // 0.14 (28): "This PDF has 6 pages" — Only page 1 / All pages / Cancel.
+            .modifier(PDFAskDialog())
             .onAppear {
+                // 0.14 launch word for pictures of the screen: -askPDF shows "This PDF has 6 pages".
+                if LaunchOptions.arguments.contains("-askPDF") { Task { @MainActor in _ = await PDFAsk.shared.ask(pages: 6) } }
                 // Launch words for pictures of the screen: -pickPicture chooses the first picture, -cropPicture opens its crop page.
                 let crop = LaunchOptions.arguments.contains("-cropPicture")
                 guard LaunchOptions.arguments.contains("-pickPicture") || crop,
@@ -107,7 +111,7 @@ struct PictureHost: ViewModifier {
         let panel = NSOpenPanel()
         panel.title = "Choose a picture"
         panel.prompt = "Choose"
-        panel.allowedContentTypes = [.image]
+        panel.allowedContentTypes = [.image, .pdf]  // 0.14: a PDF too
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.begin { answer in
@@ -129,12 +133,14 @@ extension BoardSession {
     /// Lays pictures that came in (a picker, the clipboard, a drop) on the board, chosen. `point` (board points): where
     /// the first one's middle goes, the next ones 28 further down and right; nil: a free place near the middle of the view.
     /// A picture that cannot be read is said, never silently dropped.
-    func lay(pictures: [Data], at point: CGPoint? = nil) {
+    func lay(pictures: [Data], at point: CGPoint? = nil, row: Bool = false) {
         guard !readOnly, !board.placesItself else {
             AppModel.shared.say("A picture cannot be put on this board.", tone: .problem)
             return
         }
         guard !pictures.isEmpty else { return }
+        // 0.14 (28): a PDF among them is turned into its pages first (PicturesFrom14.swift).
+        if pictures.contains(where: PDFPages.looksLikePDF) { layMixed(pictures, at: point); return }
         // The board was closed while the pictures were on their way (the photos were loading, a drop was read):
         // a board that is no longer shown must not save its older state over the open one (0.5).
         let closed = "The pictures were not laid: the board was closed."
@@ -147,6 +153,9 @@ extension BoardSession {
             var made: Set<UUID> = []
             var failed = 0
             var spot = point
+            // 0.14: the pages of a PDF lie in a row; `edge` is where the last one ended.
+            var edge: CGFloat?
+            var rowY: CGFloat?
             for data in pictures {
                 let taken = await Task.detached(priority: .userInitiated) { PictureStore.shared.take(data) }.value
                 guard SafetyRules.maySave(asking: self, shown: AppModel.shared.session) else {
@@ -164,11 +173,13 @@ extension BoardSession {
                     }
                 }
                 let size = Board.pictureSize(forPixels: taken.pixels)
-                let at = spot ?? freeSpot(near: visibleCentre, size: size)
+                var at = spot ?? freeSpot(near: visibleCentre, size: size)
+                if row, let edge, let rowY { at = CGPoint(x: edge + 20 + size.width / 2, y: rowY) }
                 var id: UUID?
                 change { id = $0.addPicture(name: taken.name, pixelSize: taken.pixels, centre: at) }
                 if let id { made.insert(id) }
-                if let s = spot { spot = CGPoint(x: s.x + 28, y: s.y + 28) }
+                if row { edge = at.x + size.width / 2; rowY = at.y }
+                else if let s = spot { spot = CGPoint(x: s.x + 28, y: s.y + 28) }
             }
             if !made.isEmpty {
                 selectedLink = nil
