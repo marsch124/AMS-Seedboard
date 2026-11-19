@@ -70,6 +70,10 @@ final class BoardSession: ObservableObject {
     /// 0.9: the Undo list page is open (UndoListPage in FindingViews.swift).
     @Published var showUndoList = false
     private var liveBase: Board?
+    /// 0.14: a two-finger twist is going on (Tilt14.swift): the board rests meanwhile.
+    var twisting = false
+    var twistIDs: Set<UUID> = []
+    var twistFrom: Double = 0
     private var editBase: Board?
     private var editIsNew = false
 

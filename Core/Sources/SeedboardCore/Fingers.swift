@@ -62,6 +62,7 @@ public extension Board {
         var best: (id: UUID, far: Double)?
         for item in items where item.kind != .frame && item.kind != .drawing && !isHidden(item.id) {
             let f = item.frame
+            let point = item.turn == 0 ? point : Tilt.rotate(point, about: item.centre, degrees: -item.turn)
             let dx = max(0, (side - Double(f.width)) / 2)
             let dy = max(0, (side - Double(f.height)) / 2)
             guard dx > 0 || dy > 0, f.insetBy(dx: -dx, dy: -dy).contains(point) else { continue }

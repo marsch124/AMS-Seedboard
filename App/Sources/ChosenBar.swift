@@ -20,8 +20,9 @@ struct ChipLook: View {
     var body: some View {
         let part: Part = action.tone == .todo ? .paragon : (action.tone == .remove ? .kept : tint)
         let on = action.on || lit
+        let worded = worded || action.wordOnly
         HStack(spacing: 4) {
-            GlyphView(glyph: action.glyph, size: 15, colour: on ? .white : part.text)
+            if !action.wordOnly { GlyphView(glyph: action.glyph, size: 15, colour: on ? .white : part.text) }
             if worded {
                 Text(action.word)
                     .font(Txt.pill)
@@ -383,7 +384,7 @@ struct ActionList: View {
             }
         } label: {
             HStack(spacing: 8) {
-                GlyphView(glyph: line.glyph, size: 17, colour: tone.text)
+                if !line.wordOnly { GlyphView(glyph: line.glyph, size: 17, colour: tone.text) }
                 Text(line.word)
                     .font(Txt.label)
                     .foregroundStyle(Color.primary)

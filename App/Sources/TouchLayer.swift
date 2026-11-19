@@ -99,6 +99,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     private let inkStroke = InkRecognizer()
     private let twoPan = UIPanGestureRecognizer()
     private let pinch = UIPinchGestureRecognizer()
+    /// 0.14 (idea 14): two fingers twisting a chosen note, picture, text or shape (Tilt14.swift).
+    private let twist = UIRotationGestureRecognizer()
     /// Takes no touches at all: only the scrolling of a trackpad or a mouse wheel.
     private let scroll = UIPanGestureRecognizer()
     private let hover = UIHoverGestureRecognizer()
@@ -170,6 +172,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
 
         // Two fingers on the glass — and a trackpad's pinch, which comes without any touch.
         pinch.allowedTouchTypes = [direct]
+        twist.allowedTouchTypes = [direct]
+        twist.addTarget(self, action: #selector(twisted(_:)))
         pinch.addTarget(self, action: #selector(pinched(_:)))
 
         // No touch types at all: this one only hears the scrolling of a trackpad (two fingers on
@@ -184,7 +188,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         secondary.buttonMaskRequired = .secondary
         secondary.addTarget(self, action: #selector(secondaryClicked(_:)))
 
-        for recogniser in [fingerPress, pencilPress, inkStroke, twoPan, pinch, scroll, hover, secondary] as [UIGestureRecognizer] {
+        for recogniser in [fingerPress, pencilPress, inkStroke, twoPan, pinch, twist, scroll, hover, secondary] as [UIGestureRecognizer] {
             recogniser.delegate = self
             recogniser.cancelsTouchesInView = false
             recogniser.delaysTouchesEnded = false
@@ -287,7 +291,7 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
         let verdict = verdict(for: touch)
         if recogniser === fingerPress || recogniser === pencilPress { return verdict.press }
         if recogniser === inkStroke { return verdict.ink }
-        if recogniser === twoPan || recogniser === pinch { return verdict.two }
+        if recogniser === twoPan || recogniser === pinch || recogniser === twist { return verdict.two }
         return true
     }
 
@@ -393,6 +397,24 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
 
     @objc private func panned(_ recogniser: UIPanGestureRecognizer) { twoFingers(recogniser) }
 
+    /// 0.14: a twist of two fingers on the chosen thing turns it; the board does not slide or zoom meanwhile.
+    @objc private func twisted(_ recogniser: UIRotationGestureRecognizer) {
+        guard let session else { return }
+        let degrees = Double(recogniser.rotation) * 180 / .pi
+        switch recogniser.state {
+        case .began:
+            if recogniser.numberOfTouches >= 2 { _ = session.twistBegin(at: recogniser.location(in: self)) }
+        case .changed:
+            session.twistMove(degrees)
+        case .ended:
+            session.twistEnd(degrees, keep: true)
+        case .cancelled, .failed:
+            session.twistEnd(0, keep: false)
+        default:
+            break
+        }
+    }
+
     @objc private func pinched(_ recogniser: UIPinchGestureRecognizer) {
         if recogniser.state == .began { pinchByTrackpad = recogniser.numberOfTouches == 0 }
         guard pinchByTrackpad else { twoFingers(recogniser); return }
@@ -421,6 +443,8 @@ final class TouchSurface: UIView, UIGestureRecognizerDelegate {
     }
 
     private func step() {
+        // 0.14: while a thing is twisted the board rests.
+        if session?.twisting == true { lastMid = nil; return }
         // 0.5: with a third finger down, and for a moment after, the board rests (three fingers swipe for Undo).
         guard third.slides(fingersDown: others(than: nil).filter({ $0.type == .direct }).count) else {
             lastMid = nil

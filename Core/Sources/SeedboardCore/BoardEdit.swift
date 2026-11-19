@@ -197,8 +197,10 @@ public extension Board {
         return nil
     }
 
-    private static func contains(_ item: Item, _ p: CGPoint) -> Bool {
+    private static func contains(_ item: Item, _ point: CGPoint) -> Bool {
         let f = item.frame
+        // 0.14: a tilted thing is pressed where it is turned to (Tilt14.swift).
+        let p = item.turn == 0 ? point : Tilt.rotate(point, about: item.centre, degrees: -item.turn)
         switch item.kind {
         case .diamond:
             let dx = abs(Double(p.x) - Double(f.midX)) / max(Double(f.width) / 2, 1)
