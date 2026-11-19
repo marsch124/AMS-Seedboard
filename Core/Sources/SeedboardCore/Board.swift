@@ -475,7 +475,8 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// 6 (Seedboard 0.9): vote dots, pinned in place, a web page's title, the words inside a picture (`votes`,
     /// `locked`, `linkTitle`, `pictureWords` on an item); the board's colour legend, background, numbered steps and
     /// "put away" (`legend`, `backdrop`, `numberSteps`, `putAway` on the board); a highlighter stroke (`pen` on a stroke).
-    public static let currentFormat = 6
+    /// 7 (Seedboard 0.11): a board's own due day (`due` on the board, "yyyy-MM-dd").
+    public static let currentFormat = 7
 
     public var id: UUID
     public var title: String
@@ -505,6 +506,9 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public var numberSteps: Bool?
     /// 0.9 (format 6): the day the board was put away (out of the list, never deleted). nil = in the list.
     public var putAway: Date?
+    /// 0.11 (format 7): the board's own due day, "yyyy-MM-dd" (shown on its card, sorts the list, goes to PARAGON as
+    /// the project's due day). nil = none.
+    public var due: String?
 
     public init(id: UUID = UUID(), title: String = "New board", created: Date = Date(), changed: Date? = nil,
                 pinned: Bool = false, colour: String = "green", items: [Item] = [], links: [Link] = []) {
@@ -525,7 +529,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         case id, title, created, changed, format, pinned, colour, items, links, sent, sentTodos
         case kind
         case sentTasks
-        case legend, backdrop, numberSteps, putAway
+        case legend, backdrop, numberSteps, putAway, due
     }
 
     public init(from decoder: Decoder) throws {
@@ -549,6 +553,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         backdrop = try? c.decode(String.self, forKey: .backdrop)
         numberSteps = try? c.decode(Bool.self, forKey: .numberSteps)
         putAway = try? c.decode(Date.self, forKey: .putAway)
+        due = try? c.decode(String.self, forKey: .due)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -572,6 +577,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(backdrop, forKey: .backdrop)
         try c.encodeIfPresent(numberSteps, forKey: .numberSteps)
         try c.encodeIfPresent(putAway, forKey: .putAway)
+        try c.encodeIfPresent(due, forKey: .due)
     }
 
     /// True when this version of the app may change the board: it was not written by a newer one, and

@@ -280,6 +280,15 @@ final class StoredFieldsTests: XCTestCase {
                   lanes: ["cuts", "names", "way"],
                   starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
                   sentTask: ["id", "place", "words"]),
+        // 0.11: a board's own due day.
+        7: Fields(board: ["backdrop", "changed", "colour", "created", "due", "format", "id", "items", "kind", "legend", "links", "numberSteps", "pinned", "putAway", "sent", "sentTasks", "sentTodos", "title"],
+                  item: ["answer", "bothSides", "colour", "crop", "doneDay", "door", "end", "folded", "from", "h", "id", "kind", "lanes", "linkTitle", "locked", "order", "parent", "picture", "pictureWords", "row", "side", "start", "strokes", "text", "to", "todo", "votes", "w", "x", "y"],
+                  link: ["colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
+                  sent: ["kind", "path", "title", "when"],
+                  stroke: ["colour", "pen", "points", "pressure", "width"],
+                  lanes: ["cuts", "names", "way"],
+                  starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
+                  sentTask: ["id", "place", "words"]),
     ]
 
     func testAStoredFieldIsNeverAddedWithoutANewFormatNumber() throws {
@@ -325,7 +334,7 @@ final class StoredFieldsTests: XCTestCase {
         board.kind = Board.timelineKind
         board.sent = SentInfo(when: Date(), kind: "note", title: "Full", path: "Resources/Full.md")
         board.sentTodos = [a.id]
-        board.legend = ["yellow": "Open"]; board.backdrop = "dots"; board.numberSteps = true; board.putAway = Date()
+        board.legend = ["yellow": "Open"]; board.backdrop = "dots"; board.numberSteps = true; board.putAway = Date(); board.due = "2027-01-12"
         board.noteSent(b.id, words: "b", place: SentTask.note)
         let starter = StarterEntry(id: "own-1", name: "Mine", hint: "h", order: 1, removed: true, removedWhen: Date(),
                                    builtin: "blank", board: board, changed: Date(), boardChanged: Date())
