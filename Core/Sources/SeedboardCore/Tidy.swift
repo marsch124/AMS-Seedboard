@@ -32,11 +32,12 @@ public extension Board {
         guard all.count >= 2 else { return }
         let chosen = Set(all.map(\.id))
         if tidyIsRow(ids) {
-            let line = all.map { $0.y + $0.h / 2 }.reduce(0, +) / Double(all.count)
-            for item in all { tidyMove(item.id, by: CGSize(width: 0, height: line - (item.y + item.h / 2)), chosen: chosen) }
+            // A picture counts together with its caption (`reach`).
+            let line = all.map { $0.reach.midY }.reduce(0, +) / Double(all.count)
+            for item in all { tidyMove(item.id, by: CGSize(width: 0, height: line - item.reach.midY), chosen: chosen) }
         } else {
-            let line = all.map { $0.x + $0.w / 2 }.reduce(0, +) / Double(all.count)
-            for item in all { tidyMove(item.id, by: CGSize(width: line - (item.x + item.w / 2), height: 0), chosen: chosen) }
+            let line = all.map { $0.reach.midX }.reduce(0, +) / Double(all.count)
+            for item in all { tidyMove(item.id, by: CGSize(width: line - item.reach.midX, height: 0), chosen: chosen) }
         }
     }
 
@@ -44,8 +45,9 @@ public extension Board {
     /// so that every gap from edge to edge is the same. Needs three or more.
     mutating func evenGaps(_ ids: Set<UUID>) {
         let row = tidyIsRow(ids)
-        func lo(_ item: Item) -> Double { row ? item.x : item.y }
-        func length(_ item: Item) -> Double { row ? item.w : item.h }
+        // A picture counts together with its caption (`reach`).
+        func lo(_ item: Item) -> Double { row ? item.reach.minX : item.reach.minY }
+        func length(_ item: Item) -> Double { row ? item.reach.width : item.reach.height }
         let all = tidyable(ids).sorted {
             (lo($0) + length($0) / 2, $0.id.uuidString) < (lo($1) + length($1) / 2, $1.id.uuidString)
         }

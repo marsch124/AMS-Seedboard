@@ -112,6 +112,23 @@ struct BarActions {
         return act("caption", "Caption", .new(.caption), show: .wideWord, drop: drop) { session.beginCaption(id) }
     }
 
+    /// 0.11: "Copy words" and "Words to a note" for a picture whose found words are not empty.
+    private func pictureWordsActions(_ item: Item) -> [BarAction] {
+        let session = session, id = item.id, words = item.foundWords
+        return [
+            act("copywords", "Copy words", .new(.makeTyped), show: .wideWord, drop: 4) {
+                AppModel.shared.copyText(words)
+                AppModel.shared.say("Words copied", seconds: 2)
+            },
+            act("wordsnote", "Words to a note", .new(.makeTyped), show: .wideWord, drop: 5) {
+                session.commitEdit()
+                var made: UUID?
+                session.change { made = $0.noteWithPictureWords(id) }
+                if let made { session.selection = [made] }
+            },
+        ]
+    }
+
     /// Crop a picture (0.4): opens "Crop the picture". Greyed while the picture's file is not here yet.
     private func crop(_ item: Item, drop: Int = 2) -> BarAction {
         let session = session, id = item.id
@@ -357,6 +374,8 @@ struct BarActions {
             all.append(drawOn(item.id, drop: 1))
             all.append(caption(item.id, drop: 2))
             all.append(crop(item, drop: 3))
+            // 0.11: the words found inside the picture; only offered when there are some.
+            if !item.foundWords.isEmpty { all += pictureWordsActions(item) }
             all.append(duplicate(drop: 0))
             all += chooseMore()
             all.append(remove(gap: true))

@@ -150,22 +150,10 @@ public extension Item {
     /// The words of a caption, trimmed; empty = no caption. Only a picture has one.
     var captionWords: String { kind == .picture ? text.trimmingCharacters(in: .whitespacesAndNewlines) : "" }
 
-    /// How many lines the caption takes under a picture this wide: a careful guess (the screen wraps the real words), so
-    /// the room kept for it is never too small.
+    /// How many lines the caption takes under a picture this wide: the same breaking the screen draws
+    /// (`captionWrapped`, measured with the screen's own lettering once the app has installed it).
     static func captionLines(_ words: String, width: Double) -> Int {
-        let perLine = max(4, Int((width / 6.6).rounded(.down)))
-        var lines = 0
-        for paragraph in words.components(separatedBy: .newlines) {
-            var used = 0
-            var count = 1
-            for word in paragraph.split(separator: " ") {
-                let n = word.count
-                if used == 0 { used = n } else if used + 1 + n <= perLine { used += 1 + n } else { count += 1; used = n }
-                while used > perLine { count += 1; used -= perLine }
-            }
-            lines += count
-        }
-        return max(lines, 1)
+        max(captionWrapped(words, width: width).count, 1)
     }
 
     /// The room of the caption under the picture: 6 points below it, as wide as the picture. nil without a caption.

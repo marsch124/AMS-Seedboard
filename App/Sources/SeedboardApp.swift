@@ -29,6 +29,8 @@ struct SeedboardApp: App {
     @NSApplicationDelegateAdaptor(MacDelegate.self) private var macDelegate
     #endif
 
+    init() { PictureCaption.install() }
+
     var body: some Scene {
         #if os(macOS)
         WindowGroup("AMS Seedboard", id: "main") {

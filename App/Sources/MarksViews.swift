@@ -52,6 +52,8 @@ struct LegendCardRow: View {
                     session.commitEdit()
                     MarksDesk.shared.legendOpen = true
                 } label: {
+                    HStack(alignment: .top, spacing: 6) {
+                    GlyphView(glyph: .new(.legend), size: 14, colour: Color.primary.opacity(0.7))
                     VStack(alignment: .leading, spacing: 3) {
                         ForEach(rows, id: \.colour) { row in
                             HStack(spacing: 6) {
@@ -65,6 +67,7 @@ struct LegendCardRow: View {
                                     .lineLimit(1)
                             }
                         }
+                    }
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)

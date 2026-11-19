@@ -185,29 +185,14 @@ enum PictureCaption {
     static let size: CGFloat = 12
     static let font = Font.system(size: size)
 
-    /// The caption broken into lines no wider than the picture (a word wider than that is cut where it must).
+    /// Makes the layout measure a caption with this very lettering (called once when the app starts).
+    static func install() {
+        Item.captionMeasure = { Double(Lettering.measure($0, size: size, bold: false, maxWidth: .greatestFiniteMagnitude).width) }
+    }
+
+    /// The caption broken into lines no wider than the picture: the same lines the layout kept room for (`Item.captionWrapped`).
     static func lines(_ words: String, width: CGFloat) -> [String] {
-        func wide(_ text: String) -> CGFloat { Lettering.measure(text, size: size, bold: false, maxWidth: .greatestFiniteMagnitude).width }
-        var out: [String] = []
-        for paragraph in words.components(separatedBy: .newlines) {
-            var line = ""
-            for word in paragraph.split(separator: " ") {
-                var piece = String(word)
-                let tryLine = line.isEmpty ? piece : line + " " + piece
-                if wide(tryLine) <= width || line.isEmpty && piece.count <= 1 { line = tryLine; continue }
-                if !line.isEmpty { out.append(line); line = "" }
-                // A very long word: cut it where the line is full.
-                while wide(piece) > width, piece.count > 1 {
-                    var n = piece.count - 1
-                    while n > 1, wide(String(piece.prefix(n))) > width { n -= 1 }
-                    out.append(String(piece.prefix(n)))
-                    piece = String(piece.dropFirst(n))
-                }
-                line = piece
-            }
-            out.append(line)
-        }
-        return out
+        Item.captionWrapped(words, width: Double(width))
     }
 }
 

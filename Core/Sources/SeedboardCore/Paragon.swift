@@ -287,14 +287,19 @@ public enum ParagonExport {
                : (item.kind == .note && TickList.hasTicks(item.text) ? TickList.bullets(item.text).joined(separator: "\n") : "- \(oneLine(item.text))"))
     }
 
+    /// The one wording of a line for a picture or a sketch: its name, then where it is to be seen.
+    static func whereLine(_ name: String, picture: Bool) -> String {
+        name + (picture ? " (see the picture)" : " (on the board)")
+    }
+
     /// What a note or project says where a drawing is.
     public static func sketchLine(picture: Bool = true) -> String {
-        picture ? "A sketch (see the picture)" : "A sketch (on the board)"
+        whereLine("A sketch", picture: picture)
     }
 
     /// What a note or project says where a picture laid on the board is.
     public static func pictureLine(picture: Bool = true) -> String {
-        picture ? "A picture (see the picture)" : "A picture (on the board)"
+        whereLine("A picture", picture: picture)
     }
 
     /// "A picture", or "A picture: After the makeover" when it has a caption.
@@ -305,9 +310,7 @@ public enum ParagonExport {
 
     /// The picture's line in a note or project: today's line, with the caption after the name when there is one.
     static func pictureLine(for item: Item, picture: Bool) -> String {
-        let words = oneLine(item.text)
-        guard !words.isEmpty else { return pictureLine(picture: picture) }
-        return "A picture: " + words + (picture ? " (see the picture)" : " (on the board)")
+        whereLine(pictureName(of: item), picture: picture)
     }
 
     static func label(_ item: Item) -> String {
