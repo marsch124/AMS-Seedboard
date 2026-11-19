@@ -556,7 +556,8 @@ final class AppModel: ObservableObject {
     /// `branch`: only this idea and everything under it is sent, as a small map of its own.
     /// `frame` (0.9): only what lies inside this frame is sent, with a picture of the frame alone.
     /// `choices`: the switches of the Send page ("Say where they come from", "Also remind me when a bar starts").
-    func send(kind: SendKind, title: String, branch: UUID? = nil, frame: UUID? = nil, choices: SendChoices = SendChoices()) async -> String? {
+    func send(kind: SendKind, title: String, branch: UUID? = nil, frame: UUID? = nil, chosen: Set<UUID>? = nil,
+              choices: SendChoices = SendChoices()) async -> String? {
         guard let session else { return SendProblem.notFound.errorDescription }
         // One hand-over at a time: a second press while the first is on its way does nothing.
         guard !sending else { return "The board is on its way already." }
@@ -568,8 +569,9 @@ final class AppModel: ObservableObject {
         let found = await Task.detached(priority: .userInitiated) { ParagonGate.find() }.value
         self.found(found)
         guard let place = found else { return SendProblem.notFound.errorDescription }
-        let board = frame.flatMap { session.board.frameOnly($0) } ?? branch.flatMap { session.board.branchOnly($0) } ?? session.board
-        let partOnly = branch != nil || frame != nil
+        let board = frame.flatMap { session.board.frameOnly($0) } ?? branch.flatMap { session.board.branchOnly($0) }
+            ?? chosen.flatMap { session.board.chosenOnly($0) } ?? session.board
+        let partOnly = branch != nil || frame != nil || chosen != nil
         // A look at the note the board became (reading only): is it at its place, and what stands in it?
         let look = await Task.detached(priority: .userInitiated) { ParagonGate.look(at: board.sent, in: place) }.value
         let pictureBoard = frame.flatMap { session.board.frameOnly($0, keepFrame: true) } ?? board

@@ -41,6 +41,8 @@ enum SendProblem: LocalizedError {
     /// "Add what is new" was asked for, and nothing on the board is new.
     case nothingNew
     case cannotWrite(String)
+    /// 0.11 (pick 5): the real cause of a failed write, already in plain words (`SendCause`).
+    case because(String)
     /// The note could not be written, and the picture made for it could not be taken away again.
     case pictureLeft(String)
 
@@ -48,8 +50,9 @@ enum SendProblem: LocalizedError {
         switch self {
         case .notFound: return "PARAGON's notes were not found on this device."
         case .nothingToSend: return "No to-do boxes are waiting to be sent."
-        case .noInbox: return "This device cannot reach PARAGON's Inbox. Send the board as a note or a project instead."
+        case .noInbox: return SendCause.inboxFolderMissing
         case .nothingNew: return "Nothing on the board is new for PARAGON."
+        case .because(let words): return words
         case .cannotWrite(let what): return "The \(what) could not be saved in PARAGON's folder. Nothing was changed."
         case .pictureLeft(let name): return "The note could not be saved in PARAGON's folder. Its picture “\(name)” is left in PARAGON's Pictures folder; no note uses it."
         }
@@ -160,7 +163,7 @@ enum ParagonGate {
             guard !send.tasks.isEmpty else { throw SendProblem.nothingToSend }
             guard let outbox = place.outbox else { throw SendProblem.noInbox }
             // All of them in one write: either every task is on its way, or none is.
-            do { try append(ParagonExport.waitingLines(send.lines, notePath: nil, now: now), to: outbox) } catch { throw SendProblem.noInbox }
+            do { try append(ParagonExport.waitingLines(send.lines, notePath: nil, now: now), to: outbox) } catch { throw SendProblem.because(SendCause.words(for: error, what: "the Inbox")) }
             let count = send.tasks.count == 1 ? "1 task is" : "\(send.tasks.count) tasks are"
             return SendResult(info: nil, todos: send.tasks.map(\.id), message: "\(count) on the way to the PARAGON Inbox. \(whenTheyShow)",
                               tasks: send.tasks, place: send.place)
@@ -170,7 +173,7 @@ enum ParagonGate {
             // at its place, at the Inbox). The note itself is never opened for writing.
             guard let send = ParagonExport.addSend(board: board, look: look, choices: choices) else { throw SendProblem.nothingNew }
             guard let outbox = place.outbox else { throw SendProblem.noInbox }
-            do { try append(ParagonExport.waitingLines(send.lines, notePath: send.notePath, now: now), to: outbox) } catch { throw SendProblem.noInbox }
+            do { try append(ParagonExport.waitingLines(send.lines, notePath: send.notePath, now: now), to: outbox) } catch { throw SendProblem.because(SendCause.words(for: error, what: "the Inbox")) }
             let count = send.tasks.count == 1 ? "1 new task is" : "\(send.tasks.count) new tasks are"
             let whereTo = send.notePath == nil ? "to the PARAGON Inbox" : "into “\(board.sent?.title ?? "")”"
             let all = send.tasks + send.there
@@ -201,7 +204,7 @@ enum ParagonGate {
                     picture = name
                     pictureURL = url
                 } catch {
-                    throw SendProblem.cannotWrite("picture")
+                    throw SendProblem.because(SendCause.words(for: error, what: "the picture"))
                 }
             }
 
@@ -215,7 +218,7 @@ enum ParagonGate {
                 // The note is not there, so its picture must not stay behind: the file made a moment ago
                 // (only that one) is taken away again, and the message says what is true.
                 if let pictureURL, let picture, !removeJustMade(pictureURL) { throw SendProblem.pictureLeft(picture) }
-                throw SendProblem.cannotWrite("note")
+                throw SendProblem.because(SendCause.words(for: error, what: "the note"))
             }
 
             // A note also gets one line in the Inbox that points to it, so it can be filed from there.
@@ -236,7 +239,7 @@ enum ParagonGate {
                           now: Date = Date()) throws -> SendResult {
         guard !lines.isEmpty else { throw SendProblem.nothingToSend }
         guard let outbox = place.outbox else { throw SendProblem.noInbox }
-        do { try append(ParagonExport.waitingLines(lines, notePath: nil, now: now), to: outbox) } catch { throw SendProblem.noInbox }
+        do { try append(ParagonExport.waitingLines(lines, notePath: nil, now: now), to: outbox) } catch { throw SendProblem.because(SendCause.words(for: error, what: "the Inbox")) }
         return SendResult(info: nil, todos: tasks.map(\.id), message: message, tasks: tasks, place: goesTo)
     }
 
@@ -249,7 +252,7 @@ enum ParagonGate {
         let data = try ParagonExport.waitingData(lines)
         // Added at the end in one step, so PARAGON and Seedboard can never write into each other.
         let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
-        guard fd >= 0 else { throw SendProblem.noInbox }
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
         let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
         defer { try? handle.close() }
         try handle.write(contentsOf: data)
