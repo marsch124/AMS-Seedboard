@@ -227,17 +227,17 @@ public struct TimelineGeometry: Equatable, Sendable {
 
     /// The day under an x.
     public func day(atX x: Double) -> Day {
-        TimelineGeometry.zero + Int(((x - namesWidth - Double(slide.width)) / scale.pointsPerDay).rounded(.down))
+        TimelineGeometry.zero + SafeNumber.int(((x - namesWidth - Double(slide.width)) / scale.pointsPerDay).rounded(.down))
     }
 
     /// Whole days for a sideways drag of this many points (half a day rounds away from nothing).
-    public func days(forDrag points: Double) -> Int { Int((points / scale.pointsPerDay).rounded()) }
+    public func days(forDrag points: Double) -> Int { SafeNumber.int((points / scale.pointsPerDay).rounded()) }
 
     /// The top of a row.
     public func y(ofRow row: Int) -> Double { headerHeight + Double(row) * rowHeight + Double(slide.height) }
 
     /// The row under a y (it may be before the first or after the last).
-    public func row(atY y: Double) -> Int { Int(((y - headerHeight - Double(slide.height)) / rowHeight).rounded(.down)) }
+    public func row(atY y: Double) -> Int { SafeNumber.int(((y - headerHeight - Double(slide.height)) / rowHeight).rounded(.down)) }
 
     /// A bar from the morning of its first day to the evening of its last.
     public func bar(from start: Day, to end: Day, row: Int) -> CGRect {

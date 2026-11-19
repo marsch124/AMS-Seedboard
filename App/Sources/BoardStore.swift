@@ -49,6 +49,8 @@ final class BoardStore {
     /// Boards whose last write failed, with their titles.
     private var deviceProblems: [UUID: Board] = [:]
     private var cloudProblems: [UUID: String] = [:]
+    /// 0.11: boards with things that could not be read (title, how many), for this run of the app.
+    private var damaged: [UUID: (title: String, count: Int)] = [:]
 
     init(sample: Bool) {
         self.sample = sample
@@ -72,6 +74,9 @@ final class BoardStore {
         if let title = cloudProblems.values.sorted().first {
             let what = cloudProblems.count == 1 ? "“\(title)”" : "\(cloudProblems.count) boards"
             return "\(what) could not be put into iCloud. Nothing is lost: the device has it, and Seedboard tries again by itself."
+        }
+        if let hurt = damaged.values.sorted(by: { $0.title < $1.title }).first {
+            return SafetyWords.damaged(count: hurt.count, title: hurt.title)
         }
         return nil
     }
@@ -218,6 +223,8 @@ final class BoardStore {
             onClash?(board.id, board.title)
         case let .clash(id, title):
             onClash?(id, title)
+        case let .damaged(id, title, count):
+            damaged[id] = (title, count)
         }
         onState?()
     }
@@ -369,6 +376,8 @@ private final class BoardDisk: @unchecked Sendable {
         case newer(Board)
         /// Another device's version of this board lost against this device's and was set aside.
         case clash(UUID, title: String)
+        /// 0.11: things or arrows in this board's file could not be read; the file as it was is kept aside.
+        case damaged(UUID, title: String, count: Int)
     }
 
     struct Found: Sendable {
@@ -500,8 +509,9 @@ private final class BoardDisk: @unchecked Sendable {
         return try? encoder.encode(board)
     }
 
-    func decode(_ data: Data) -> Board? {
+    func decode(_ data: Data, fileDate: Date? = nil) -> Board? {
         let decoder = JSONDecoder()
+        if let fileDate { decoder.userInfo[Board.fileDateKey] = fileDate }
         decoder.dateDecodingStrategy = .custom { decoder in
             let text = try decoder.singleValueContainer().decode(String.self)
             if let date = Self.fine.date(from: text) ?? Self.plain.date(from: text) { return date }
@@ -523,10 +533,22 @@ private final class BoardDisk: @unchecked Sendable {
         return x == y
     }
 
-    private func interpret(_ data: Data) -> Read {
+    private func modified(_ url: URL) -> Date? {
+        try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+
+    private func interpret(_ data: Data, fileDate: Date? = nil) -> Read {
         // A board from a newer version of the app is read too (it can be looked at); `canBeChanged`
         // is false for it, and the writing rules below never put anything over such a file.
-        if let board = decode(data) { return .got(board) }
+        if let board = decode(data, fileDate: fileDate) {
+            // 0.11: a thing or arrow that cannot be read is left out of the board, so the file as it was is
+            // kept aside before any save writes over it (once: the same bytes are never kept twice).
+            let lost = Board.unreadableCount(in: data)
+            if lost > 0, setAside(data, id: board.id, ending: "seedboard") {
+                report?(.damaged(board.id, title: board.title, count: lost))
+            }
+            return .got(board)
+        }
         return .unreadable
     }
 
@@ -536,7 +558,7 @@ private final class BoardDisk: @unchecked Sendable {
         let file = localBoards.appendingPathComponent(name(id))
         guard exists(file) else { return .absent }
         guard let data = try? Data(contentsOf: file) else { return .unreadable }
-        return interpret(data)
+        return interpret(data, fileDate: modified(file))
     }
 
     /// The bytes of a file in iCloud's folder, read politely. nil when it is not there or cannot be read.
@@ -564,7 +586,7 @@ private final class BoardDisk: @unchecked Sendable {
         var problem: NSError?
         NSFileCoordinator().coordinate(readingItemAt: file, options: [], error: &problem) { url in
             guard FileManager.default.fileExists(atPath: url.path) else { return }
-            if let data = try? Data(contentsOf: url) { result = interpret(data) } else { result = .unreadable }
+            if let data = try? Data(contentsOf: url) { result = interpret(data, fileDate: modified(url)) } else { result = .unreadable }
         }
         if case .absent = result,
            (try? file.resourceValues(forKeys: [.isUbiquitousItemKey]).isUbiquitousItem) == true {
@@ -577,7 +599,7 @@ private final class BoardDisk: @unchecked Sendable {
             guard let data = try? Data(contentsOf: version.url) else { continue }
             var settled = false
             var other: Board?
-            if case let .got(board) = interpret(data), board.id == id { other = board }
+            if case let .got(board) = interpret(data, fileDate: version.modificationDate), board.id == id { other = board }
             switch result {
             case .unreadable:
                 break   // the board's own file cannot be read now: nothing is joined, nothing cleared

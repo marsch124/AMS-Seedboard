@@ -475,7 +475,10 @@ final class AppModel: ObservableObject {
     func open(url: URL) {
         // 0.5: `seedboard://new/<starter id>` makes a new board (QuickActions.swift).
         if openNew(url: url) { return }
-        guard let id = BoardLink.id(from: url) else { return }
+        guard let id = BoardLink.id(from: url) else {
+            say(SafetyWords.incompleteLink, tone: .problem)   // 0.11: a damaged link says so
+            return
+        }
         guard loaded else {
             waitingLink = id
             return
