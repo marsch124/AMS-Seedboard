@@ -159,6 +159,13 @@ struct UndoListPage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 4)
+                if session.undoLetGo {
+                    Text(UndoBudget.words)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 4)
+                        .accessibilityIdentifier("undoList.letGo")
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(steps.enumerated()), id: \.offset) { index, step in

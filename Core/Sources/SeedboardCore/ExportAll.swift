@@ -151,6 +151,13 @@ public enum BoardArchive {
     /// Writes `files` into a new folder `name` inside `place`, has the system zip that folder, and
     /// gives back `place/<name>.zip`. The folder itself is cleared away again.
     public static func make(name: String, files: [(name: String, data: Data)], in place: URL) throws -> URL {
+        try make(name: name, files: files, fetched: [], fetch: { _ in nil }, missing: { _ in }, in: place)
+    }
+
+    /// 0.11: as `make`, but the `fetched` names are read one by one (`fetch`) and written at once, so the pictures
+    /// are never all in memory together. A name `fetch` gives nothing for is handed to `missing` and left out.
+    public static func make(name: String, files: [(name: String, data: Data)], fetched: [String], fetch: (String) -> Data?,
+                            missing: ([String]) -> Void, in place: URL) throws -> URL {
         let fm = FileManager.default
         let folder = place.appendingPathComponent(name, isDirectory: true)
         let target = place.appendingPathComponent("\(name).zip")
@@ -164,6 +171,13 @@ public enum BoardArchive {
                 if file.name.contains("/") { try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true) }
                 try file.data.write(to: target, options: .atomic)
             }
+            var left: [String] = []
+            for picture in fetched {
+                try autoreleasepool {
+                    if let data = fetch(picture) { try data.write(to: folder.appendingPathComponent(picture), options: .atomic) } else { left.append(picture) }
+                }
+            }
+            missing(left)
         } catch {
             throw Problem.folder
         }

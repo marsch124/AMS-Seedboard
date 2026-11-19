@@ -62,6 +62,10 @@ final class BoardSession: ObservableObject {
     private var redoStack: [Board] = []
     /// 0.9: when each step in `undoStack` / `redoStack` was taken (same order), for the Undo list.
     private var undoTimes: [Date] = []
+    /// 0.11: a rough size of each step in `undoStack` (same order), see `UndoBudget`.
+    private var undoWeights: [Int] = []
+    /// 0.11: older steps were let go to save memory (the Undo list says so).
+    @Published private(set) var undoLetGo = false
     private var redoTimes: [Date] = []
     /// 0.9: the Undo list page is open (UndoListPage in FindingViews.swift).
     @Published var showUndoList = false
@@ -101,9 +105,15 @@ final class BoardSession: ObservableObject {
     private func pushUndo(_ old: Board) {
         undoStack.append(old)
         undoTimes.append(Date())
-        if undoStack.count > 120 {
-            undoStack.removeFirst(undoStack.count - 120)
-            undoTimes.removeFirst(max(undoTimes.count - 120, 0))
+        // 0.11: limited by size (about 40 MB) as well as by count (120); the Undo list says so when steps went.
+        if undoWeights.count != undoStack.count - 1 { undoWeights = undoStack.dropLast().map(UndoBudget.weight) }
+        undoWeights.append(UndoBudget.weight(of: old))
+        let drop = UndoBudget.toLetGo(weights: undoWeights)
+        if drop > 0 {
+            undoStack.removeFirst(drop)
+            undoTimes.removeFirst(min(drop, undoTimes.count))
+            undoWeights.removeFirst(drop)
+            undoLetGo = true
         }
         redoStack = []
         redoTimes = []
@@ -202,6 +212,8 @@ final class BoardSession: ObservableObject {
         tidySelection()
         // Steps taken before the other device's change must not be put back over it.
         undoStack = []
+        undoWeights = []
+        undoLetGo = false
         redoStack = []
         undoTimes = []
         redoTimes = []

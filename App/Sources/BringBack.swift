@@ -28,13 +28,16 @@ struct KeptShelf: Equatable {
 
 /// The finished export, ready for the system's save place.
 struct ExportFile {
-    var data: Data
+    /// 0.11: the zip lies in a throwaway folder of the app's own, read from there when saved (never held whole in memory).
+    var url: URL
     /// "Seedboard boards 2026-11-18" (the system adds ".zip").
     var name: String
     var boards: Int
     /// 0.5: what was packed and what could not be — "Exported 14 boards and 31 pictures. 3 pictures are not on
     /// this device yet and are not in the file."
     var summary: String
+    /// The throwaway folder, to clear away once the file is saved or given up.
+    var place: URL
 }
 
 extension AppModel {
@@ -137,22 +140,21 @@ extension AppModel {
         let pictures = ExportRules.pictureNames(boards: boards, starters: starters)
         let ready = files
         return await Task.detached(priority: .userInitiated) { () -> ExportFile? in
-            var files = ready
+            // 0.11: written file by file into a throwaway folder (the pictures one at a time), zipped, and the zip
+            // is handed over as a file — the boards, the pictures and the zip are never all in memory together.
+            let place = FileManager.default.temporaryDirectory.appendingPathComponent("SeedboardExport-\(UUID().uuidString)", isDirectory: true)
+            try? FileManager.default.createDirectory(at: place, withIntermediateDirectories: true)
             var missing: [String] = []
-            for picture in pictures {
-                if let bytes = PictureStore.shared.fileBytes(picture) { files.append((name: picture, data: bytes)) } else { missing.append(picture) }
+            guard let zip = try? BoardArchive.make(name: name, files: ready, fetched: pictures, fetch: { PictureStore.shared.fileBytes($0) },
+                                                   missing: { missing = $0 }, in: place) else {
+                try? FileManager.default.removeItem(at: place)
+                return nil
             }
             // So they are here for the next export.
             PictureStore.shared.askFor(missing)
-            // Made in a throwaway folder of the app's own; nothing of it stays behind.
-            let place = FileManager.default.temporaryDirectory.appendingPathComponent("SeedboardExport-\(UUID().uuidString)", isDirectory: true)
-            try? FileManager.default.createDirectory(at: place, withIntermediateDirectories: true)
-            defer { try? FileManager.default.removeItem(at: place) }
-            guard let zip = try? BoardArchive.make(name: name, files: files, in: place),
-                  let data = try? Data(contentsOf: zip) else { return nil }
             let summary = ExportRules.summary(boards: count, starters: starterFiles.count,
                                               pictures: pictures.count - missing.count, missing: missing.count)
-            return ExportFile(data: data, name: name, boards: count, summary: summary)
+            return ExportFile(url: zip, name: name, boards: count, summary: summary, place: place)
         }.value
     }
 

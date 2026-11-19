@@ -20,6 +20,8 @@ enum PaperPictures {
 
     private static var open = 0
     private static var found: [String: CGImage] = [:]
+    /// 0.11: the pictures of the page being drawn were read beforehand, off the main thread: nothing is read here.
+    private static var preloaded = false
     /// How many pictures the last drawing read from their stored files (for the check behind `-shareTo`).
     private(set) static var read = 0
 
@@ -31,7 +33,26 @@ enum PaperPictures {
 
     static func end() {
         open = max(0, open - 1)
-        if open == 0 { found = [:] }
+        if open == 0 { found = [:]; preloaded = false }
+    }
+
+    /// 0.11: the stored files of these pictures, read and unpacked off the main thread (one page's worth).
+    nonisolated static func readFiles(_ names: [String]) -> [String: CGImage] {
+        var out: [String: CGImage] = [:]
+        for name in names {
+            guard let bytes = PictureStore.shared.fileBytes(name),
+                  let source = CGImageSourceCreateWithData(bytes as CFData, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary) else { continue }
+            out[name] = image
+        }
+        return out
+    }
+
+    /// Hands over the pictures of the page about to be drawn; the last page's are let go (`[:]` clears).
+    static func use(_ images: [String: CGImage]) {
+        preloaded = true
+        found = images
+        read += images.count
     }
 
     /// A picture straight from its stored file, unpacked only while it is drawn and never put into the app's
@@ -40,6 +61,7 @@ enum PaperPictures {
     static func image(_ name: String) -> CGImage? {
         guard open > 0 else { return nil }
         if let image = found[name] { return image }
+        if preloaded { return nil }
         guard let bytes = PictureStore.shared.fileBytes(name),
               let source = CGImageSourceCreateWithData(bytes as CFData, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
@@ -54,7 +76,8 @@ extension BoardPicture {
     static var paper: CGSize { SharePlan.paper(region: Locale.current.region?.identifier) }
 
     /// The pages as one PDF. Each page lies upright or on its side by its own shape (a timeline always on its side).
-    static func pdf(of pages: [SharePage], title: String, now: Date = Date()) -> Data? {
+    @MainActor
+    static func pdf(of pages: [SharePage], title: String, now: Date = Date()) async -> Data? {
         let sheets = pages.compactMap { PaperSheet($0) }
         guard !sheets.isEmpty else { return nil }
         let data = NSMutableData()
@@ -70,6 +93,11 @@ extension BoardPicture {
             PaperPictures.end()
         }
         for (n, sheet) in sheets.enumerated() {
+            // 0.11: only the pictures of THIS page are open; they are read off the main thread first, and the
+            // screen gets a turn between the pages.
+            let names = Array(Set(sheet.board.items.compactMap(\.picture)))
+            let images = await Task.detached(priority: .userInitiated) { PaperPictures.readFiles(names) }.value
+            PaperPictures.use(images)
             let fit = sheet.fit(on: paper)
             let page = PaperPage(sheet: sheet, fit: fit, name: SharePlan.nameLine(title),
                                  date: SharePlan.dateLine(now, page: n + 1, of: sheets.count))
@@ -82,6 +110,8 @@ extension BoardPicture {
                 draw(pdf)
                 pdf.endPDFPage()
             }
+            PaperPictures.use([:])
+            await Task.yield()
         }
         pdf.closePDF()
         return data.length > 0 ? data as Data : nil
@@ -155,6 +185,9 @@ private struct PaperPage: View {
 /// one page, fitted — on its side by itself when the board is wider than tall.
 @MainActor
 enum BoardPrint {
+    /// 0.11: the pages are made one at a time with the screen free in between, and the line "Making the pages…" shows.
+    private static var making = false
+
     static func ask(_ session: BoardSession) {
         session.commitEdit()
         let board = session.board
@@ -162,12 +195,21 @@ enum BoardPrint {
             AppModel.shared.say("There is nothing to print yet.")
             return
         }
-        guard let pdf = BoardPicture.pdf(of: board.sharePages(.whole), title: board.title) else {
-            AppModel.shared.say("The page could not be made.", tone: .problem)
-            return
-        }
-        if !show(pdf, title: SharePlan.nameLine(board.title), onItsSide: BoardPicture.printsOnItsSide(board)) {
-            AppModel.shared.say("Printing is not possible here.", tone: .problem)
+        guard !making else { return }
+        making = true
+        AppModel.shared.say("Making the pages…", seconds: 60)
+        Task { @MainActor in
+            // One turn of the screen first, so the line shows.
+            try? await Task.sleep(nanoseconds: 40_000_000)
+            defer { making = false }
+            guard let pdf = await BoardPicture.pdf(of: board.sharePages(.whole), title: board.title) else {
+                AppModel.shared.say("The page could not be made.", tone: .problem)
+                return
+            }
+            AppModel.shared.flash = nil
+            if !show(pdf, title: SharePlan.nameLine(board.title), onItsSide: BoardPicture.printsOnItsSide(board)) {
+                AppModel.shared.say("Printing is not possible here.", tone: .problem)
+            }
         }
     }
 
