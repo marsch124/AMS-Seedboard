@@ -135,6 +135,8 @@ struct BoardList: View {
                 VStack(alignment: .leading, spacing: 2) {
                     // The way back to the home page (on the iPhone the list itself is the home).
                     if !phone { homeRow }
+                    // 0.13: "Still thinking about these?" — on the iPhone's list; the Mac and iPad show it on the home page.
+                    if phone { NudgeRows(search: search, open: open) }
                     section("Pinned", BoardSearch.find(search, in: model.pinned))
                     section("Recent", BoardSearch.find(search, in: model.recent))
                     section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)

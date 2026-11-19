@@ -82,6 +82,8 @@ final class AppModel: ObservableObject {
         store.onClash = { [weak self] id, title in self?.clash = ClashNotice(id: id, title: title) }
         // 0.5: what PARAGON says about the boards that were sent is read back (EchoKeeper.swift).
         EchoKeeper.shared.watch(self)
+        // 0.13: the calendar that follows the timelines (when its switch is on).
+        CalendarFollower.shared.watch(self)
         #if os(macOS)
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.leaving(closing: true) }
@@ -545,7 +547,8 @@ final class AppModel: ObservableObject {
     /// 0.11: a box ticked on a board whose task is in PARAGON: one line each on PARAGON's waiting list. Nothing is
     /// opened or changed in PARAGON's folder; no waiting list on this device (sample boards, no PARAGON) = nothing.
     func tellParagonTicked(_ lines: [ParagonExport.DoneLine]) {
-        guard !LaunchOptions.sampleData, let outbox = place?.outbox else { return }
+        // 0.13: the switch "Done ticks the PARAGON task".
+        guard !LaunchOptions.sampleData, Switch.isOn(Switch.doneTicksParagon), let outbox = place?.outbox else { return }
         ParagonGate.appendDone(lines, to: outbox)
     }
 

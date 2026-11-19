@@ -45,6 +45,12 @@ final class SpotlightIndex {
             .sink { [weak self] boards in self?.tell(boards) }
     }
 
+    /// 0.13: the switch was flipped: forget everything, or tell every board again.
+    func switched() {
+        guard watch != nil else { return }
+        tell(AppModel.shared.boards)
+    }
+
     private func told() -> [UUID: Date] {
         let stored = UserDefaults.standard.dictionary(forKey: SpotlightIndex.key) as? [String: Double] ?? [:]
         var out: [UUID: Date] = [:]
@@ -66,6 +72,15 @@ final class SpotlightIndex {
         if names != titles {
             titles = names
             SeedboardShortcuts.updateAppShortcutParameters()
+        }
+        // 0.13: the switch "Boards in search" is off: the search forgets every board once.
+        guard Switch.isOn(Switch.search) else {
+            if !told().isEmpty || UserDefaults.standard.object(forKey: SpotlightIndex.key) != nil {
+                keep([:])
+                UserDefaults.standard.removeObject(forKey: SpotlightIndex.key)
+                CSSearchableIndex.default().deleteSearchableItems(withDomainIdentifiers: [SpotlightWords.domain]) { _ in }
+            }
+            return
         }
         // One round at a time; what changed meanwhile is told in the next round.
         guard !busy else {

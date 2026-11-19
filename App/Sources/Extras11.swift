@@ -95,15 +95,20 @@ extension BarActions {
 /// Settings ▸ Sounds: the "Tick sound" switch.
 struct SoundsSection: View {
     @AppStorage(TickSound.defaultsKey) private var on = TickSound.isOn
+    @AppStorage(Switch.taps) private var taps = true
 
     var body: some View {
         Section {
             Toggle("Tick sound", isOn: $on)
                 .tint(Part.boards.text)
                 .accessibilityIdentifier("settings.tickSound")
-        } header: { PartHeader("Sounds", .boards) }
+            // 0.13: the taps the hand feels (Feel.swift).
+            Toggle("Taps you feel", isOn: $taps)
+                .tint(Part.boards.text)
+                .accessibilityIdentifier("settings.taps")
+        } header: { PartHeader("Sounds and taps", .boards) }
         footer: {
-            Text("A soft tick when you tick a to-do box or a line of a tick list. It follows the silent switch and never stops your music.")
+            Text("Tick sound: a soft tick when you tick a to-do box or a line of a tick list. It follows the silent switch and never stops your music. Taps: the small taps you feel on the iPhone (and a Mac trackpad) when things snap, land or are sent.")
         }
     }
 }

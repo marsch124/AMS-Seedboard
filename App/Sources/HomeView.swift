@@ -66,6 +66,8 @@ struct HomeView: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("home.starterStrip")
 
+                // 0.13: "Still thinking about these?" (Switches13.swift).
+                NudgeRows(search: search, open: open)
                 section("Pinned", pinned)
                 section("Recent", recent)
                 section("Sent to PARAGON", sent, part: .paragon)

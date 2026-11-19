@@ -55,7 +55,7 @@ enum Feel {
     private static var lastCatch = Date.distantPast
 
     private static func tick(_ moment: Moment) {
-        guard !still else { return }
+        guard !still, Switch.isOn(Switch.taps) else { return }
         if moment == .catch {
             let now = Date()
             guard FeelRules.mayCatch(last: lastCatch, now: now) else { return }

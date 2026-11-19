@@ -148,7 +148,7 @@ final class EchoKeeper: ObservableObject {
     /// `byHand`: the owner opened or sent the board — a note that is gone from its place is searched for at once.
     private func look(at boards: [Board], byHand: Bool) {
         let sent = boards.filter { $0.sent != nil }
-        guard !sent.isEmpty, let model, let place = model.place else { return }
+        guard Switch.isOn(Switch.readParagon), !sent.isEmpty, let model, let place = model.place else { return }
         if busy {
             for board in sent { waiting[board.id] = (waiting[board.id] ?? false) || byHand }
             return
@@ -224,6 +224,8 @@ final class EchoKeeper: ObservableObject {
 
     /// What is kept about the note this board became; nil when it was sent anew since, or never checked.
     func echo(of board: Board) -> Kept? {
+        // 0.13: the switch "Read back from PARAGON".
+        guard Switch.isOn(Switch.readParagon) else { return nil }
         guard let sent = board.sent, let echo = kept[board.id], echo.sentPath == sent.path else { return nil }
         return echo
     }
@@ -231,7 +233,7 @@ final class EchoKeeper: ObservableObject {
     /// The small line under the board's top bar; nil for a board that is no note or project in PARAGON.
     /// `short`: without "checked 14:02", for a narrow screen.
     func line(for board: Board, now: Date = Date(), short: Bool = false) -> String? {
-        guard let sent = board.sent else { return nil }
+        guard Switch.isOn(Switch.readParagon), let sent = board.sent else { return nil }
         guard let echo = echo(of: board) else {
             return ParagonRead.line(kind: sent.kind, title: sent.title, found: 0, done: 0, checked: nil)
         }

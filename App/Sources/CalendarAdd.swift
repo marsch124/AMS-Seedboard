@@ -86,7 +86,15 @@ struct CalendarAddSheet: View {
                     .foregroundStyle(Part.timeline.text)
                 Spacer(minLength: 0)
             }
-            if choices.milestones.isEmpty && choices.bars.isEmpty {
+            if Switch.isOn(Switch.calendarAuto) {
+                // 0.13: the calendar follows by itself; adding by hand would make a second event.
+                Text("Your timeline days go to the Seedboard calendar by themselves (Settings ▸ Calendar).")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("calendar.byItself")
+                Spacer(minLength: 0)
+            } else if choices.milestones.isEmpty && choices.bars.isEmpty {
                 Text("This timeline has no milestones or bars with days yet.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -115,7 +123,7 @@ struct CalendarAddSheet: View {
                 Button("Add") { add() }
                     .buttonStyle(FilledButton(.timeline))
                     .keyboardShortcut(.defaultAction)
-                    .disabled(chosen.isEmpty || working)
+                    .disabled(chosen.isEmpty || working || Switch.isOn(Switch.calendarAuto))
                     .accessibilityIdentifier("calendar.add")
             }
             .padding(.top, 2)

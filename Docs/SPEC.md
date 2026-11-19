@@ -1,4 +1,4 @@
-# AMS Seedboard — specification, version 0.12 (build 12)
+# AMS Seedboard — specification, version 0.13
 
 **Version 0.11 (build 11, 2026-11-19)** is a hardening and improvement round: 38 picks from `Docs/IDEAS-0.11.md` (1–12, 14–24, 26, 27, 28, 30, 31, 33, 36–41, 43, 47). Everything is in part **17**. Item 13 was not built; item 14 needed no change. The board format is now **7** (new field `Board.due`). Where part 17 and an older part disagree, part 17 is right.
 
@@ -1617,3 +1617,40 @@ All off on timeline and Who does what boards; all go through Undo; none changes 
 - Draw plate (`InkViews.swift`): `draw.ruler` and `draw.fade` are `tile(...)` mark tiles (were `word(...)` buttons); identifiers and help texts unchanged ("Ruler: lines drawn along it come out straight", "Fade: show the pencil lines of this board lighter").
 - Bar actions (`BarActions.swift`): `readthis` "Read this" and `wordsnote` "Words to a note" show `.new(.readThis)` (were `.new(.makeTyped)`); `copywords` keeps `.makeTyped`.
 - Board format unchanged (7).
+
+## 19. 0.13 — switches, calendar by itself, still thinking (19 Nov 2026)
+Version 0.13. Settings gets on/off switches, kept on THIS device only (each iPhone, iPad and Mac has its own). Where this part and an older part disagree about a thing 0.13 changed, this part is right.
+
+### 19.1 Sounds and taps
+- Section "Sounds and taps" (was "Sounds"): switch Tick sound (as before) and NEW switch "Taps you feel" (id `settings.taps`, key `switch.taps`, on by default). It gates the small taps felt on the iPhone (and on a Mac trackpad) when things snap, land, or a Send goes through. Off = none.
+
+### 19.2 Calendar
+- Section "Calendar": switch "Timeline days in Calendar" (id `settings.calendarAuto`, key `switch.calendarAuto`, OFF by default). Line under it: id `settings.calendarLine`, e.g. "14 events in the Seedboard calendar · updated 11:42".
+- On: every milestone and bar of the timeline boards goes into its own calendar called "Seedboard", made the first time, with its own colour (so it can be hidden in Calendar or Fantastical in one tap). Its identifier is kept in device settings key `calendar.seedboardID`.
+- It follows by itself: moving a bar moves its event, renaming changes the event's name, removing removes the event. Milestone = one-day event; bar = one event over all its days; all-day events. Done ones stay, with "(done)" after the name. Notes: From the Seedboard board “title”. Boards that are put away are left out.
+- Events carry the link `seedboard://board/<board id>/item/<row id>` as their URL; that is how Seedboard finds its own events. Events in the Seedboard calendar without such a link are never touched.
+- Turn it on on ONE device; the calendar brings the days to the others. Switching it off takes Seedboard's events out again, and the Seedboard calendar too when nothing else is in it.
+- Asks once for full calendar access (it must read its own events to move them). If refused, the line says: Seedboard may not use your calendar yet. Allow it in Settings ▸ Privacy ▸ Calendars (on the Mac: System Settings ▸ Privacy & Security ▸ Calendars).
+- The older page More ▸ "Add to Calendar…" stays for adding by hand. While the switch is on, that page only says: Your timeline days go to the Seedboard calendar by themselves (Settings ▸ Calendar).
+- Core rules: `Core/Sources/SeedboardCore/Switches13.swift`: `CalendarFollow.wanted(boards:)` (the events that should exist) and `CalendarFollow.plan(wanted:existing:)` (what to add, change, remove).
+
+### 19.3 Home page: Still thinking about these?
+- Section "Home page": switch "Still thinking about these?" (id `settings.nudge`, key `switch.nudge`, on by default).
+- Boards not changed for 2 weeks come up at the TOP of the boards (home page on Mac/iPad, the list on iPhone) under the heading "Still thinking about these?" (id `home.heading.Still thinking about these?`). At most 3, the oldest first. Each row (id `nudge.board.<title>`) says e.g. "Changed 3 weeks ago" and has two buttons: "Put away" (id `nudge.putAway.<title>`) and "Not now" (id `nudge.notNow.<title>`). Pressing the board opens it.
+- Not now hides that board there for 2 weeks; then it may ask again. Stored in device settings key `nudge.notNow.v1` (board id → the day it may ask again).
+- Left out: pinned boards, boards sent to PARAGON, boards already put away, boards that cannot be changed.
+- Core rule: `Nudge.boards(_:now:notNow:)`.
+
+### 19.4 PARAGON switches
+- Section "PARAGON" gets two switches, both on by default. "Done ticks the PARAGON task" (id `settings.doneTicksParagon`, key `switch.doneTicksParagon`): marking a timeline bar or milestone Done also ticks its task in PARAGON (needs PARAGON 341); off = Seedboard leaves PARAGON alone.
+- "Read back from PARAGON" (id `settings.readParagon`, key `switch.readParagon`): boards show what PARAGON did with them ("5 of 13 done", the Open in PARAGON line, due days); off = Seedboard no longer reads PARAGON's notes and those lines disappear.
+
+### 19.5 Search
+- Section "Search": switch "Boards in search" (id `settings.search`, key `switch.search`, on by default). Your boards show up when you search on this device (Spotlight). Off takes them out of the search; on puts them back.
+
+### 19.6 Tests and words
+- Data tests: `Switches13Tests` (Core).
+- `Guide.swift`: new 0.13 entry in What's new (above 0.12); new How it works part "Switches in Settings"; changed parts: The home page, Timeline board, What PARAGON did with it.
+- Board format unchanged (7).
+
+- Launch word `-calendarTest` (simulator): the sample boards go to the Seedboard calendar too, to see it work.

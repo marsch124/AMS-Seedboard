@@ -25,6 +25,10 @@ struct SettingsView: View {
                 // 0.11: the tick sound (Extras11.swift).
                 SoundsSection()
 
+                // 0.13: the switches (Switches13.swift), kept on this device.
+                CalendarFollowSection()
+                NudgeSwitchSection()
+
                 Section {
                     Text(model.paragonLine)
                         .fixedSize(horizontal: false, vertical: true)
@@ -32,7 +36,13 @@ struct SettingsView: View {
                     Button("Check again") { model.checkParagon() }
                         .buttonStyle(FilledButton(.paragon))
                         .accessibilityIdentifier("settings.checkParagon")
+                    ParagonSwitchRows()
                 } header: { PartHeader("PARAGON", .paragon) }
+                footer: {
+                    Text("Done ticks: marking a timeline bar or milestone Done ticks its task in PARAGON too. Read back: your boards show what PARAGON did with them.")
+                }
+
+                SearchSwitchSection()
 
                 Section {
                     Text(model.safetyLine)

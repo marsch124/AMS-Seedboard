@@ -13,8 +13,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     # The version lives here only; the Info.plist reads it from these two.
-    MARKETING_VERSION: "0.12"
-    CURRENT_PROJECT_VERSION: "12"
+    MARKETING_VERSION: "0.13"
+    CURRENT_PROJECT_VERSION: "13"
 packages:
   # The rules: boards, layout, arrows, text in and out, what goes to PARAGON. No screen in it.
   SeedboardCore:
@@ -88,6 +88,7 @@ targets:
         NSCameraUsageDescription: To put a photo straight onto a board.
         # 0.9: a timeline's milestones into the calendar (write-only: Seedboard can add events, never read them).
         NSCalendarsWriteOnlyAccessUsageDescription: To put a timeline's milestones into your calendar.
+        NSCalendarsFullAccessUsageDescription: To keep your timeline days in the Seedboard calendar, and move them when you move a bar.
         # 0.5, the Mac: words marked in another app become a board (right-click ▸ Services). `MacDelegate` answers.
         # The empty NSRequiredContext makes the line show without being switched on in System Settings first.
         NSServices:
