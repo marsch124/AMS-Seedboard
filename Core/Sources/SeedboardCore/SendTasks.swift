@@ -117,7 +117,7 @@ extension ParagonExport {
         } else {
             text = plainProject(board: board, title: title, picture: picture, now: now, made: &made)
         }
-        return Handover(text: text, tasks: made.tasks, inInbox: made.inInbox)
+        return Handover(text: withBoardDue(text, board: board), tasks: made.tasks, inInbox: made.inInbox)
     }
 
     // MARK: A timeline

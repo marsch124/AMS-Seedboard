@@ -117,7 +117,8 @@ struct BoardThumb: View {
     /// A starter of the shelf: an untouched built-in is drawn once, an own or changed one from its stored board.
     init(starter: ShelfStarter) {
         if let stored = starter.board {
-            self.board = stored
+            // 0.11: an own timeline starter is drawn with its days moved to "from today", as a new board from it gets.
+            self.board = StarterShelf.shownBoard(stored)
             self.name = "shelf." + starter.id
         } else if let built = starter.builtin {
             self.board = Thumbs.board(of: built)

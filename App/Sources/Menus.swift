@@ -73,6 +73,8 @@ struct SeedMenus: Commands {
             Divider()
             Button("Rename…") { desk.rename.send() }
                 .disabled(!canChange)
+            Button("Due Day…") { DueDesk.shared.show = true }
+                .disabled(!canChange || session?.starterDraft == true)
             Button("Send to PARAGON…") {
                 session?.commitEdit()
                 model.showSend = true
