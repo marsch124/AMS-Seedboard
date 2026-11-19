@@ -86,6 +86,7 @@ struct CanvasView: View {
                     painter.editing = session.editing
                     painter.dropTarget = dropTarget
                     painter.handles = !session.readOnly
+                    painter.inkOpacity = session.ink.fade ? Fade.opacity : 1
                     painter.frames = snap.frames(for: session)
                     if case .idea(let id) = drag, let ghost { painter.ghost = (id, ghost) }
                     painter.draw(&sheet)
@@ -135,6 +136,7 @@ struct CanvasView: View {
                 IdeaPlaceMark(session: session)
                 // The line that runs under the Pencil (or a finger, or the mouse) while it draws.
                 InkLayer(wet: session.ink.wet, offset: session.offset, scale: session.scale, paint: paint)
+                RulerLayer(session: session, desk: session.ink, paint: paint)
 
                 editor
                 LaneOverlay(session: session)

@@ -68,6 +68,8 @@ struct DrawPlate: View {
             }
         } else if desk.rubber && desk.target == nil {
             rubberLine
+        } else if desk.fade {
+            fadeLine
         }
     }
 
@@ -95,6 +97,16 @@ struct DrawPlate: View {
                     tile(.thick, "draw.thick", "Thick", on: pen && desk.width == .thick) { desk.pick(width: .thick) }
                 }
                 dots
+            }
+            // 0.11: a ruler to draw along (picks 37) and "Fade" for every pencil line of this board (38).
+            HStack(spacing: Finger.chipGap) {
+                word("Ruler", "draw.ruler", on: desk.ruler != nil, help: "Ruler: lines drawn along it come out straight") {
+                    session.toggleRuler()
+                }
+                word("Fade", "draw.fade", on: desk.fade, help: "Fade: show the pencil lines of this board lighter") {
+                    desk.fade.toggle()
+                    session.objectWillChange.send()
+                }
             }
             if desk.target == nil { InkTidySwitch(session: session, desk: desk) }
             Button("Done") {
@@ -203,6 +215,28 @@ struct DrawPlate: View {
         .accessibilityIdentifier(id)
     }
 
+    /// "Fade" is on and the plate is closed: one small line says so, with the button that brings the lines back.
+    private var fadeLine: some View {
+        HStack(spacing: 8) {
+            Text("Pencil lines are faded")
+                .font(Txt.label)
+            Button("Show") {
+                desk.fade = false
+                session.objectWillChange.send()
+                session.takeKeys()
+            }
+            .buttonStyle(FilledButton(.drawing))
+            .accessibilityIdentifier("draw.fadeOff")
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 5)
+        .padding(.vertical, 4)
+        .background(Theme.plate, in: Capsule())
+        .overlay(Capsule().stroke(Part.drawing.text.opacity(0.35)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("draw.fadeLine")
+    }
+
     /// The Pencil rubs (after its double-tap) and no plate says so: one small line does.
     private var rubberLine: some View {
         HStack(spacing: 8) {
@@ -266,6 +300,11 @@ struct InkLayer: View {
                 let ring = Path(ellipseIn: CGRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2))
                 sheet.fill(ring, with: .color(paint.plate.opacity(0.6)))
                 sheet.stroke(ring, with: .color(paint.faint), lineWidth: 1.5 / scale)
+                // 0.11 (pick 36): the ring says its size (Small, Medium or Large), just under it.
+                if let size = RubberSize.allCases.first(where: { abs($0.screenReach - wet.rubberReach) < 0.5 }) {
+                    let screen = CGPoint(x: at.x * scale + offset.width, y: (at.y + r) * scale + offset.height + 3)
+                    ctx.draw(Text(size.word).font(.caption2).foregroundStyle(paint.faint), at: screen, anchor: .top)
+                }
             }
         }
         .allowsHitTesting(false)

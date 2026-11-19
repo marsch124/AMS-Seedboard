@@ -125,6 +125,12 @@ struct BarActions {
         return act("totext", "Make typed", .new(.makeTyped), show: .wideWord, drop: drop, exact: "ink.totext") { session.makeTyped(id) }
     }
 
+    /// "Read this" (0.11): the sketch's handwriting becomes a sticky note beside it; the sketch stays.
+    private func readThis(_ id: UUID, drop: Int = 1) -> BarAction {
+        let session = session
+        return act("readthis", "Read this", .new(.makeTyped), show: .wideWord, drop: drop, exact: "ink.readthis") { session.readThis(id) }
+    }
+
     /// "Draw on it" (0.9): the Draw tool opens with this picture as its target.
     private func drawOn(_ id: UUID, drop: Int = 1) -> BarAction {
         let session = session
@@ -365,6 +371,7 @@ struct BarActions {
             // A sketch (0.9): its colour, its handwriting as typed words, copy it, remove it.
             all.append(colour(for: item, show: .wideWord, drop: 2))
             all.append(makeTyped(item.id, drop: 1))
+            all.append(readThis(item.id, drop: 2))
             all.append(duplicate(drop: 0))
             all += chooseMore()
             all.append(remove(gap: true))
@@ -453,7 +460,7 @@ struct BarActions {
         // (A sketch has no words and carries no tick.)
         if item.kind != .drawing && item.kind != .picture { all.append(words(item.id)) }
         if item.kind == .picture { all += [drawOn(item.id), caption(item.id), crop(item)] }
-        if item.kind == .drawing { all.append(makeTyped(item.id)) }
+        if item.kind == .drawing { all.append(makeTyped(item.id)); all.append(readThis(item.id)) }
         let isBranch = item.kind == .idea && item.parent != nil
         if item.kind.isShape || item.kind == .note || item.kind == .frame || item.kind == .drawing || isBranch { all.append(colour(for: item)) }
         if item.kind != .frame && item.kind != .drawing && item.kind != .picture { all.append(todo(on: item.todo, gap: false)) }
