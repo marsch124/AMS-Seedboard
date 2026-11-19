@@ -20,7 +20,11 @@ public enum BoardSearch {
         let wanted = words(query)
         guard !wanted.isEmpty else { return boards }
         // 0.9: words read inside a board's pictures count too (`BoardSearch.way` says which it was).
-        return boards.filter { $0.holds(wanted) || $0.holdsWithPictures(wanted) }
+        // 0.14: a board locked with Face ID is found by its name only, so a search never gives away what is on it.
+        return boards.filter { board in
+            if board.faceLock == true { return wanted.allSatisfy { plain(board.title).contains($0) } }
+            return board.holds(wanted) || board.holdsWithPictures(wanted)
+        }
     }
 }
 

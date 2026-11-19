@@ -46,4 +46,11 @@ final class Boards14Tests: XCTestCase {
         XCTAssertEqual(read.title, "Notes")
         XCTAssertEqual(read.nodes.first?.children.count, 2)
     }
+
+    func testLockedBoardIsFoundByNameOnly() {
+        var board = Board(title: "Gift ideas", items: [Item(kind: .note, text: "Bicycle for Alex")])
+        board.faceLock = true
+        XCTAssertTrue(BoardSearch.find("bicycle", in: [board]).isEmpty)
+        XCTAssertEqual(BoardSearch.find("gift", in: [board]).count, 1)
+    }
 }
