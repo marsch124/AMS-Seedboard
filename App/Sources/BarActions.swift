@@ -212,7 +212,10 @@ struct BarActions {
     private func savePiece(drop: Int = 0) -> [BarAction] {
         let session = session
         guard PieceDesk.shared.canSave(session) else { return [] }
-        return [act("savePiece", "Save as a piece…", .app(.seedStarter), show: .word, drop: drop) { PieceDesk.shared.askToSave(session) }]
+        // Words only: the starter mark means "a whole board to start from", not a piece (one mark, one meaning).
+        var save = act("savePiece", "Save as a piece…", .app(.seedStarter), show: .word, drop: drop) { PieceDesk.shared.askToSave(session) }
+        save.wordOnly = true
+        return [save]
     }
 
     /// iPhone and iPad: each press adds to what is chosen, and a finger drag on empty board draws the choosing box.
