@@ -8,12 +8,12 @@
 
 ## 2. How it works
 - A Send problem now tells why and what to do ("The Inbox could not be saved: the disk is full. Free some space, then send again. Nothing was changed.").
-- Things sent to the Inbox: the line under the board shows how they stand. It turns to "in PARAGON" when Seedboard's read of the board's note finds them there; a day without that, it says "not filed yet — open PARAGON". A board sent only as to-dos has no note to read, so it stays "waiting" and then "not filed yet".
+- Things sent to the Inbox: the line under the board shows how they stand. Seedboard reads (never changes) PARAGON's waiting list `capture-outbox.jsonl`: a sent line that is no longer in it is filed, so the line says "in PARAGON" (also when the read-back of the note finds it). A line still in the list after a day says "not filed yet — open PARAGON". If the list cannot be read, it says only "waiting".
 - Choose two or more things, press Send, switch on "The 3 chosen things": Project and Add what is new go away; Note and Only the to-do boxes remain. The board is not marked as sent.
 - Copy the board as an email: paste into Mail.
 
 ## 3. Spec
-- Core `Paragon11.swift`: `SendCause` (classify(Error), words(_:what:), words(for:what:), `inboxFolderMissing`); `InboxWait` (State waiting/filed/late, `lateAfter` 86 400 s, `state(of:in:seen:now:)`, `line(for:seen:now:)`); `Board.chosenOnly(_:)`, `Board.chosenWords(_:)`, `Board.emailText`.
+- Core `Paragon11.swift`: `SendCause` (classify(Error), words(_:what:), words(for:what:), `inboxFolderMissing`); `InboxWait` (`waitingTexts(in:)`, State waiting/filed/late, `lateAfter` 86 400 s, `state(of:in:seen:waiting:now:)`, `line(for:seen:waiting:now:)`); `Board.chosenOnly(_:)`, `Board.chosenWords(_:)`, `Board.emailText`.
 - Mapping: POSIX 28/69 full; 1/13/30 locked; 16/26/11/35 in use; 2/20 missing; Cocoa 640 full, 513/642 locked, 4/260/2 missing, 4354 iCloud full, 4352/4353/4355 iCloud unavailable; the underlying error is looked at too (4 levels).
 - Time base of "a day": `board.sent.when`, else `board.changed` (Send itself touches it). Seen = `ParagonEcho.read[board.id]`.
 - `SendProblem.because(String)` new; `.noInbox` now says: "PARAGON's Inbox folder is missing on this device. Open PARAGON once, then check again in Settings. A note or a project can still be sent." Note/picture/Inbox write failures use `because`. `append` throws the POSIX error of `open`.

@@ -21,11 +21,18 @@ final class Paragon11Tests: XCTestCase {
         let sentAt = Date(timeIntervalSince1970: 1_000_000)
         board.noteSent(a, words: "Order timber", place: SentTask.inbox)
         board.changed = sentAt
-        XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [:], now: sentAt.addingTimeInterval(3600)), .waiting)
-        XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [:], now: sentAt.addingTimeInterval(90_000)), .late)
+        let list = try! ParagonExport.waitingData(ParagonExport.waitingLines(["Order timber"], notePath: nil, now: sentAt))
+        let still = InboxWait.waitingTexts(in: list)
+        XCTAssertEqual(still, ["Order timber"])
+        XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [:], waiting: still, now: sentAt.addingTimeInterval(3600)), .waiting)
+        XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [:], waiting: still, now: sentAt.addingTimeInterval(90_000)), .late)
+        // PARAGON emptied the list: the line is filed.
+        XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [:], waiting: [], now: sentAt.addingTimeInterval(90_000)), .filed)
+        // The list cannot be read: never "late".
+        XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [:], waiting: nil, now: sentAt.addingTimeInterval(90_000)), .waiting)
         XCTAssertEqual(InboxWait.state(of: a, in: board, seen: [a: .inParagon], now: sentAt.addingTimeInterval(90_000)), .filed)
-        XCTAssertEqual(InboxWait.line(for: board, seen: [:], now: sentAt.addingTimeInterval(60)), "1 waiting for PARAGON")
-        XCTAssertEqual(InboxWait.line(for: board, seen: [:], now: sentAt.addingTimeInterval(90_000)), "1 not filed yet — open PARAGON")
+        XCTAssertEqual(InboxWait.line(for: board, seen: [:], waiting: still, now: sentAt.addingTimeInterval(60)), "1 waiting for PARAGON")
+        XCTAssertEqual(InboxWait.line(for: board, seen: [:], waiting: still, now: sentAt.addingTimeInterval(90_000)), "1 not filed yet — open PARAGON")
         XCTAssertEqual(InboxWait.line(for: board, seen: [a: .done]), "1 in PARAGON")
     }
 

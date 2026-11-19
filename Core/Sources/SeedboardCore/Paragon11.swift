@@ -83,21 +83,38 @@ public enum InboxWait {
     /// After this long without being seen filed: "not filed yet".
     public static let lateAfter: TimeInterval = 86_400
 
+    /// The words of the lines still in the waiting list (`capture-outbox.jsonl`, read only). PARAGON empties the list
+    /// when it files the lines, so a sent line that is no longer there is filed. Lines that cannot be read are skipped.
+    public static func waitingTexts(in data: Data) -> Set<String> {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        var out = Set<String>()
+        for raw in data.split(separator: 0x0A) {
+            if let line = try? decoder.decode(ParagonExport.WaitingLine.self, from: Data(raw)) { out.insert(line.text) }
+        }
+        return out
+    }
+
     /// nil: the thing did not go to the Inbox. `seen`: what the read-back found (thing → how it stands there).
-    public static func state(of id: UUID, in board: Board, seen: [UUID: TodoState], now: Date = Date()) -> State? {
+    /// `waiting`: the words still in the waiting list; nil = the list could not be read (then only the read-back
+    /// can say "filed", and the thing is never called late).
+    public static func state(of id: UUID, in board: Board, seen: [UUID: TodoState], waiting: Set<String>? = nil,
+                             now: Date = Date()) -> State? {
         guard let task = board.sentTask(id), task.place == SentTask.inbox else { return nil }
         if seen[id] != nil { return .filed }
+        guard let waiting else { return .waiting }
+        if !waiting.contains(task.words) { return .filed }
         let since = board.sent?.when ?? board.changed
         return now.timeIntervalSince(since) >= lateAfter ? .late : .waiting
     }
 
     /// The small line: "2 waiting for PARAGON", "1 in PARAGON", "1 not filed yet — open PARAGON"; nil when nothing went to the Inbox.
-    public static func line(for board: Board, seen: [UUID: TodoState], now: Date = Date()) -> String? {
+    public static func line(for board: Board, seen: [UUID: TodoState], waiting: Set<String>? = nil, now: Date = Date()) -> String? {
         let here = Set(board.items.map(\.id))
-        var waiting = 0, filed = 0, late = 0
+        var nWaiting = 0, filed = 0, late = 0
         for task in board.sentTasks where here.contains(task.id) {
-            switch state(of: task.id, in: board, seen: seen, now: now) {
-            case .waiting: waiting += 1
+            switch state(of: task.id, in: board, seen: seen, waiting: waiting, now: now) {
+            case .waiting: nWaiting += 1
             case .filed: filed += 1
             case .late: late += 1
             case nil: break
@@ -105,7 +122,7 @@ public enum InboxWait {
         }
         var parts: [String] = []
         if late > 0 { parts.append(late == 1 ? "1 not filed yet — open PARAGON" : "\(late) not filed yet — open PARAGON") }
-        if waiting > 0 { parts.append("\(waiting) waiting for PARAGON") }
+        if nWaiting > 0 { parts.append("\(nWaiting) waiting for PARAGON") }
         if filed > 0 { parts.append("\(filed) in PARAGON") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
