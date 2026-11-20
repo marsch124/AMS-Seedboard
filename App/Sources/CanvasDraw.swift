@@ -81,6 +81,8 @@ enum Lettering {
             let own = TextSize.look(item.textSize)
             return (CGFloat(own.size), own.bold)
         case .frame: return (13, true)
+        // 0.19: a small sticky note (quick tags) takes one text style smaller.
+        case .note where item.textSize == TextSize.small: return (13, false)
         default: return (15, false)
         }
     }

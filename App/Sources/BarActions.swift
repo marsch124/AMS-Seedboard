@@ -309,7 +309,7 @@ struct BarActions {
         let session = session
         let paint = Paint(night: night)
         let isNote = item?.kind == .note
-        let names = isNote ? Palette.notes : Palette.names
+        let names = RecentColours.ordered(isNote ? Palette.notes : Palette.names)   // 0.19 (10): the last colours used first
         let plain = item.map { $0.kind.isShape || $0.kind == .drawing } ?? (link != nil)
         let inUse = (item?.id ?? link?.id).flatMap { session.board.colourInUse(of: $0) }
         var all: [BarAction] = []
@@ -369,7 +369,7 @@ struct BarActions {
             var one = itemBar(item)
             // 0.14 (27): behind the "…" of an ordinary thing's bar.
             if !one.isEmpty { one.insert(contentsOf: savePiece(drop: 6), at: max(0, one.count - 1)) }
-            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(withCopyLink(withLook(one)), full: false))
+            return ChosenBarModel(part: BarActions.part(of: item.kind), label: nil, actions: withMarks(withCopyLink(withLook(withCanvas19(one))), full: false))
         }
         if let id = session.selectedLink, let link = session.board.links.first(where: { $0.id == id }) {
             return ChosenBarModel(part: .arrows, label: nil, actions: linkBar(link))
@@ -389,7 +389,7 @@ struct BarActions {
         actions.append(todo(on: session.selection.allSatisfy { session.board.item($0)?.todo == true }))
         actions += todayThree()
         actions.append(remove())
-        return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: withMarks(withLook(actions), full: false))
+        return ChosenBarModel(part: kinds.count == 1 ? kinds.first! : .boards, label: "\(session.selection.count) chosen", actions: withMarks(withLook(withCanvas19(actions)), full: false))
     }
 
     /// 0.14: "Copy link to this" goes in front of "Remove" (or last) in the bar of one chosen thing.
@@ -566,7 +566,7 @@ struct BarActions {
             all += severalMenu(first: tidy.isEmpty)
             all += moveOutLines()
             all.append(remove(gap: true))
-            return withMarks(withLook(all), full: true)
+            return withMarks(withLook(withCanvas19(all)), full: true)
         }
         // 0.14: a table has its own lines.
         if item.kind == .table { return withMarks(tableLines(item, menu: true) + [colour(for: item), copy, cut, twin, remove(gap: true)], full: true) }
@@ -625,7 +625,7 @@ struct BarActions {
         all += moveOutLines()
         all += copyLink(drop: 0)
         all.append(remove(gap: true))
-        return withMarks(withLook(all), full: true)
+        return withMarks(withLook(withCanvas19(all)), full: true)
     }
 
     private func laneChoices(_ item: Item) -> [BarAction] {

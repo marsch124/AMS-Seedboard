@@ -13,6 +13,8 @@ enum Glyph {
     case control(ControlMark)
     /// New in 0.2 (see NewMarks.swift).
     case new(NewMark)
+    /// 0.19: one of Apple's own SF Symbols, by name (Bar19.swift keeps the names).
+    case symbol(String)
 }
 
 struct GlyphView: View {
@@ -25,6 +27,7 @@ struct GlyphView: View {
         case .app(let mark): AppMarkView(mark, size: size, colour: colour)
         case .control(let mark): ControlMarkView(mark, size: size, colour: colour)
         case .new(let mark): AppMarkView(mark.standIn, size: size, colour: colour)
+        case .symbol(let name): Image(systemName: name).font(.system(size: size * 0.85)).foregroundStyle(colour ?? .primary).frame(width: size, height: size)
         }
     }
 }
@@ -617,6 +620,11 @@ struct BoardCommands: Commands {
             Button("Line Up") { session?.lineUp() }.disabled((session?.tidyCount ?? 0) < 2)
             Button("Even Gaps") { session?.evenGaps() }.disabled((session?.tidyCount ?? 0) < 3)
             Button("Same Size") { session?.sameSize() }.disabled((session?.sizeCount ?? 0) < 2)
+            // 0.19 (12, 15): Bar19.swift.
+            Button("Stack") { session?.stackChosen() }.disabled((session?.stackCount ?? 0) < 2 || session?.editing != nil)
+            Button("Put in a Frame") { session?.putChosenInFrame() }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                .disabled(!(session?.canPutInFrame ?? false))
             IdeaOrderCommands()
             MapCommands()
             Button(session?.board.isTimeline == true ? "Paste a List as Bars" : "Paste a List as a Mind Map") {

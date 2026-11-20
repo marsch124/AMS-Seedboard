@@ -681,6 +681,7 @@ final class BoardSession: ObservableObject {
     }
 
     func setColour(_ name: String) {
+        RecentColours.used(name)   // 0.19 (10)
         let ids = selection
         let link = selectedLink
         change { board in
