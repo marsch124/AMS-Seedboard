@@ -50,6 +50,8 @@ struct CanvasView: View {
         case end(UUID, Bool)
         /// 0.19: the middle knob of the chosen arrow: drag to bend, press twice to straighten.
         case knob(UUID)
+        /// 0.19: the right edge of a chosen table's column (its id and the column).
+        case edge(UUID, Int)
     }
 
     private enum Drag {
@@ -64,6 +66,8 @@ struct CanvasView: View {
         case end(UUID, Bool)
         /// 0.19: the middle knob of an arrow is dragged: the arrow bends through it.
         case knob(UUID)
+        /// 0.19: a table's column edge is pulled (the table, the column, the column's width when the pull began).
+        case widening(UUID, Int, Double)
         case marquee
         case panning(CGSize)
     }
@@ -359,6 +363,9 @@ struct CanvasView: View {
         #endif
     }
 
+    /// 0.19: the typing that was going on when this press landed, in a table's cell (the press ends it).
+    @State private var typedAtPress: (id: UUID, spot: TableSpot)?
+
     /// A finger is pressing (not a mouse, a trackpad or the Pencil): press areas are finger size.
     private var byFinger: Bool { Finger.on && !notes.precise }
 
@@ -366,6 +373,12 @@ struct CanvasView: View {
         if let end = session.linkEnd(at: p) { return .end(end.link, end.start) }
         if let knob = session.linkKnob(at: p) { return .knob(knob) }
         let board = session.board
+        // 0.19: the right edge of a column of the chosen table (pulled wider or narrower, two presses fit it).
+        if !session.linking, !session.readOnly, session.selection.count == 1, let id = session.selection.first, let item = board.item(id),
+           item.kind == .table, session.control(at: session.toScreen(p), finger: byFinger, onThing: board.hit(p) != nil) == nil,
+           let column = TableLook.edge(of: item, at: p, reach: (byFinger ? 14 : 6) / max(session.scale, 0.05)) {
+            return .edge(id, column)
+        }
         // Press areas are counted on screen: 9 points round each control, for a finger at least
         // 32 points at every zoom; the nearest control wins (ChosenFrame.swift).
         if let id = session.selection.first, let control = session.control(at: session.toScreen(p), finger: byFinger, onThing: board.hit(p) != nil) {
@@ -401,6 +414,7 @@ struct CanvasView: View {
                     let t = target(at: session.toBoard(value.startLocation))
                     pressBegan = value.time
                     // Pressing somewhere else ends the typing.
+                    typedAtPress = session.editing.flatMap { id in session.cell.map { (id, $0) } }
                     if session.editing != nil { session.commitEdit() }
                     // Every press on the board gives it the keys.
                     keys = true
@@ -478,6 +492,10 @@ struct CanvasView: View {
         case .knob(let id):
             session.liveStart()
             drag = .knob(id)
+        case .edge(let id, let column):
+            guard let item = board.item(id) else { drag = .idle; return }
+            session.liveStart()
+            drag = .widening(id, column, TableLook.layout(of: item).widths[column])
         case .link, .empty:
             #if os(macOS)
             drag = .marquee
@@ -510,6 +528,10 @@ struct CanvasView: View {
             let land = session.board.landing(from: id, at: here, reach: SnapShow.reach(s))
             snap = SnapShow(guides: Feel.catching(land?.guides ?? [], after: snap.guides), landing: land?.frame)
             if let item = session.board.item(id) { rubber = Rubber(from: item.centre, to: land?.centre ?? here) }
+        case .widening(let id, let column, let base):
+            session.live { board in
+                if let i = board.index(of: id) { board.items[i].tableSetWidth(column: column, to: base + Double(delta.width)) }
+            }
         case .joining(let id):
             if let item = session.board.item(id) { rubber = Rubber(from: item.centre, to: here) }
         case .marquee:
@@ -551,7 +573,7 @@ struct CanvasView: View {
             } else {
                 session.liveEnd(keep: true)
             }
-        case .sizing:
+        case .sizing, .widening:
             session.liveEnd(keep: true)
         case .idea(let id):
             Feel.ideaDropped(session.dropHints(for: id, at: here))
@@ -616,12 +638,43 @@ struct CanvasView: View {
                 lastTapID = id
                 lastTapAt = now
             }
+=======
+        case .edge(let id, let column):
+            // 0.19: two presses on a column's edge fit the column to its longest words.
+            if double(id) {
+                session.fitColumn(id, column)
+>>>>>>> wt19-seqtable
+                lastTapID = nil
+                lastTapAt = .distantPast
+            } else {
+                lastTapID = id
+                lastTapAt = now
+            }
         case .item(let id):
             if !session.linking, session.pressMark(id, at: p) {
                 // 0.9: a tick box was ticked, or the page of a web address was opened.
                 lastTapID = nil
                 lastTapAt = .distantPast
                 return
+            }
+            // 0.19: a table's tick box ticks, a tap on a heading sorts by its column (two presses on a heading type in it).
+            if !session.linking, session.board.item(id)?.kind == .table, let spot = session.tableSpot(id, at: p) {
+                if let typed = typedAtPress, typed.id == id, typed.spot == spot {
+                    // The cell that was being typed in: it goes on being typed in.
+                    typedAtPress = nil
+                    session.beginCell(id, at: p)
+                    return
+                }
+                let isTick = session.board.item(id)?.tickColumn == spot.column && spot.row >= 1
+                if isTick || (spot.row == 0 && !double(id) && typedAtPress == nil) {
+                    typedAtPress = nil
+                    if session.pressTable(id, spot) {
+                        lastTapID = isTick ? nil : id
+                        lastTapAt = isTick ? .distantPast : now
+                        return
+                    }
+                }
+                typedAtPress = nil
             }
             if session.linking {
                 if session.board.item(id)?.kind == .frame {
@@ -714,7 +767,7 @@ struct CanvasView: View {
         if takeBack {
             var kept = false
             switch drag {
-            case .moving, .sizing:
+            case .moving, .sizing, .widening:
                 kept = !Fingers.isShove(moved: Double(hypot(value.translation.width, value.translation.height)),
                                         after: value.time.timeIntervalSince(pressBegan))
                 session.liveEnd(keep: kept)

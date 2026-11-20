@@ -86,6 +86,9 @@ struct SequencePainter {
     var rubber: (from: CGPoint, to: CGPoint)?
     /// A step or a name being dragged to another place: drawn where the finger is.
     var lifted: (id: UUID, by: CGSize)?
+    /// 0.19: while a message is dragged the other steps have made room, so the step itself stands at the place it would
+    /// land (faint); the one under the finger is drawn from where it came from.
+    var liftedOrigin: (row: SequenceLayout.Row, note: CGRect?)?
 
     init(board: Board, paint: Paint, layout: SequenceLayout? = nil) {
         self.board = board
@@ -167,7 +170,9 @@ struct SequencePainter {
             var layer = ctx
             layer.opacity = 0.8
             layer.translateBy(x: lifted.by.width, y: lifted.by.height)
-            if let row = layout.row(lifted.id), let item = items[lifted.id] {
+            if let origin = liftedOrigin, let item = items[lifted.id] {
+                drawRow(origin.row, item, &layer, note: origin.note)
+            } else if let row = layout.row(lifted.id), let item = items[lifted.id] {
                 drawRow(row, item, &layer)
             } else if let box = layout.boxes[lifted.id]?.offsetBy(dx: 0, dy: down), let who = items[lifted.id] {
                 drawName(who, box, &layer)
@@ -261,7 +266,7 @@ struct SequencePainter {
         }
     }
 
-    private func drawRow(_ row: SequenceLayout.Row, _ item: Item, _ ctx: inout GraphicsContext) {
+    private func drawRow(_ row: SequenceLayout.Row, _ item: Item, _ ctx: inout GraphicsContext, note: CGRect? = nil) {
         let empty = item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let look = SequenceLook.style(item.kind)
         func words(_ colour: Color, centred: Bool = false) {
@@ -302,6 +307,8 @@ struct SequencePainter {
             if let todo, let centre = row.badge {
                 TodoMark.draw(todo, at: CGPoint(x: row.box.maxX + 11, y: centre.y), radius: 7, paint: paint, ground: back, &ctx)
             }
+            // 0.19: the grey note box beside the message.
+            if let box = note ?? layout.notes[row.id], let words = SequenceNote.words(item.note) { drawNote(words, box, &ctx) }
         case .band:
             let name = item.colour.isEmpty ? "yellow" : item.colour
             let shape = Path(roundedRect: row.box, cornerRadius: 8)
@@ -320,6 +327,38 @@ struct SequencePainter {
         default:
             break
         }
+    }
+
+    /// 0.19: a message's note: a small grey box with a folded top right corner, the words in caption size.
+    private func drawNote(_ words: String, _ box: CGRect, _ ctx: inout GraphicsContext) {
+        let fold: CGFloat = 9
+        var shape = Path()
+        shape.move(to: CGPoint(x: box.minX + 3, y: box.minY))
+        shape.addLine(to: CGPoint(x: box.maxX - fold, y: box.minY))
+        shape.addLine(to: CGPoint(x: box.maxX, y: box.minY + fold))
+        shape.addLine(to: CGPoint(x: box.maxX, y: box.maxY - 3))
+        shape.addQuadCurve(to: CGPoint(x: box.maxX - 3, y: box.maxY), control: CGPoint(x: box.maxX, y: box.maxY))
+        shape.addLine(to: CGPoint(x: box.minX + 3, y: box.maxY))
+        shape.addQuadCurve(to: CGPoint(x: box.minX, y: box.maxY - 3), control: CGPoint(x: box.minX, y: box.maxY))
+        shape.addLine(to: CGPoint(x: box.minX, y: box.minY + 3))
+        shape.addQuadCurve(to: CGPoint(x: box.minX + 3, y: box.minY), control: CGPoint(x: box.minX, y: box.minY))
+        shape.closeSubpath()
+        ctx.fill(shape, with: .color(back))
+        ctx.fill(shape, with: .color(paint.soft("grey")))
+        ctx.stroke(shape, with: .color(paint.line("grey").opacity(0.55)), style: StrokeStyle(lineWidth: 1, lineJoin: .round))
+        // The folded corner.
+        var corner = Path()
+        corner.move(to: CGPoint(x: box.maxX - fold, y: box.minY))
+        corner.addLine(to: CGPoint(x: box.maxX - fold, y: box.minY + fold))
+        corner.addLine(to: CGPoint(x: box.maxX, y: box.minY + fold))
+        corner.closeSubpath()
+        ctx.fill(corner, with: .color(paint.line("grey").opacity(0.3)))
+        ctx.stroke(corner, with: .color(paint.line("grey").opacity(0.55)), style: StrokeStyle(lineWidth: 1, lineJoin: .round))
+        let text = ctx.resolve(Text(words).font(.system(size: 11)).foregroundColor(paint.ink))
+        let wide = box.width - 2 * CGFloat(SequenceNote.pad)
+        let size = text.measure(in: CGSize(width: wide, height: .greatestFiniteMagnitude))
+        ctx.draw(text, in: CGRect(x: box.minX + CGFloat(SequenceNote.pad), y: box.minY + CGFloat(SequenceNote.pad),
+                                  width: min(wide, size.width + 1), height: size.height + 1))
     }
 
     /// A block: a thin rounded frame in its colour (grey with none) and its word in a tab on the

@@ -122,6 +122,10 @@ struct SequenceSelectionBar: View {
             chip("Turn round", .app(.repeat), "sel.turn", .arrows) { session.turnMessageRound() }
             chip("Colour", .app(.palette), "sel.colour", .sequence, on: showColours) { showColours.toggle() }
             chip("To do", .control(.circle), "sel.todo", .paragon, on: item.todo) { session.sequenceToggleTodo() }
+            // 0.19: a grey note box beside the message (Item.note); lit when it has one.
+            chip(SequenceNote.menuWord, .symbol(SeqTable19Marks.note), "sel.note", .sequence, on: SequenceNote.has(item)) {
+                SeqTable19Desk.shared.askNote(for: item)
+            }
             blockMenu
             moveChips
             chip("Duplicate", .app(.duplicate), "sel.copy", .boards) { session.sequenceDuplicate() }

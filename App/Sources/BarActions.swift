@@ -203,6 +203,10 @@ struct BarActions {
             act("table.removeRow", "Remove row", .control(.minusCircle), show: .wideWord, enabled: canRow, drop: 1) { session.tableStep(id, .removeRow) },
             act("table.removeColumn", "Remove column", .control(.minusCircle), show: .wideWord, enabled: canColumn, drop: 1) { session.tableStep(id, .removeColumn) },
         ]
+        // 0.19: "Tick Column": a first column of tick boxes, or off again.
+        all.append(act("table.tick", "Tick Column", .symbol(SeqTable19Marks.tickColumn), show: .wideWord, on: item.hasTickColumn, drop: 2) {
+            session.toggleTickColumn(id)
+        })
         if !menu { all.append(words(id, show: .wideWord)) }
         return all
     }

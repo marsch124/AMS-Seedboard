@@ -22,7 +22,11 @@ enum TableLook {
                 widths[c] = max(widths[c], one)
             }
         }
-        widths = widths.map { min(TableRules.maxColumn, max(TableRules.minColumn, $0 + 2 * TableRules.padX)) }
+        // 0.19: a column the owner pulled has its own width (at least 40); the tick column is a narrow box.
+        widths = widths.enumerated().map { c, w in
+            TableRules.ownWidth(item.widths, column: c)
+                ?? (c == item.tickColumn ? tickWidth : min(TableRules.maxColumn, max(TableRules.minColumn, w + 2 * TableRules.padX)))
+        }
         let heights = cells.enumerated().map { r, row -> Double in
             var high = 0.0
             for (c, words) in row.enumerated() {
@@ -33,9 +37,39 @@ enum TableLook {
         return (widths, heights)
     }
 
+    /// 0.19: the width of the tick column when nobody pulled it, and the room under the table for "3 of 8 done".
+    static let tickWidth: Double = 38
+    static let tickLineRoom: Double = 22
+
     static func size(of item: Item) -> CGSize {
         let l = layout(of: item)
-        return CGSize(width: l.widths.reduce(0, +), height: l.heights.reduce(0, +))
+        let line = TableRules.tickLine(item.cells, column: item.tickColumn) == nil ? 0 : tickLineRoom
+        return CGSize(width: l.widths.reduce(0, +), height: l.heights.reduce(0, +) + line)
+    }
+
+    /// 0.19: how wide a column must be for its longest words to stand on one line (never under 40, never over 800).
+    /// The tick column is its narrow self.
+    static func fitWidth(of item: Item, column: Int) -> Double {
+        if column == item.tickColumn { return tickWidth }
+        let cells = TableRules.squared(item.cells)
+        guard column >= 0, column < TableRules.columnCount(cells) else { return TableRules.minColumn }
+        var widest = 0.0
+        for (r, row) in cells.enumerated() {
+            widest = max(widest, Double(Lettering.measure(row[column], size: size, bold: bold(r), maxWidth: 10_000).width))
+        }
+        return min(TableRules.mostWidth, max(TableRules.leastWidth, widest + 2 * TableRules.padX))
+    }
+
+    /// 0.19: the column whose right edge lies at this board point (within `reach`), only along the table's own height.
+    static func edge(of item: Item, at p: CGPoint, reach: CGFloat) -> Int? {
+        let l = layout(of: item)
+        guard p.y >= CGFloat(item.y) - reach, p.y <= CGFloat(item.y + l.heights.reduce(0, +)) + reach else { return nil }
+        var x = item.x
+        for (c, w) in l.widths.enumerated() {
+            x += w
+            if abs(p.x - CGFloat(x)) <= reach { return c }
+        }
+        return nil
     }
 
     /// The box of one cell, in board points.
@@ -52,6 +86,7 @@ extension BoardPainter {
         let cells = TableRules.squared(item.cells)
         let l = TableLook.layout(of: item)
         let f = CGRect(x: item.x, y: item.y, width: l.widths.reduce(0, +), height: l.heights.reduce(0, +))
+        let sorted = TableSortMemory.shared.sortOf(item)
         let name = item.colour.isEmpty ? "grey" : item.colour
         let outer = Path(roundedRect: f, cornerRadius: 6)
         ctx.fill(outer, with: .color(paint.plate))
@@ -76,12 +111,41 @@ extension BoardPainter {
             for (c, words) in row.enumerated() {
                 defer { left += l.widths[c] }
                 if editing == item.id, editingCell == TableSpot(row: r, column: c) { continue }
+                // 0.19: a tick column's boxes; the heading row of that column has none.
+                if c == item.tickColumn, r >= 1 {
+                    TickBoxLook.draw(ticked: TableRules.isTicked(words), at: CGPoint(x: left + l.widths[c] / 2, y: top + l.heights[r] / 2), paint: paint, &ctx)
+                    continue
+                }
                 guard !words.isEmpty else { continue }
                 let text = ctx.resolve(Text(words).font(Lettering.font(size: TableLook.size, bold: r == 0)).foregroundColor(paint.ink))
                 let size = text.measure(in: CGSize(width: l.widths[c] - 2 * TableRules.padX, height: .greatestFiniteMagnitude))
                 ctx.draw(text, in: CGRect(x: left + TableRules.padX, y: top + TableRules.padY, width: size.width + 1, height: size.height + 1))
             }
             top += l.heights[r]
+        }
+        // 0.19: a small chevron in the heading of the column it is sorted by.
+        if let sorted, sorted.column < l.widths.count {
+            let cx = f.minX + l.widths.prefix(sorted.column + 1).reduce(0, +) - 4.5, cy = f.minY + l.heights[0] / 2
+            var chevron = Path()
+            let dy: CGFloat = sorted.ascending ? -1.8 : 1.8
+            chevron.move(to: CGPoint(x: cx - 3, y: cy - dy)); chevron.addLine(to: CGPoint(x: cx, y: cy + dy)); chevron.addLine(to: CGPoint(x: cx + 3, y: cy - dy))
+            ctx.stroke(chevron, with: .color(paint.faint), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+        }
+        // 0.19: under a table with a tick column: how many boxes are ticked.
+        if let line = TableRules.tickLine(item.cells, column: item.tickColumn) {
+            let counts = TableRules.tickCount(item.cells, column: item.tickColumn)
+            let text = ctx.resolve(Text(line).font(.system(size: 12, weight: .medium))
+                .foregroundColor(counts.done == counts.total ? TickBoxLook.green(paint) : paint.faint))
+            ctx.draw(text, at: CGPoint(x: f.minX + 2, y: f.maxY + TableLook.tickLineRoom / 2), anchor: .leading)
+        }
+        // 0.19: a chosen table shows where a column's right edge can be pulled.
+        if selection.contains(item.id), handles, editing != item.id {
+            var x = f.minX
+            for w in l.widths {
+                x += w
+                ctx.fill(Path(roundedRect: CGRect(x: x - 1.5, y: f.minY + l.heights[0] / 2 - 7, width: 3, height: 14), cornerRadius: 1.5),
+                         with: .color(paint.chosen.opacity(0.85)))
+            }
         }
         // The cell being typed in: a ring.
         if editing == item.id, let spot = editingCell {
