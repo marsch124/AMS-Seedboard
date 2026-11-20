@@ -202,6 +202,18 @@ enum ClipBoard {
             }
             return
         }
+        // 0.19 (46): a checklist (Notes, Markdown …): ticked lines arrive done, the others open (Share19.swift).
+        if !session.board.isTimeline, let lines = Checklist.parse(words) {
+            let spot = place(CGSize(width: 300, height: 200))
+            var made: Set<UUID> = []
+            session.change { made = $0.addChecklist(lines, under: chosenIdea, at: spot, doneDay: Day.today().iso) }
+            if !made.isEmpty {
+                session.selectedLink = nil
+                session.selection = made
+                if let first = made.first { session.reveal(first) }
+                return
+            }
+        }
         if chosenIdea != nil {
             // A list pasted with an idea chosen hangs under it, as before.
             session.paste(words)
