@@ -533,6 +533,9 @@ struct BarActions {
             act("turn", "Turn round", .app(.repeat), show: .wideWord, drop: 3) { session.turnLinkRound() },
             colour(for: nil, link: link),
         ]
+        if session.board.arrow(link.id)?.isBent == true {
+            all.insert(act("straighten", "Straighten", .system(Marks19Maps.straighten), show: .wideWord, drop: 3) { session.straightenLink(link.id) }, at: 4)
+        }
         all += chooseMore(drop: 4)
         all.append(remove(gap: true))
         return all
@@ -605,6 +608,13 @@ struct BarActions {
             if item.parent == nil, session.board.canBalance(item.id) {
                 more.append(act("balance", "Balance", .new(.balance)) { session.balanceMap() })
             }
+            // 0.19: a main branch of a map with both sides goes to the other side; three related words grow from an idea.
+            if session.board.canMoveToOtherSide(item.id) {
+                more.append(act("otherSide", "Move to the Other Side", .system(Marks19Maps.otherSide)) { session.moveToOtherSide(item.id) })
+            }
+            if !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                more.append(act("grow", "Grow Ideas from This", .system(Marks19Maps.growIdeas)) { session.growIdeas(from: item.id) })
+            }
         case .text:
             more.append(textSizeChoice(item, show: .icon))   // 0.14 (17)
         case .frame:
@@ -666,7 +676,8 @@ struct BarActions {
             words(link.id),
             list("line", "Line", .app(Self.mark(of: link.style)), lineChoices(link)),
             list("ends", "Ends", .new(link.ends.mark), endChoices(link)),
-            act("dashed", "Dashed", .new(.dashed), on: link.isDashed) { session.toggleLinkDashed() },
+            act("dashed", "Dashed (maybe)", .new(.dashed), on: link.isDashed) { session.toggleLinkDashed() },
+            act("straighten", "Straighten", .system(Marks19Maps.straighten), enabled: session.board.arrow(link.id)?.isBent == true) { session.straightenLink(link.id) },
             act("turn", "Turn round", .app(.repeat)) { session.turnLinkRound() },
             colour(for: nil, link: link),
             remove(gap: true),

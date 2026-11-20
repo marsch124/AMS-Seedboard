@@ -48,6 +48,8 @@ struct CanvasView: View {
         case item(UUID), link(UUID), plus(UUID, Direction), size(UUID, Corner), empty
         /// An end dot of the chosen arrow (true: its start).
         case end(UUID, Bool)
+        /// 0.19: the middle knob of the chosen arrow: drag to bend, press twice to straighten.
+        case knob(UUID)
     }
 
     private enum Drag {
@@ -60,6 +62,8 @@ struct CanvasView: View {
         case joining(UUID)
         /// An end of an arrow is dragged to another side or another shape (true: its start).
         case end(UUID, Bool)
+        /// 0.19: the middle knob of an arrow is dragged: the arrow bends through it.
+        case knob(UUID)
         case marquee
         case panning(CGSize)
     }
@@ -360,6 +364,7 @@ struct CanvasView: View {
 
     private func target(at p: CGPoint) -> Target {
         if let end = session.linkEnd(at: p) { return .end(end.link, end.start) }
+        if let knob = session.linkKnob(at: p) { return .knob(knob) }
         let board = session.board
         // Press areas are counted on screen: 9 points round each control, for a finger at least
         // 32 points at every zoom; the nearest control wins (ChosenFrame.swift).
@@ -470,6 +475,9 @@ struct CanvasView: View {
             drag = .sizing(id, item.frame, corner)
         case .end(let id, let start):
             drag = .end(id, start)
+        case .knob(let id):
+            session.liveStart()
+            drag = .knob(id)
         case .link, .empty:
             #if os(macOS)
             drag = .marquee
@@ -520,6 +528,8 @@ struct CanvasView: View {
             let pull = session.endPull(id, start: start, to: here)
             rubber = pull.map { Rubber(from: $0.from, to: here) }
             dropTarget = pull?.over
+        case .knob(let id):
+            session.bendLive(id, through: here)
         case .idle, .waiting:
             break
         }
@@ -575,6 +585,8 @@ struct CanvasView: View {
             if FeelRules.arrowJoined(before: session.board.links.first { $0.id == id }.map { start ? $0.from : $0.to },
                                      after: session.endPull(id, start: start, to: here)?.over) { Feel.joined() }
             session.moveLinkEnd(id, start: start, to: here)
+        case .knob:
+            session.liveEnd(keep: true)
         case .marquee, .panning, .idle:
             break
         }
@@ -594,6 +606,16 @@ struct CanvasView: View {
             if session.board.item(id)?.kind == .idea { session.addChild(of: id) } else { session.addNext(from: id, direction: d) }
         case .size, .end:
             break
+        case .knob(let id):
+            // 0.19: two presses on the knob make the arrow straight again.
+            if double(id) {
+                session.straightenLink(id)
+                lastTapID = nil
+                lastTapAt = .distantPast
+            } else {
+                lastTapID = id
+                lastTapAt = now
+            }
         case .item(let id):
             if !session.linking, session.pressMark(id, at: p) {
                 // 0.9: a tick box was ticked, or the page of a web address was opened.
