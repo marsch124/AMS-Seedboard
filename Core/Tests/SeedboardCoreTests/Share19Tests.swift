@@ -50,5 +50,7 @@ final class Share19Tests: XCTestCase {
         XCTAssertEqual(board.todoState(of: eggs.id), .done)
         XCTAssertEqual(eggs.doneDay, "2026-11-20")
         XCTAssertNil(milk.doneDay)
+        // A ticked line never goes to the PARAGON Inbox; the open one does.
+        XCTAssertEqual(ParagonExport.inboxTasks(board: board).map(\.text), ["Milk"])
     }
 }

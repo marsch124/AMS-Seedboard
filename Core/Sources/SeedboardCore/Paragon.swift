@@ -162,7 +162,8 @@ public enum ParagonExport {
         let sent = Set(board.sentTodos).union(board.sentTasks.map(\.id))
         return board.items.compactMap { item in
             // 0.6: a bar or milestone marked done is not a to-do any more — it never goes to the Inbox.
-            guard item.todo, !item.isDone, !sent.contains(item.id) else { return nil }
+            // 0.19: a ticked to-do of any kind (a done line of a pasted checklist) is not sent either.
+            guard item.todo, !item.isDone, (item.doneDay ?? "").isEmpty, !sent.contains(item.id) else { return nil }
             let words = oneLine(item.text)
             if words.isEmpty { return nil }
             return (item.id, item.span != nil && item.kind.isTimeline ? timelineWords(item) : words)

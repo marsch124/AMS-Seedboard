@@ -11,10 +11,8 @@ import AppKit
 
 /// Every SF Symbol name this file uses, in one place (the lead can swap a name after Martin has looked).
 enum Marks19Mac {
-    static let addNote = "note.text"
-    static let addIdea = "lightbulb"
-    static let addShape = "square.on.circle"
-    static let addText = "textformat"
+    // The + menu is words only: the tool bar already has its own marks for note, idea, shape and text,
+    // and note.text / lightbulb mean "a note on a thing" / "Grow ideas" elsewhere (one mark, one meaning).
     static let quickLook = "eye"
 }
 
@@ -39,13 +37,13 @@ struct AddTool: View {
 
     private var choices: some View {
         Group {
-            Button { add(.note) } label: { Label("Note", systemImage: Marks19Mac.addNote) }
+            Button { add(.note) } label: { Text("Note") }
                 .accessibilityIdentifier("tool.add.note")
-            Button { add(.idea) } label: { Label("Idea", systemImage: Marks19Mac.addIdea) }
+            Button { add(.idea) } label: { Text("Idea") }
                 .accessibilityIdentifier("tool.add.idea")
-            Button { add(ShapeChoice.shared.last) } label: { Label("Shape", systemImage: Marks19Mac.addShape) }
+            Button { add(ShapeChoice.shared.last) } label: { Text("Shape") }
                 .accessibilityIdentifier("tool.add.shape")
-            Button { add(.text) } label: { Label("Text", systemImage: Marks19Mac.addText) }
+            Button { add(.text) } label: { Text("Text") }
                 .accessibilityIdentifier("tool.add.text")
         }
     }
