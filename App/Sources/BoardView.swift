@@ -336,6 +336,10 @@ struct BoardView: View {
                             .accessibilityIdentifier("more.unfoldAll")
                     }
                     if !session.readOnly {
+                        // 0.19: bars of one colour on neighbouring rows.
+                        Button("Group by colour") { if let w = session.timelineGroupByColour() { model.say(w) }; session.takeKeys() }
+                            .disabled(!session.board.canGroupByColour)
+                            .accessibilityIdentifier("more.groupColour")
                         Button("Set the plan") { if let w = session.setTimelinePlan() { model.say(w) }; session.takeKeys() }
                             .accessibilityIdentifier("more.setPlan")
                         Button("Clear the plan") { session.clearTimelinePlan(); session.takeKeys() }

@@ -71,9 +71,10 @@ enum BoardMenu {
         let rows = session.board.shownTimelineRows
         let row = g.row(atY: p.y)
         let make = BarActions(session: session, prefix: "menu.", dots: nil, night: night)
+        // 0.19: the row under the pointer is chosen first, so the menu can offer Note…, Repeat… and Who… for it.
+        if let id = rows.indices.contains(row) && p.y >= g.headerHeight ? rows[row].id : nil, !session.selection.contains(id) { session.select(id) }
         let lines = make.timelineMenu(phase: p.y >= g.headerHeight && rows.indices.contains(row) && rows[row].kind == .phase ? rows[row] : nil)
         guard !lines.isEmpty else { return }
-        if let id = rows.indices.contains(row) && p.y >= g.headerHeight ? rows[row].id : nil, !session.selection.contains(id) { session.select(id) }
         MacCamera.popUp(MacMenu.make(lines), at: p, in: view, session: session)
         session.takeKeys()
     }

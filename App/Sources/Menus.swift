@@ -106,6 +106,9 @@ struct SeedMenus: Commands {
             // 0.14: Hide done bars; Set / Clear the plan (a timeline).
             Button(session?.board.hidesDone == true ? "Show Done Bars" : "Hide Done Bars") { session?.toggleHideDone() }
                 .disabled(session == nil || session?.readOnly == true || session?.board.isTimeline != true)
+            // 0.19: bars of one colour on neighbouring rows (a timeline).
+            Button("Group by Colour") { if let w = session?.timelineGroupByColour() { model.say(w) } }
+                .disabled(session == nil || session?.readOnly == true || session?.board.canGroupByColour != true)
             Button("Set the Plan") { if let w = session?.setTimelinePlan() { model.say(w) } }
                 .disabled(session == nil || session?.readOnly == true || session?.board.isTimeline != true)
             Button("Clear the Plan") { session?.clearTimelinePlan() }

@@ -661,6 +661,15 @@ struct BarActions {
             }
             all.append(act("foldAll", "Fold all phases", .control(.chevron), enabled: session.board.canFoldAny, gap: !all.isEmpty) { session.foldAllTimelinePhases(true) })
             all.append(act("unfoldAll", "Unfold all", .control(.chevron), enabled: session.board.canUnfoldAny) { session.foldAllTimelinePhases(false) })
+            // 0.19: Note…, Repeat… and Who… for the bar or milestone under the pointer; Group by Colour for the board.
+            if let item = session.single, item.span != nil {
+                all.append(act("note", "Note…", .control(.edit), gap: !all.isEmpty) { TimelineDesk19.shared.page = .note(item.id) })
+                all.append(act("repeat", "Repeat…", .control(.edit)) { TimelineDesk19.shared.page = .repeating(item.id) })
+                if item.kind == .bar { all.append(act("who", "Who…", .control(.edit)) { TimelineDesk19.shared.page = .who(item.id) }) }
+            }
+            all.append(act("groupColour", "Group by Colour", .control(.edit), enabled: session.board.canGroupByColour, gap: !all.isEmpty) {
+                if let words = session.timelineGroupByColour() { AppModel.shared.say(words) }
+            })
         }
         if session.canAddToCalendar {
             all.append(act("calendar", "Add to Calendar…", .new(.calendar), gap: !all.isEmpty) { AppModel.shared.showCalendar = true })
