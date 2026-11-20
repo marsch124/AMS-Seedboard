@@ -188,7 +188,7 @@ struct PicturePlate: View {
 }
 
 /// The device's camera, for one photo. `done(nil)`: Cancel.
-private struct CameraPage: UIViewControllerRepresentable {
+struct CameraPage: UIViewControllerRepresentable {
     let done: (Data?) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(done: done) }

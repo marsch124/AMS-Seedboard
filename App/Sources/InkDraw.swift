@@ -82,7 +82,8 @@ extension BoardPainter {
         guard let marks = item.strokes, !marks.isEmpty else { return }
         var inside = ctx
         inside.opacity = inkOpacity
-        inside.clip(to: Path(roundedRect: item.frame, cornerRadius: 4))
+        let border = CGFloat(item.printBorder)
+        inside.clip(to: Self.picturePath(item.frame.insetBy(dx: border, dy: border), round: item.isRound, radius: 4))
         let corner = CGPoint(x: item.x, y: item.y)
         for stroke in item.paintedStrokes { InkDraw.paint(stroke, from: corner, paint: paint, in: inside) }
     }

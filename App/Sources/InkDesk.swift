@@ -128,6 +128,8 @@ final class InkDesk: ObservableObject {
     @Published var colour: String {
         didSet { if !LaunchOptions.sampleData { UserDefaults.standard.set(colour, forKey: InkDesk.colourKey) } }
     }
+    /// 0.19 (pick 39): the last three pen colours used on this device, newest first ("" = plain ink).
+    @Published var recent: [String] = []
     let wet = WetLine()
     /// 0.11 (pick 37): the ruler lying on the board (board points). View only: never saved, gone when the Draw tool is left.
     @Published var ruler: Ruler?
@@ -138,6 +140,7 @@ final class InkDesk: ObservableObject {
     var rest = InkRest()
 
     private static let widthKey = "ink.width"
+    private static let recentKey = "ink.recentColours"
     private static let colourKey = "ink.colour"
     private static let highlightKey = "ink.highlightColour"
     private static let rubberKey = "ink.rubberSize"
@@ -148,6 +151,7 @@ final class InkDesk: ObservableObject {
         width = stored?.string(forKey: InkDesk.widthKey).flatMap { InkWidth(rawValue: $0) } ?? .medium
         let name = stored?.string(forKey: InkDesk.colourKey) ?? ""
         colour = Palette.names.contains(name) ? name : ""
+        recent = InkRecent.clean(stored?.stringArray(forKey: InkDesk.recentKey) ?? [])
         highlightColour = Ink.highlighterColour(stored?.string(forKey: InkDesk.highlightKey) ?? "")
         rubberSize = stored?.string(forKey: InkDesk.rubberKey).flatMap { RubberSize(rawValue: $0) } ?? .medium
     }
@@ -172,6 +176,9 @@ final class InkDesk: ObservableObject {
 
     func pick(colour new: String) {
         colour = new
+        // 0.19 (pick 39): the last three colours stand first in the plate.
+        recent = InkRecent.adding(new, to: recent)
+        if !LaunchOptions.sampleData { UserDefaults.standard.set(recent, forKey: InkDesk.recentKey) }
         rubber = false
         highlighter = false
         lasso = false
@@ -329,14 +336,24 @@ extension BoardSession {
         }
         var points = desk.wet.points
         var force = desk.wet.pressed ? desk.wet.pressure : nil
+        var snappedByRuler = false
         // 0.11 (pick 37): a line drawn along the ruler becomes one straight line on its edge.
         if let ruler = desk.ruler, !desk.wet.lasso,
            let straight = ruler.snapped(points, reach: Ruler.screenReach / Double(scale)) {
             points = straight
             force = nil
+            snappedByRuler = true
         }
         let highlighted = desk.wet.highlighter
         let looped = desk.wet.lasso
+        // 0.19 (pick 38): kept still at the end, a rough circle, box, triangle, line or arrow comes out clean — still the same ink.
+        if !highlighted, !looped, !snappedByRuler, desk.rest.rested(until: TidyShapes.now),
+           let clean = InkClean.clean(points),
+           !(desk.tidyShapes && board.inkTidy(of: points, reach: InkShape.reach / Double(scale)) != nil) {
+            points = clean.points
+            force = nil
+            Pencil19.noteSnap()
+        }
         desk.wet.clear()
         guard !cancelled, let first = points.first, !readOnly else { return }
         if looped {

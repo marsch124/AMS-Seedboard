@@ -97,6 +97,13 @@ struct DrawPlate: View {
                     tile(.thick, "draw.thick", "Thick", on: pen && desk.width == .thick) { desk.pick(width: .thick) }
                 }
                 dots
+                if Pencil19.showHoldTip {
+                    Text("Hold at the end of a shape to make it neat.")
+                        .font(Txt.note)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("draw.holdTip")
+                        .onAppear { Pencil19.tipSeen() }
+                }
             }
             // 0.11: a ruler to draw along (picks 37) and "Fade" for every pencil line of this board (38).
             HStack(spacing: Finger.chipGap) {
@@ -178,7 +185,7 @@ struct DrawPlate: View {
     private var dots: some View {
         let paint = Paint(scheme)
         return HStack(spacing: Finger.on ? 10 : Finger.dotGap) {
-            ForEach([""] + Palette.names, id: \.self) { name in
+            ForEach(InkRecent.order(recent: desk.recent, all: [""] + Palette.names), id: \.self) { name in
                 Button {
                     desk.pick(colour: name)
                     session.takeKeys()

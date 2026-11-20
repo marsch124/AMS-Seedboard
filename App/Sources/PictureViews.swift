@@ -230,25 +230,41 @@ extension BoardPainter {
         }
     }
 
+    /// 0.19: the picture's outline in a rectangle: a rounded rectangle, or (cut round) an oval filling it.
+    static func picturePath(_ r: CGRect, round: Bool, radius: CGFloat) -> Path {
+        round ? Path(ellipseIn: r) : Path(roundedRect: r, cornerRadius: radius)
+    }
+
     private func drawPictureBody(_ item: Item, _ ctx: GraphicsContext) {
         let f = item.frame
-        let box = Path(roundedRect: f, cornerRadius: 4)
+        // 0.19: "Round" cuts the picture to an oval filling its box; "Print Frame" lays it on a white border with a soft shadow.
+        let round = item.isRound
+        let border = CGFloat(item.printBorder)
+        let g = f.insetBy(dx: border, dy: border)
+        let outer = Self.picturePath(f, round: round, radius: 4)
+        let box = Self.picturePath(g, round: round, radius: border > 0 ? 1.5 : 4)
+        if border > 0 {
+            var sheet = ctx
+            sheet.addFilter(.shadow(color: .black.opacity(paint.night ? 0.16 : 0.28), radius: paint.night ? 4 : 5, x: 0, y: 2))
+            sheet.fill(outer, with: .color(.white))
+            ctx.stroke(outer, with: .color(Color.black.opacity(0.10)), lineWidth: 0.5)
+        }
         let store = PictureStore.shared
         if let name = item.picture, let image = handles ? store.image(name, shown: shownPixels(item, ctx)) : (PaperPictures.image(name) ?? store.imageNow(name)) {
             var inside = ctx
             inside.clip(to: box)
             if let part = Item.cleanCrop(item.crop) {
                 // Cropped (0.4): the whole picture lies on the board at its own scale; only the part shows in the box.
-                let wholeW = f.width / CGFloat(part[2]), wholeH = f.height / CGFloat(part[3])
+                let wholeW = g.width / CGFloat(part[2]), wholeH = g.height / CGFloat(part[3])
                 inside.draw(Image(decorative: image, scale: 1),
-                            in: CGRect(x: f.minX - CGFloat(part[0]) * wholeW, y: f.minY - CGFloat(part[1]) * wholeH, width: wholeW, height: wholeH))
+                            in: CGRect(x: g.minX - CGFloat(part[0]) * wholeW, y: g.minY - CGFloat(part[1]) * wholeH, width: wholeW, height: wholeH))
             } else {
                 // It keeps its shape (resizing does); a little difference is cropped, never stretched.
-                let k = max(f.width / CGFloat(image.width), f.height / CGFloat(image.height))
+                let k = max(g.width / CGFloat(image.width), g.height / CGFloat(image.height))
                 let w = CGFloat(image.width) * k, h = CGFloat(image.height) * k
-                inside.draw(Image(decorative: image, scale: 1), in: CGRect(x: f.midX - w / 2, y: f.midY - h / 2, width: w, height: h))
+                inside.draw(Image(decorative: image, scale: 1), in: CGRect(x: g.midX - w / 2, y: g.midY - h / 2, width: w, height: h))
             }
-            ctx.stroke(box, with: .color(Part.pictures.text.opacity(0.28)), lineWidth: 0.75)
+            if border == 0 { ctx.stroke(box, with: .color(Part.pictures.text.opacity(0.28)), lineWidth: 0.75) }
             return
         }
         ctx.fill(box, with: .color(Part.pictures.soft))

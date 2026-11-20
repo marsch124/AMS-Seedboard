@@ -638,12 +638,10 @@ struct CanvasView: View {
                 lastTapID = id
                 lastTapAt = now
             }
-=======
         case .edge(let id, let column):
             // 0.19: two presses on a column's edge fit the column to its longest words.
             if double(id) {
                 session.fitColumn(id, column)
->>>>>>> wt19-seqtable
                 lastTapID = nil
                 lastTapAt = .distantPast
             } else {
