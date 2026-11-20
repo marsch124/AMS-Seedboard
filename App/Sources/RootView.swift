@@ -9,7 +9,13 @@ import AppKit
 /// On the iPhone the list comes first and a board opens over it.
 struct RootView: View {
     @EnvironmentObject private var model: AppModel
+    #if os(macOS)
+    /// 0.19: the Mac's board list can be hidden (View ▸ Hide Sidebar), kept per Mac (Mac19.swift).
+    @ObservedObject private var sidebar = SidebarHabit.shared
+    @State private var columns: NavigationSplitViewVisibility = SidebarHabit.shared.hidden ? .detailOnly : .all
+    #else
     @State private var columns: NavigationSplitViewVisibility = .all
+    #endif
     @State private var compactColumn: NavigationSplitViewColumn = .sidebar
     @State private var showSettings = false
     /// The words in the search field over the list. For pictures: `-search <word>` fills it in.
@@ -47,6 +53,10 @@ struct RootView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(model)
         }
+        #endif
+        #if os(macOS)
+        .onChange(of: sidebar.hidden) { _, hidden in columns = hidden ? .detailOnly : .all }
+        .onChange(of: columns) { _, new in sidebar.hidden = (new == .detailOnly) }
         #endif
         .boards14Host()   // 0.14: Join with… page, outline file chooser
         .orangeHost()     // 0.16: purple milestones → orange, asked once
@@ -318,6 +328,7 @@ struct BoardList: View {
         .accessibilityIdentifier("boards.row.\(board.title)")
         // Mac and iPad: a board dragged from the list onto the open board leaves a door to it there (DoorPage.swift).
         .modifier(DoorDrag(board: board, on: !phone))
+        .modifier(BoardQuickLook(board: board))   // 0.19: Mac, hover 0.6 s
         // A tiny dot at the row's end: this board's newest change, or one of its pictures, is on this device, not in iCloud yet.
         .overlay(alignment: .trailing) {
             if model.waitsForCloud(board) {
