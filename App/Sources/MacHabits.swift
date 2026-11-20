@@ -127,6 +127,7 @@ struct GuideWindow: View {
 struct MacCommands: Commands {
     var body: some Commands {
         ImportFromDevicesCommands()
+        CommandGroup(before: .toolbar) { SidebarCommand19() }   // 0.19: View ▸ Hide Sidebar (⌃⌘S)
         CommandGroup(replacing: .help) {
             Button("How Seedboard Works") { MacDesk.shared.showGuide(.how) }
                 .keyboardShortcut("?", modifiers: .command)

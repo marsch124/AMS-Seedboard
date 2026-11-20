@@ -35,6 +35,8 @@ struct BoardView: View {
     @ObservedObject var session: BoardSession
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.colorScheme) private var scheme
+    /// 0.19: on the iPad the tool bar can sit at the left or right edge instead of the bottom (Mac19.swift).
+    @ObservedObject private var dock = DockDesk.shared
 
     @State private var renaming = false
     @State private var newName = ""
@@ -148,7 +150,7 @@ struct BoardView: View {
                         }
                         .frame(width: Finger.side, alignment: .leading)
                         Spacer(minLength: 0)
-                        if !session.readOnly { ToolPill(session: session) }
+                        if !session.readOnly && !DockDesk.docked(session) { ToolPill(session: session) }
                         Spacer(minLength: 0)
                         ZoomCluster(session: session).frame(width: Finger.side, alignment: .trailing)
                     }
@@ -158,7 +160,7 @@ struct BoardView: View {
                             Spacer(minLength: 0)
                             ZoomCluster(session: session)
                         }
-                        if !session.readOnly {
+                        if !session.readOnly && !DockDesk.docked(session) {
                             // Nine tools: on a narrow iPhone the tiles shrink a little (40 → 36 → 32) before the row would have to scroll.
                             ViewThatFits(in: .horizontal) {
                                 ToolPill(session: session)
@@ -178,6 +180,7 @@ struct BoardView: View {
             .animation(.message, value: session.notice)
             .animation(.message, value: session.linking)
         }
+        .modifier(DockArea(session: session))
         // The board's name: on the Mac a click renames it, a right-click shows its small menu (MacTitle.swift).
         .modifier(BoardTitle(session: session, rename: {
             newName = session.starterDraft ? (model.changing?.name ?? session.board.title) : session.board.title
@@ -439,6 +442,8 @@ enum ToolSize {
 struct ToolPill: View {
     @ObservedObject var session: BoardSession
     @Environment(\.toolSide) private var side
+    @Environment(\.toolVertical) private var vertical
+    @State private var drag = CGSize.zero
 
     var body: some View {
         // A timeline board has its own tools (TimelineBars.swift).
@@ -448,7 +453,9 @@ struct ToolPill: View {
 
     private var ordinary: some View {
         Group {
-            HStack(spacing: ToolSize.gap(side)) {
+            (vertical ? AnyLayout(VStackLayout(spacing: ToolSize.gap(side))) : AnyLayout(HStackLayout(spacing: ToolSize.gap(side)))) {
+                // 0.19: the "+" — a press adds a sticky note, a hold lists Note, Idea, Shape, Text (Mac19.swift).
+                AddTool(session: session)
                 tool(.seedMindMap, .mindMap, "tool.mindmap", "Mind map (M)") { session.add(.idea) }
                 ShapeTool(session: session)
                 tool(.seedDiamond, .shapes, "tool.diamond", "Diamond (D)") { session.add(.diamond) }
@@ -465,11 +472,17 @@ struct ToolPill: View {
                 DrawTool(session: session, desk: session.ink)
             }
             .padding(side >= 40 ? 6 : 5)
+            // 0.19, iPad: the grabber to drag the bar to another edge.
+            .padding(vertical ? (DockDesk.shared.side == .left ? .trailing : .leading) : .top, DockDesk.onThisDevice ? 10 : 0)
+            .overlay(alignment: vertical ? (DockDesk.shared.side == .left ? .trailing : .leading) : .top) {
+                if DockDesk.onThisDevice { ToolGrabber(drag: $drag) }
+            }
         }
         .fixedSize()
         .background(Theme.plate, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color.primary.opacity(0.10)))
         .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+        .offset(drag)
         // Its own element with its buttons inside, so each button keeps its own name for the screen tests.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("board.tools")
