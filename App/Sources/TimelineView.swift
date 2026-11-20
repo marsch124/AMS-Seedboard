@@ -33,6 +33,14 @@ struct TimelineView: View {
     @State private var pressing = false
     @State private var today = Day.today()
     @State private var launchApplied = false
+    // 0.19 (pick 26): rows slide softly to their places while a bar is dragged between rows.
+    @State private var springFrom: [UUID: Double] = [:]
+    @State private var springT: CGFloat = 0
+    /// The order of the shown rows before the last step of a drag.
+    @State private var rowsBefore: [UUID] = []
+    /// The dragged bar follows the finger a little between two rows: its id and the rest in points.
+    @State private var lift: (id: UUID, dy: Double)?
+    @ObservedObject private var desk19 = TimelineDesk19.shared
 
     private struct Rubber { var from: CGPoint; var to: CGPoint }
 
@@ -59,6 +67,7 @@ struct TimelineView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
+                SpringFrame(t: springT) { spring in
                 Canvas { ctx, size in
                     var painter = TimelinePainter(board: session.board, paint: paint, geometry: session.timelineGeometry, size: size)
                     painter.today = today
@@ -72,7 +81,11 @@ struct TimelineView: View {
                     painter.showDates = showDates
                     painter.patterns = differentiate
                     painter.todoStates = echo.marks(for: session.board)
+                    var shift = springFrom.mapValues { $0 * Double(spring) }
+                    if let lift { shift[lift.id] = lift.dy }
+                    painter.rowShift = shift
                     painter.draw(&ctx)
+                }
                 }
                 .contentShape(Rectangle())
                 .gesture(dragGesture)
@@ -115,6 +128,8 @@ struct TimelineView: View {
                     .accessibilityIdentifier("timeline.empty")
                 }
 
+                TimelineNoteBubble(session: session)
+
                 editor
             }
             #if os(macOS)
@@ -128,6 +143,7 @@ struct TimelineView: View {
             .onChange(of: geo.size) { _, new in place(new) }
         }
         .clipped()
+        .modifier(TimelinePages19(session: session))
         .focusable()
         .focused($keys)
         .focusEffectDisabled()
@@ -182,6 +198,7 @@ struct TimelineView: View {
         rubber = nil
         dropTarget = nil
         showDates = false
+        lift = nil
         pinchLast = nil
         pinched = false
         pressing = false
@@ -311,6 +328,16 @@ struct TimelineView: View {
                         break
                     }
                     drag = .waiting(t)
+                    // 0.19: a note bubble closes at the next press, unless it is on the same bar.
+                    if let shown = desk19.bubble {
+                        if case .bar(let id) = t, id == shown {} else { desk19.bubble = nil }
+                    }
+                    // 0.19 (pick 28): held without moving, the bar reads out its dates.
+                    if case .bar(let held) = t, !session.readOnly, !session.linking {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                            if pressing, case .waiting(.bar(let still)) = drag, still == held, session.single?.id == held { showDates = true }
+                        }
+                    }
                 case .waiting(let t):
                     guard hypot(value.translation.width, value.translation.height) > 4 else { return }
                     begin(t)
@@ -325,6 +352,7 @@ struct TimelineView: View {
                     rubber = nil
                     dropTarget = nil
                     showDates = false
+                    lift = nil
                 }
                 pressing = false
                 guard !pinched else {
@@ -347,6 +375,7 @@ struct TimelineView: View {
             } else if let row = board.shownRow(of: id) {
                 let chosen = session.selection.contains(id) ? session.selection : [id]
                 session.liveStart()
+                rowsBefore = board.shownTimelineRows.map(\.id)
                 showDates = chosen.count == 1
                 drag = .moving(chosen, id, row)
             }
@@ -360,6 +389,7 @@ struct TimelineView: View {
         case .name(let id):
             guard !session.readOnly, !session.linking, let row = board.shownRow(of: id) else { drag = .panning(session.offset); return }
             session.liveStart()
+            rowsBefore = board.shownTimelineRows.map(\.id)
             drag = .rowMove(id, row)
         case .link, .header, .empty, .chevron:
             drag = .panning(session.offset)
@@ -374,7 +404,8 @@ struct TimelineView: View {
         case .moving(let ids, let lead, let row):
             // A bar dragged sideways keeps its row until the finger is clearly (0.7 of a row) above or below it.
             let high = Double(value.translation.height)
-            let rowsDown = Int(((abs(high) - 0.2 * g.rowHeight) / g.rowHeight).rounded()) * (high < 0 ? -1 : 1)
+            let beyond = max(abs(high) - 0.2 * g.rowHeight, 0) * (high < 0 ? -1 : 1)
+            let rowsDown = Int((beyond / g.rowHeight).rounded())
             var count = 0
             session.live { board in
                 count = board.shift(ids, byDays: across)
@@ -382,6 +413,9 @@ struct TimelineView: View {
                 if ids.count == 1, rowsDown != 0 { board.moveRow(lead, to: board.storedRow(forShown: row + rowsDown)) }
             }
             pushed = count
+            // 0.19 (pick 26): the dragged bar follows the finger between two rows; the others slide aside softly.
+            if ids.count == 1 { lift = (lead, beyond - Double(rowsDown) * g.rowHeight) }
+            springRows(except: lead)
         case .stretching(let id, let edge, let from):
             var count = 0
             session.live { count = $0.stretch(id, edge, to: from + across) }
@@ -389,6 +423,7 @@ struct TimelineView: View {
         case .rowMove(let id, let row):
             // A phase carries its rows (0.5); a bar or a milestone moves alone.
             session.live { $0.carryRow(id, to: $0.storedRow(forShown: row + down)) }
+            springRows(except: id)
         case .joining(let id):
             if let from = session.timelineRect(of: id) {
                 rubber = Rubber(from: CGPoint(x: from.maxX, y: from.midY), to: value.location)
@@ -399,6 +434,27 @@ struct TimelineView: View {
             session.clampTimeline()
         case .idle, .waiting:
             break
+        }
+    }
+
+    /// 0.19 (pick 26): after rows changed places during a drag, every other row that moved starts where it was and
+    /// slides to its new place on a spring: a soft gap opens where the bar will land.
+    private func springRows(except lead: UUID) {
+        let now = session.board.shownTimelineRows.map(\.id)
+        guard now != rowsBefore else { return }
+        let rowHeight = session.timelineGeometry.rowHeight
+        var from: [UUID: Double] = [:]
+        for (n, id) in now.enumerated() where id != lead {
+            if let old = rowsBefore.firstIndex(of: id), old != n { from[id] = Double(old - n) * rowHeight }
+        }
+        rowsBefore = now
+        guard Feel.moves, !from.isEmpty else { return }
+        springFrom = from
+        var plain = Transaction()
+        plain.disablesAnimations = true
+        withTransaction(plain) { springT = 1 }
+        DispatchQueue.main.async {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.66)) { springT = 0 }
         }
     }
 
@@ -456,6 +512,10 @@ struct TimelineView: View {
                 session.select(id, adding: true)
             } else {
                 session.select(id)
+            }
+            // 0.19 (pick 27): a tap on a bar or milestone with a note shows the note in a small bubble.
+            if case .bar = t, session.board.item(id)?.note?.isEmpty == false, !double(id) {
+                desk19.bubble = desk19.bubble == id ? nil : id
             }
             lastTapID = id
             lastTapAt = now

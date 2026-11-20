@@ -66,6 +66,8 @@ struct TimelineZoomCluster: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             if session.board.hidesDone { hiddenLine }
+            // 0.19 (pick 29): Weeks and Months in one press, above the zoom they belong to.
+            TimelineScaleSwitch(session: session)
             plate
         }
     }
@@ -309,7 +311,46 @@ struct TimelineSelectionBar: View {
         if item.kind == .phase, session.board.canFold(item.id) {
             chip(item.folded ? "Unfold" : "Fold", .control(.chevron), "sel.fold", .timeline, on: item.folded) { session.toggleTimelineFold(item.id) }
         }
+        // 0.19: a note (bar or milestone), repeat and who (bar): small pages with Cancel and Save.
+        if item.span != nil {
+            symbolChip("Note", Marks19Timeline.note, "sel.note", on: item.note?.isEmpty == false) {
+                session.commitEdit()
+                TimelineDesk19.shared.page = .note(item.id)
+            }
+            symbolChip("Repeat", Marks19Timeline.repeatBar, "sel.repeat") {
+                session.commitEdit()
+                TimelineDesk19.shared.page = .repeating(item.id)
+            }
+        }
+        if item.kind == .bar {
+            symbolChip("Who", Marks19Timeline.who, "sel.who", on: item.initials?.isEmpty == false) {
+                session.commitEdit()
+                TimelineDesk19.shared.page = .who(item.id)
+            }
+        }
         chip("Duplicate", .app(.duplicate), "sel.copy", .timeline) { session.timelineDuplicate() }
+    }
+
+    /// A chip with one of Apple's own symbols (0.19).
+    private func symbolChip(_ word: String, _ symbol: String, _ id: String, on: Bool = false, action: @escaping () -> Void) -> some View {
+        let part = Part.timeline
+        return Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(on ? Color.white : part.text)
+                Text(word)
+                    .font(Txt.pill)
+                    .foregroundStyle(on ? Color.white : Color.primary)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .background(on ? part.fill : part.soft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle(tint: part.text))
+        .accessibilityLabel(word)
+        .accessibilityIdentifier(id)
     }
 
     /// 0.5: Done marks the chosen bars and milestones done today (full colour while they are); again takes the mark off.

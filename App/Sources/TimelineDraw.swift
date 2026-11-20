@@ -33,6 +33,8 @@ struct TimelinePainter {
     var todoStates: [UUID: TodoState] = [:]
     /// 0.11: "Differentiate Without Colour" is on: what is late also wears a hatch / dashes, not only red.
     var patterns = false
+    /// 0.19 (pick 26): rows sliding to their places while a bar is dragged between rows, in points up or down. Nothing in the file.
+    var rowShift: [UUID: Double] = [:]
 
     static let gripRadius: CGFloat = 6
     static let dotRadius: CGFloat = 5
@@ -58,7 +60,8 @@ struct TimelinePainter {
     /// Where an item is drawn: a bar, a milestone's diamond; nil for a phase or an item without days.
     func rect(of item: Item, row: Int) -> CGRect? {
         guard let span = item.span else { return nil }
-        return item.kind == .milestone ? geometry.diamond(on: span.start, row: row) : geometry.bar(from: span.start, to: span.end, row: row)
+        let box = item.kind == .milestone ? geometry.diamond(on: span.start, row: row) : geometry.bar(from: span.start, to: span.end, row: row)
+        return box.offsetBy(dx: 0, dy: rowShift[item.id] ?? 0)
     }
 
     private func colour(of item: Item) -> Color {
@@ -162,6 +165,7 @@ struct TimelinePainter {
             drawPlanGhost(item, row: row, &days)
             drawBar(item, box, &days)
             drawState(item, box, &days)
+            drawMarks19(item, box, &days)
         }
 
         // Today: a red line down the middle of the day.
@@ -194,7 +198,7 @@ struct TimelinePainter {
         }
         let grouped = Set(groups.flatMap { group in rows[group.firstRow...group.lastRow].dropFirst().map(\.id) })
         for (row, item) in rows.enumerated() {
-            let top = CGFloat(g.y(ofRow: row)), height = CGFloat(g.rowHeight)
+            let top = CGFloat(g.y(ofRow: row) + (rowShift[item.id] ?? 0)), height = CGFloat(g.rowHeight)
             guard top + height > header, top < size.height else { continue }
             if selection.contains(item.id) {
                 let plate = CGRect(x: 4, y: top + 3, width: names - 8, height: height - 6)
@@ -440,16 +444,18 @@ struct TimelinePainter {
                 ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(paint.chosen))
             }
             if showDates {
-                let text = ctx.resolve(Text(found.item.spanWords).font(.system(size: 11, weight: .medium)).foregroundColor(paint.ink))
-                let wide = text.measure(in: CGSize(width: 400, height: 40))
+                // 0.19 (pick 28): big enough to read while a finger covers the bar: "1 Dec – 12 Dec · 12 days", headline size.
+                let text = ctx.resolve(Text(found.item.spanCallout(today: today)).font(.system(size: 17, weight: .semibold)).foregroundColor(paint.ink))
+                let wide = text.measure(in: CGSize(width: 500, height: 40))
                 let names = CGFloat(geometry.namesWidth)
-                let midX = min(max(box.midX, names + wide.width / 2 + 10), max(size.width - wide.width / 2 - 10, names + wide.width / 2 + 10))
+                let midX = min(max(box.midX, names + wide.width / 2 + 14), max(size.width - wide.width / 2 - 14, names + wide.width / 2 + 14))
                 // Above the bar; under it when the bar is in the top row.
-                let above = box.minY - 15 > CGFloat(geometry.headerHeight) + 10
-                let plate = CGRect(x: midX - wide.width / 2 - 7, y: above ? box.minY - 26 : box.maxY + 7, width: wide.width + 14, height: 19)
+                let above = box.minY - 46 > CGFloat(geometry.headerHeight) + 4
+                let plate = CGRect(x: midX - wide.width / 2 - 11, y: above ? box.minY - 42 : box.maxY + 9, width: wide.width + 22, height: 32)
                 var shade = ctx
-                shade.addFilter(.shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 1))
-                shade.fill(Path(roundedRect: plate, cornerRadius: 9.5), with: .color(paint.plate))
+                shade.addFilter(.shadow(color: .black.opacity(0.22), radius: 4, x: 0, y: 1))
+                shade.fill(Path(roundedRect: plate, cornerRadius: 12), with: .color(paint.plate))
+                ctx.stroke(Path(roundedRect: plate, cornerRadius: 12), with: .color(paint.edge), lineWidth: 1)
                 ctx.draw(text, at: CGPoint(x: plate.midX, y: plate.midY), anchor: .center)
             }
         }
