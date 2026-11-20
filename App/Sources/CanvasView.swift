@@ -365,6 +365,8 @@ struct CanvasView: View {
 
     /// 0.19: the typing that was going on when this press landed, in a table's cell (the press ends it).
     @State private var typedAtPress: (id: UUID, spot: TableSpot)?
+    /// 0.19: the things that were chosen before this press — a table's heading sorts only when the table was already chosen.
+    @State private var chosenAtPress: Set<UUID> = []
 
     /// A finger is pressing (not a mouse, a trackpad or the Pencil): press areas are finger size.
     private var byFinger: Bool { Finger.on && !notes.precise }
@@ -415,6 +417,7 @@ struct CanvasView: View {
                     pressBegan = value.time
                     // Pressing somewhere else ends the typing.
                     typedAtPress = session.editing.flatMap { id in session.cell.map { (id, $0) } }
+                    chosenAtPress = session.selection
                     if session.editing != nil { session.commitEdit() }
                     // Every press on the board gives it the keys.
                     keys = true
@@ -664,7 +667,7 @@ struct CanvasView: View {
                     return
                 }
                 let isTick = session.board.item(id)?.tickColumn == spot.column && spot.row >= 1
-                if isTick || (spot.row == 0 && !double(id) && typedAtPress == nil) {
+                if isTick || (spot.row == 0 && chosenAtPress.contains(id) && !double(id) && typedAtPress == nil) {
                     typedAtPress = nil
                     if session.pressTable(id, spot) {
                         lastTapID = isTick ? nil : id

@@ -43,13 +43,12 @@ struct EmptyInvite: View {
                         }
                         .padding(.top, 2)
                         .padding(.horizontal, -12)
-                        #if os(macOS)
-                        Text("or double-click anywhere for a sticky note")
+                        Text(MenuWords.doubleNoteHint)
                             .font(Txt.label)
                             .foregroundStyle(.secondary)
                             .allowsHitTesting(false)
                             .accessibilityIdentifier("empty.hint")
-                        #endif
+
                     }
                 }
                 .padding(.horizontal, 20)
@@ -180,4 +179,14 @@ struct FirstSeeds: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("boards.first")
     }
+}
+
+
+/// 0.19: two quick presses on empty board make a sticky note on every device, so the hint shows everywhere.
+enum MenuWords {
+    #if os(macOS)
+    static let doubleNoteHint = "or double-click anywhere for a sticky note"
+    #else
+    static let doubleNoteHint = "or tap twice anywhere for a sticky note"
+    #endif
 }

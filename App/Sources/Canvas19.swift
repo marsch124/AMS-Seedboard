@@ -2,7 +2,7 @@ import SwiftUI
 import SeedboardCore
 
 /// 0.19 (canvas): every SF Symbol this file uses, in one place so a name can be swapped after a look.
-enum Marks19Canvas {
+enum Marks19Read {
     static let readMode = "eyeglasses"
 }
 
@@ -38,7 +38,7 @@ struct ReadModePill: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: Marks19Canvas.readMode)
+            Image(systemName: Marks19Read.readMode)
                 .foregroundStyle(Part.boards.text)
             Text("Read mode")
                 .font(Txt.label)
@@ -61,7 +61,7 @@ struct ReadModeMoreLine: View {
 
     var body: some View {
         Button { session.setReadMode(!session.readMode) } label: {
-            Label(session.readMode ? "Leave Read mode" : "Read mode", systemImage: Marks19Canvas.readMode)
+            Label(session.readMode ? "Leave Read mode" : "Read mode", systemImage: Marks19Read.readMode)
         }
         .accessibilityIdentifier("more.readMode")
     }

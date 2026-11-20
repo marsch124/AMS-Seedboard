@@ -1,0 +1,49 @@
+Seedboard 0.19 (build 19) - what to try. Nothing of this was seen on a real screen yet, so please look closely and tell me what feels wrong.
+
+IMPORTANT
+- A board changed in 0.19 opens read-only in 0.18. Update all your devices.
+
+LIST (iPhone, iPad; the Mac where it says)
+1. Swipe a row right: blue Pin. Swipe left: slate Put away. Short swipe = press the button; long swipe = done at once.
+2. Search a word: a small grey line under the name shows where it was found, the word in bold.
+3. Recent card: Sort menu (Last changed, Date made, Name).
+4. Give a board a due day within a week: a Due soon card shows at the top.
+5. Rows show a thin green done bar; on a timeline only "late" is red.
+6. Hold a row: Colour... (no purple, no red) and Send to PARAGON....
+7. Copy some lines, pull the list down and let go: a new mind map.
+8. Mac: rest the pointer on a row: Quick look.
+
+BOARD
+9. Two quick presses on empty board: a sticky note (iPhone and iPad too now).
+10. The + tile: press = note; hold = Note, Idea, Shape, Text.
+11. More, Read mode: the board freezes, eyeglasses pill with Done at the top.
+12. More, Background colour...: Paper, Warm grey, Night blue. Look by day and by night.
+13. Pick colours: the last three come first.
+14. Choose 3 notes, press Stack. Make one note Small. Choose things, Put in a frame (Mac Shift Command F).
+15. Mac: Hide Sidebar with Control Command S. iPad: drag the grip on the tool bar to the left or right edge.
+
+MIND MAPS AND ARROWS
+16. Branches are thick near the middle. More, Number the branches: 1, 2, 3 badges.
+17. Menu of a main branch: Move to the Other Side. More, Map look: Lines, Curves, Boxes.
+18. Menu of an idea: Grow ideas from this: chips; press one.
+19. Choose an arrow: drag the diamond knob to bend it; Straighten. Menu says Dashed (maybe).
+
+TIMELINES
+20. Drag a bar between rows: the others glide.
+21. Hold a bar: big dates. Note on a bar: tap to read. Who: initials. Repeat: copies under the bar.
+22. Weeks and Months switch above the zoom. More, Group by colour.
+
+WHO DOES WHAT AND TABLES
+23. Drag a message: the others make room. Add a Note... beside a message.
+24. Table: drag a column edge; Tick Column (tick, "3 of 8 done"); tap a heading to sort (chevron).
+
+PENCIL AND PICTURES
+25. Draw a rough circle, box or arrow and hold still at the end: it turns clean.
+26. A picture: Round, Print Frame. Camera tile (iPhone, iPad): take a photo.
+
+PARAGON AND SHARING
+27. Choose a frame: Share Picture of This Frame.
+28. Send page: the Preview under What PARAGON gets.
+29. Paste a checklist from Notes (- [ ] and - [x]): ticked lines come as done ideas.
+
+Settings, How it works: Signs in this app has the new marks. What's new: 0.19 at the top.
