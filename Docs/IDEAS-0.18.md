@@ -67,3 +67,7 @@ Written after 0.17. None repeats IDEAS-0.9, 0.11 or 0.14, nor anything he turned
 48. ⭐ Mac: the board list can be hidden with ⌘0 for a full-width board.
 49. iPad: the tool bar can be dragged to any edge of the screen.
 50. ⭐ Mac: a small "Quick look" when you hover a board row — the board's first lines.
+
+## His picks (20 Nov 2026, tick form)
+47 of 50: 1–10, 12–46, 48–50. Not picked (= turned down): 11 (copy by dragging with ⌥ / two fingers), 47 (a PDF with one page per frame).
+To be built as 0.19, in a new conversation (his rule: one release per round, new conversation after each release).
