@@ -18,13 +18,15 @@ struct HomeView: View {
     @State private var renaming: Board?
     @State private var newName = ""
     @State private var removing: Board?
+    /// 0.19: the Recent card's order, per device (the Sort menu in the list writes it).
+    @AppStorage(ListSort19.key) private var sortRaw = BoardSort.changed.rawValue
 
     private let columns = [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 10, alignment: .top)]
 
     var body: some View {
         let found = BoardSearch.find(search, in: model.boards)
         let pinned = found.filter { $0.pinned && !$0.isPutAway }
-        let recent = found.filter { !$0.pinned && $0.sent == nil && !$0.isPutAway }
+        let recent = ListSort19.current(sortRaw).sorted(found.filter { !$0.pinned && $0.sent == nil && !$0.isPutAway })
         let sent = found.filter { !$0.pinned && $0.sent != nil && !$0.isPutAway }
         return ScrollView {
             VStack(alignment: .leading, spacing: 4) {
@@ -159,11 +161,7 @@ struct HomeView: View {
                             if board.canBeChanged {
                                 Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
                             }
-                            Menu("Colour") {
-                                ForEach(Palette.boards, id: \.self) { name in
-                                    Button(name.capitalized) { model.setColour(board.id, name) }
-                                }
-                            }
+                            BoardMenuLines19(board: board)   // 0.19: Colour… (no purple, no red), Send to PARAGON…
                             if let sent = board.sent {
                                 Button("Open in PARAGON") { model.openInParagon(sent) }
                             }
@@ -283,7 +281,12 @@ struct BoardCard: View {
                         .lineLimit(1)
                         .padding(.leading, 15)
                     // 0.9: one small line: "34 ideas · 12 done · 3 late".
-                    Text(board.listLine(doneThings: echo.doneThings(board)) + FoundMarks.words(board, search: search))
+                    // 0.19: the line where a search found its words, the thin done bar, "2 late" in red.
+                    FoundLine19(board: board, search: search)
+                        .padding(.leading, 15)
+                    DoneBar19(board: board, doneThings: echo.doneThings(board))
+                        .padding(.leading, 15)
+                    LineText19(board: board, doneThings: echo.doneThings(board), suffix: FoundMarks.words(board, search: search))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

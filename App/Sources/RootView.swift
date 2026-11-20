@@ -93,6 +93,8 @@ struct BoardList: View {
     /// The iPhone's list has search and "+" at the bottom, under the thumb (`ThumbRow`).
     private var thumbRow: Bool { phone && ThumbRow.onThisDevice }
     @State private var searching = false
+    /// 0.19: the Recent card's order, per device (the Sort menu writes it).
+    @AppStorage(ListSort19.key) private var sortRaw = BoardSort.changed.rawValue
     /// 0.17: iPhone and iPad show the parts on coloured cards; the Mac keeps plain headings.
     private var cards: Bool {
         #if os(macOS)
@@ -145,6 +147,9 @@ struct BoardList: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
+                    #if os(iOS)
+                    PullMarker19()
+                    #endif
                     // 0.17: the big green heading and its count line (iPhone and iPad).
                     if cards && thumbRow { ListTitle() }
                     // The way back to the home page (on the iPhone the list itself is the home).
@@ -158,8 +163,16 @@ struct BoardList: View {
                             ListStarters(open: open)
                         }
                     }
+                    // 0.19: Due soon — boards due in the next 7 days (today included) or already late; none = no card.
+                    let soon = DueSoon.entries(model.boards)
+                    if BoardSearch.words(search).isEmpty && !soon.isEmpty {
+                        ListCard(title: "Due soon", key: "dueSoon", count: soon.count, part: .timeline, plain: !cards) {
+                            DueSoonRows19(entries: soon, open: open)
+                                .padding(.horizontal, cards ? 2 : 0)
+                        }
+                    }
                     section("Pinned", key: "pinned", BoardSearch.find(search, in: model.pinned))
-                    section("Recent", key: "recent", BoardSearch.find(search, in: model.recent))
+                    section("Recent", key: "recent", BoardSearch.find(search, in: ListSort19.current(sortRaw).sorted(model.recent)), sortable: true)
                     section("Sent to PARAGON", key: "sent", BoardSearch.find(search, in: model.sent), part: .paragon)
                     // 0.9: a search also finds boards that were put away; they are marked.
                     if !BoardSearch.words(search).isEmpty {
@@ -186,6 +199,7 @@ struct BoardList: View {
                 .padding(.horizontal, 8)
                 .padding(.bottom, 8)
             }
+            .pullToMake19()   // 0.19: pull down = a board from the clipboard (iPhone and iPad)
             .accessibilityIdentifier("boards.list")
 
             if thumbRow { ThumbRow(search: $search, typing: $searching, open: open) }
@@ -272,11 +286,15 @@ struct BoardList: View {
     }
 
     @ViewBuilder
-    private func section(_ title: String, key: String, _ boards: [Board], part: Part = .boards) -> some View {
+    private func section(_ title: String, key: String, _ boards: [Board], part: Part = .boards, sortable: Bool = false) -> some View {
         if !boards.isEmpty {
             ListCard(title: title, key: key, count: boards.count, part: part,
                      forceOpen: !BoardSearch.words(search).isEmpty, plain: !cards) {
                 VStack(alignment: .leading, spacing: 2) {
+                    // 0.19: one small "Sort" menu on the Recent card.
+                    if sortable && boards.count > 1 {
+                        HStack { Spacer(minLength: 0); SortMenu19() }
+                    }
                     ForEach(boards) { board in
                         row(board)
                     }
@@ -300,10 +318,16 @@ struct BoardList: View {
                         .font(.body.weight(chosen ? .bold : .regular))
                         .foregroundStyle(chosen ? Part.boards.text : Color.primary)
                         .lineLimit(1)
-                    Text((phone ? "\(board.changedWords())\(echo.doneTail(board)) · " : "") + board.listLine(doneThings: echo.doneThings(board)) + FoundMarks.words(board, search: search))
+                    // 0.19: the line where a search found its words (bold), the thin done bar, "2 late" in red.
+                    FoundLine19(board: board, search: search)
+                    DoneBar19(board: board, doneThings: echo.doneThings(board))
+                    LineText19(board: board, doneThings: echo.doneThings(board),
+                               prefix: phone ? "\(board.changedWords())\(echo.doneTail(board)) · " : "",
+                               suffix: FoundMarks.words(board, search: search))
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .lineLimit(1)
+                        .accessibilityIdentifier("boards.line.\(board.title)")
                     DueWords(board: board)
                 }
                 Spacer(minLength: 0)
@@ -316,6 +340,8 @@ struct BoardList: View {
         }
         .buttonStyle(PressStyle())
         .accessibilityIdentifier("boards.row.\(board.title)")
+        // 0.19: swipe right = Pin / Unpin, swipe left = Put away (iPhone and iPad).
+        .rowSwipe19(board, pin: { model.togglePin(board.id) }, putAway: { model.putAway(board.id) })
         // Mac and iPad: a board dragged from the list onto the open board leaves a door to it there (DoorPage.swift).
         .modifier(DoorDrag(board: board, on: !phone))
         // A tiny dot at the row's end: this board's newest change, or one of its pictures, is on this device, not in iCloud yet.
@@ -343,11 +369,7 @@ struct BoardList: View {
             if board.canBeChanged {
                 Button("Save as a starter…") { model.ask(.save(model.boardForStarter(board.id) ?? board)) }
             }
-            Menu("Colour") {
-                ForEach(Palette.boards, id: \.self) { name in
-                    Button(name.capitalized) { model.setColour(board.id, name) }
-                }
-            }
+            BoardMenuLines19(board: board)   // 0.19: Colour… (no purple, no red), Send to PARAGON…
             if let sent = board.sent {
                 Button("Open in PARAGON") { model.openInParagon(sent) }
             }
