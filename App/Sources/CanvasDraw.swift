@@ -13,8 +13,11 @@ import UIKit
 struct Paint {
     let night: Bool
 
-    init(_ scheme: ColorScheme) { night = scheme == .dark }
-    init(night: Bool) { self.night = night }
+    /// 0.19 (18): the board's paper colour ("paper", "warmGrey", "nightBlue"; nil = plain). Changes only `canvas`.
+    var paper: String?
+
+    init(_ scheme: ColorScheme, paper: String? = nil) { night = scheme == .dark; self.paper = paper }
+    init(night: Bool, paper: String? = nil) { self.night = night; self.paper = paper }
 
     private typealias RGB = (Double, Double, Double)
 
@@ -63,7 +66,10 @@ struct Paint {
     /// The ink on a sticky note: dark by day and by night, the paper is always bright.
     static let noteInk = Color(red: 0.12, green: 0.14, blue: 0.19)
 
-    var canvas: Color { Paint.colour(Paint.rgb(night ? 0x17181B : 0xF6F7F9)) }
+    var canvas: Color {
+        if let tint = paper.flatMap(PaperColour.init(rawValue:)) { return Paint.colour(Paint.rgb(night ? tint.nightHex : tint.dayHex)) }
+        return Paint.colour(Paint.rgb(night ? 0x17181B : 0xF6F7F9))
+    }
     var plate: Color { Paint.colour(Paint.rgb(night ? 0x26282D : 0xFFFFFF)) }
     var edge: Color { Paint.colour(Paint.rgb(night ? 0x4A4E57 : 0xD5DAE2)) }
     var ink: Color { Paint.colour(Paint.rgb(night ? 0xECEEF2 : 0x1E2530)) }
