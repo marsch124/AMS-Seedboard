@@ -13,6 +13,8 @@ enum Glyph {
     case control(ControlMark)
     /// New in 0.2 (see NewMarks.swift).
     case new(NewMark)
+    /// 0.19: one of Apple's own symbols, by name (the names live in `Pencil19.swift`, `Marks19`).
+    case system(String)
 }
 
 struct GlyphView: View {
@@ -25,6 +27,11 @@ struct GlyphView: View {
         case .app(let mark): AppMarkView(mark, size: size, colour: colour)
         case .control(let mark): ControlMarkView(mark, size: size, colour: colour)
         case .new(let mark): AppMarkView(mark.standIn, size: size, colour: colour)
+        case .system(let name):
+            Image(systemName: name)
+                .font(.system(size: size * 0.9, weight: .regular))
+                .foregroundStyle(colour ?? Color.primary)
+                .frame(width: size, height: size)
         }
     }
 }
@@ -164,7 +171,8 @@ struct BoardView: View {
                                 ToolPill(session: session)
                                 ToolPill(session: session).environment(\.toolSide, 36)
                                 ToolPill(session: session).environment(\.toolSide, 32)
-                                ScrollView(.horizontal, showsIndicators: false) { ToolPill(session: session).environment(\.toolSide, 32) }
+                                ToolPill(session: session).environment(\.toolSide, 30)
+                                ScrollView(.horizontal, showsIndicators: false) { ToolPill(session: session).environment(\.toolSide, 30) }
                             }
                         }
                     }
@@ -430,7 +438,7 @@ extension EnvironmentValues {
 
 enum ToolSize {
     /// The mark inside a tile of this side.
-    static func mark(_ side: CGFloat) -> CGFloat { side >= 40 ? 24 : side >= 36 ? 22 : 20 }
+    static func mark(_ side: CGFloat) -> CGFloat { side >= 40 ? 24 : side >= 36 ? 22 : side >= 32 ? 20 : 18 }
     /// The gap between two tiles of this side.
     static func gap(_ side: CGFloat) -> CGFloat { side >= 40 ? 6 : side >= 36 ? 4 : 3 }
 }
@@ -462,6 +470,7 @@ struct ToolPill: View {
                 tool(.seedText, .text, "tool.text", "Text (T)") { session.add(.text) }
                 tool(.seedFrame, .frames, "tool.frame", "Frame (F)") { session.add(.frame) }
                 PictureTool(session: session)
+                CameraTool(session: session)
                 DrawTool(session: session, desk: session.ink)
             }
             .padding(side >= 40 ? 6 : 5)
