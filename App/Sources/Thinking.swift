@@ -163,6 +163,7 @@ extension BoardSession {
     /// One colour for everything chosen that carries a colour.
     func colourChosen(_ name: String) {
         let ids = selection
+        RecentColours.used(name)   // 0.19 (10)
         change { $0.setColour(name, of: ids) }
     }
 
@@ -217,7 +218,7 @@ extension BarActions {
         let ids = session.selection
         let paper = session.board.colourable(ids).allSatisfy { $0.kind == .note }
         let inUse = session.board.sharedColour(of: ids)
-        return session.board.coloursOffered(for: ids).map { name in
+        return RecentColours.ordered(session.board.coloursOffered(for: ids)).map { name in   // 0.19 (10)
             var one = think(name.isEmpty ? "colour.none" : "colour.\(name)", name.isEmpty ? "No colour" : name.capitalized,
                             .control(.circle), on: inUse == name) { session.colourChosen(name) }
             one.swatch = name.isEmpty ? paint.plate : (paper ? paint.note(name) : paint.line(name))
