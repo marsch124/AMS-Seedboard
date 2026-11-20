@@ -129,12 +129,12 @@ final class SafetyTests: XCTestCase {
         let a = "22222222-2222-2222-2222-222222222222", b = "33333333-3333-3333-3333-333333333333"
         let json = """
         {"id":"\(id.uuidString)","title":"T","lanes":{"count":3,"names":["a","b"],"on":true,"gap":1.5,"none":null},
-         "items":[{"id":"\(a)","kind":"box","text":"x","note":"a long note","pressure":[0.25,1]}],
+         "items":[{"id":"\(a)","kind":"box","text":"x","comment":"a long note","pressure":[0.25,1]}],
          "links":[{"id":"\(b)","from":"\(a)","to":"\(a)","dashed":true,"ends":"both"}]}
         """
         var board = try JSONDecoder().decode(Board.self, from: Data(json.utf8))
         XCTAssertTrue(board.canBeChanged)
-        XCTAssertEqual(board.items[0].extra["note"], .string("a long note"))
+        XCTAssertEqual(board.items[0].extra["comment"], .string("a long note"))
         // A change made by this version leaves them alone.
         board.title = "Changed"
         board.items[0].text = "y"
@@ -147,7 +147,7 @@ final class SafetyTests: XCTestCase {
         XCTAssertEqual(lanes["gap"] as? Double, 1.5)
         XCTAssertTrue(lanes["none"] is NSNull)
         let item = (out["items"] as! [[String: Any]])[0]
-        XCTAssertEqual(item["note"] as? String, "a long note")
+        XCTAssertEqual(item["comment"] as? String, "a long note")
         XCTAssertEqual(item["pressure"] as? [Double], [0.25, 1])
         XCTAssertEqual(item["text"] as? String, "y")
         let link = (out["links"] as! [[String: Any]])[0]
@@ -297,6 +297,15 @@ final class StoredFieldsTests: XCTestCase {
                   lanes: ["cuts", "names", "way"],
                   starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
                   sentTask: ["id", "place", "words"]),
+        // 0.19: a note, initials, round / framed picture, column widths, tick column; a bent arrow; paper, numbered branches, map look.
+        9: Fields(board: ["backdrop", "changed", "colour", "created", "due", "faceLock", "format", "hideDone", "id", "items", "kind", "legend", "links", "mapLook", "numberBranches", "numberSteps", "paper", "pinned", "putAway", "sent", "sentTasks", "sentTodos", "title"],
+                  item: ["answer", "bothSides", "cells", "colour", "crop", "cropShape", "doneDay", "door", "end", "folded", "from", "h", "id", "initials", "kind", "lanes", "linkTitle", "locked", "note", "order", "parent", "picture", "pictureWords", "planEnd", "planStart", "printFrame", "row", "side", "start", "strokes", "text", "textSize", "tickColumn", "tilt", "to", "todo", "votes", "w", "widths", "x", "y"],
+                  link: ["bend", "colour", "dashed", "from", "fromSide", "head", "id", "style", "tail", "text", "to", "toSide"],
+                  sent: ["kind", "path", "title", "when"],
+                  stroke: ["colour", "pen", "points", "pressure", "width"],
+                  lanes: ["cuts", "names", "way"],
+                  starter: ["board", "boardChanged", "builtin", "changed", "hint", "id", "name", "order", "removed", "removedWhen"],
+                  sentTask: ["id", "place", "words"]),
     ]
 
     func testAStoredFieldIsNeverAddedWithoutANewFormatNumber() throws {
@@ -337,14 +346,17 @@ final class StoredFieldsTests: XCTestCase {
         b.doneDay = "2026-12-04"
         b.votes = 2; b.locked = true; b.linkTitle = "Page"; b.pictureWords = "words"
         b.tilt = 4; b.textSize = "title"; b.cells = [["a"]]; b.planStart = "2026-12-01"; b.planEnd = "2026-12-03"
+        b.note = "n"; b.initials = "AS"; b.cropShape = "circle"; b.printFrame = true; b.widths = [100]; b.tickColumn = 0
         var arrow = Link(from: a.id, to: b.id, text: "go")
         arrow.fromSide = .left; arrow.toSide = .right; arrow.tail = true; arrow.dashed = true
+        arrow.bend = [10, -20]
         var board = Board(title: "Full", items: [a, b], links: [arrow])
         board.kind = Board.timelineKind
         board.sent = SentInfo(when: Date(), kind: "note", title: "Full", path: "Resources/Full.md")
         board.sentTodos = [a.id]
         board.legend = ["yellow": "Open"]; board.backdrop = "dots"; board.numberSteps = true; board.putAway = Date(); board.due = "2027-01-12"
         board.faceLock = true; board.hideDone = true
+        board.paper = "paper"; board.numberBranches = true; board.mapLook = "boxes"
         board.noteSent(b.id, words: "b", place: SentTask.note)
         let starter = StarterEntry(id: "own-1", name: "Mine", hint: "h", order: 1, removed: true, removedWhen: Date(),
                                    builtin: "blank", board: board, changed: Date(), boardChanged: Date())

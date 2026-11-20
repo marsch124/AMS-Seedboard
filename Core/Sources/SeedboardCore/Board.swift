@@ -222,6 +222,20 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     /// ("yyyy-MM-dd"). nil = no plan set.
     public var planStart: String?
     public var planEnd: String?
+    /// 0.19 (format 9): a short note that opens when the thing is tapped — a milestone's note, or the grey note box
+    /// beside a "Who does what" message. nil = none.
+    public var note: String?
+    /// 0.19 (format 9): a timeline bar only — the initials of who does it, shown in a small round ("AS"). nil = nobody.
+    public var initials: String?
+    /// 0.19 (format 9): a picture only — "circle" = shown cut round (faces, plants). nil = the plain rectangle.
+    public var cropShape: String?
+    /// 0.19 (format 9): a picture only — a thin white border and a soft shadow, like a print. nil = none.
+    public var printFrame: Bool?
+    /// 0.19 (format 9): a table only — the width of each column in points. nil = all columns as wide as each other.
+    public var widths: [Double]?
+    /// 0.19 (format 9): a table only — the column that holds tick boxes (0 = the first). A cell in it reads "x" when
+    /// ticked, "" when not. nil = no tick column.
+    public var tickColumn: Int?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String = "", x: Double = 0, y: Double = 0,
                 w: Double? = nil, h: Double? = nil, colour: String = "", todo: Bool = false,
@@ -253,6 +267,7 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         case door, doneDay
         case votes, locked, linkTitle, pictureWords
         case tilt, textSize, cells, planStart, planEnd
+        case note, initials, cropShape, printFrame, widths, tickColumn
     }
 
     public init(from decoder: Decoder) throws {
@@ -295,6 +310,12 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         cells = try? c.decode([[String]].self, forKey: .cells)
         planStart = try? c.decode(String.self, forKey: .planStart)
         planEnd = try? c.decode(String.self, forKey: .planEnd)
+        note = try? c.decode(String.self, forKey: .note)
+        initials = try? c.decode(String.self, forKey: .initials)
+        cropShape = try? c.decode(String.self, forKey: .cropShape)
+        printFrame = try? c.decode(Bool.self, forKey: .printFrame)
+        widths = (try? c.decode([Double].self, forKey: .widths)).map { $0.map { $0.isFinite ? max(24, min(2000, $0)) : 100 } }
+        tickColumn = try? c.decode(Int.self, forKey: .tickColumn)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -335,6 +356,12 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(cells, forKey: .cells)
         try c.encodeIfPresent(planStart, forKey: .planStart)
         try c.encodeIfPresent(planEnd, forKey: .planEnd)
+        try c.encodeIfPresent(note, forKey: .note)
+        try c.encodeIfPresent(initials, forKey: .initials)
+        try c.encodeIfPresent(cropShape, forKey: .cropShape)
+        try c.encodeIfPresent(printFrame, forKey: .printFrame)
+        try c.encodeIfPresent(widths, forKey: .widths)
+        try c.encodeIfPresent(tickColumn, forKey: .tickColumn)
     }
 
     public var frame: CGRect {
@@ -379,6 +406,9 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
     public var tail: Bool?
     /// 0.2: drawn with dashes.
     public var dashed: Bool?
+    /// 0.19 (format 9): the arrow is bent — its middle knob moved by [dx, dy] points from the middle of the plain
+    /// line. nil = not bent.
+    public var bend: [Double]?
 
     public init(id: UUID = UUID(), from: UUID, to: UUID, text: String = "", colour: String = "",
                 style: LinkStyle = .elbow, head: Bool = true) {
@@ -394,6 +424,7 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey, CaseIterable {
         case id, from, to, text, colour, style, head
         case fromSide, toSide, tail, dashed
+        case bend
     }
 
     public init(from decoder: Decoder) throws {
@@ -412,6 +443,9 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
         toSide = (try? c.decode(String.self, forKey: .toSide)).flatMap { Direction(rawValue: $0) }
         tail = try? c.decode(Bool.self, forKey: .tail)
         dashed = try? c.decode(Bool.self, forKey: .dashed)
+        if let b = try? c.decode([Double].self, forKey: .bend), b.count == 2, b.allSatisfy(\.isFinite) {
+            bend = b.map { max(-5000, min(5000, $0)) }
+        }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -428,6 +462,7 @@ public struct Link: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(toSide?.rawValue, forKey: .toSide)
         try c.encodeIfPresent(tail, forKey: .tail)
         try c.encodeIfPresent(dashed, forKey: .dashed)
+        try c.encodeIfPresent(bend, forKey: .bend)
     }
 }
 
@@ -506,7 +541,12 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     /// `locked`, `linkTitle`, `pictureWords` on an item); the board's colour legend, background, numbered steps and
     /// "put away" (`legend`, `backdrop`, `numberSteps`, `putAway` on the board); a highlighter stroke (`pen` on a stroke).
     /// 7 (Seedboard 0.11): a board's own due day (`due` on the board, "yyyy-MM-dd").
-    public static let currentFormat = 8
+    /// 8 (Seedboard 0.14): tilt, text size, table cells, the set plan; Face ID lock, hide done.
+    /// 9 (Seedboard 0.19): a note on a thing, initials on a bar, a round or framed picture, table column widths and
+    /// a tick column (`note`, `initials`, `cropShape`, `printFrame`, `widths`, `tickColumn` on an item); a bent arrow
+    /// (`bend` on an arrow); the board's paper colour, numbered branches and mind map look (`paper`,
+    /// `numberBranches`, `mapLook` on the board).
+    public static let currentFormat = 9
 
     public var id: UUID
     public var title: String
@@ -543,6 +583,12 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
     public var faceLock: Bool?
     /// 0.14 (format 8): a timeline hides its done bars and milestones. nil = all shown.
     public var hideDone: Bool?
+    /// 0.19 (format 9): the board's paper colour: "paper", "warmGrey" or "nightBlue". nil = the plain background.
+    public var paper: String?
+    /// 0.19 (format 9): a mind map's main branches carry 1, 2, 3 in front, for an order. nil = not.
+    public var numberBranches: Bool?
+    /// 0.19 (format 9): how a mind map is drawn: "lines", "curves" or "boxes" (a tree of boxes). nil = as before 0.19.
+    public var mapLook: String?
 
     public init(id: UUID = UUID(), title: String = "New board", created: Date = Date(), changed: Date? = nil,
                 pinned: Bool = false, colour: String = "green", items: [Item] = [], links: [Link] = []) {
@@ -565,6 +611,7 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         case sentTasks
         case legend, backdrop, numberSteps, putAway, due
         case faceLock, hideDone
+        case paper, numberBranches, mapLook
     }
 
     public init(from decoder: Decoder) throws {
@@ -592,6 +639,9 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         due = try? c.decode(String.self, forKey: .due)
         faceLock = try? c.decode(Bool.self, forKey: .faceLock)
         hideDone = try? c.decode(Bool.self, forKey: .hideDone)
+        paper = try? c.decode(String.self, forKey: .paper)
+        numberBranches = try? c.decode(Bool.self, forKey: .numberBranches)
+        mapLook = try? c.decode(String.self, forKey: .mapLook)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -618,6 +668,9 @@ public struct Board: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(due, forKey: .due)
         try c.encodeIfPresent(faceLock, forKey: .faceLock)
         try c.encodeIfPresent(hideDone, forKey: .hideDone)
+        try c.encodeIfPresent(paper, forKey: .paper)
+        try c.encodeIfPresent(numberBranches, forKey: .numberBranches)
+        try c.encodeIfPresent(mapLook, forKey: .mapLook)
     }
 
     /// True when this version of the app may change the board: it was not written by a newer one, and

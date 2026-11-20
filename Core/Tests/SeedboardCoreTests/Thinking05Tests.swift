@@ -102,12 +102,13 @@ final class Thinking05Tests: XCTestCase {
         board.items[board.index(of: plain)!].todo = true
         XCTAssertTrue(board.canBecomeIdea(blue))
         XCTAssertFalse(board.canBecomeIdea(a))
-        // Under the middle: a main branch that keeps the note's colour; a plain yellow note takes the next branch colour.
+        // Under the middle: a main branch that keeps the note's colour. Since 0.17 yellow is a branch colour too,
+        // so a plain yellow note stays yellow.
         XCTAssertTrue(board.makeIdea(blue, under: centre))
         XCTAssertTrue(board.makeIdea(plain, under: centre))
         XCTAssertEqual(board.children(of: centre).map(\.id), [a, blue, plain])
         XCTAssertEqual(board.item(blue)!.colour, "blue")
-        XCTAssertEqual(board.item(plain)!.colour, "orange")
+        XCTAssertEqual(board.item(plain)!.colour, "yellow")
         XCTAssertTrue(board.item(plain)!.todo)
         // Under a branch: it follows the branch's colour.
         let text = board.add(.text, centre: CGPoint(x: 0, y: 400), text: "Later")
