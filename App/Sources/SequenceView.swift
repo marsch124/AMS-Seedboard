@@ -34,6 +34,10 @@ struct SequenceView: View {
     @State private var pressing = false
     /// When the press began: on a touch screen a message lifts only after a short hold.
     @State private var pressBegan = Date.distantPast
+    /// 0.19: the springs that make room while a message is dragged.
+    @State private var room = SequenceRoomSprings()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var desk = SeqTable19Desk.shared
 
     /// How long a finger must rest on a message before it lifts.
     private static let hold: TimeInterval = 0.25
@@ -56,15 +60,26 @@ struct SequenceView: View {
 
     private var paint: Paint { Paint(scheme) }
 
+    private var isLifting: Bool {
+        if case .lifting = drag { return true }
+        return false
+    }
+
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
+                // 0.19: while a message is dragged the picture is drawn again every frame, so the others can glide aside.
+                SwiftUI.TimelineView(.animation(paused: !isLifting)) { timeline in
                 Canvas { ctx, size in
                     ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(paint.canvas))
                     var sheet = ctx
                     sheet.translateBy(x: session.offset.width, y: session.offset.height)
                     sheet.scaleBy(x: session.scale, y: session.scale)
                     var painter = SequencePainter(board: session.board, paint: paint)
+                    if case .lifting(let id) = drag, lifted != nil, let origin = room.before.row(id) {
+                        painter = SequencePainter(board: session.board, paint: paint, layout: room.layout(at: timeline.date))
+                        painter.liftedOrigin = (origin, room.before.notes[id])
+                    }
                     painter.scale = session.scale
                     painter.selection = session.selection
                     painter.editing = session.editing
@@ -82,6 +97,7 @@ struct SequenceView: View {
                     }
                     painter.draw(&sheet)
                     if let landing { landing.draw(&sheet, colour: paint.chosen, scale: session.scale) }
+                }
                 }
                 .contentShape(Rectangle())
                 .gesture(dragGesture)
@@ -133,6 +149,10 @@ struct SequenceView: View {
             #endif
             .onAppear { session.placeIfNeeded(geo.size) }
             .onChange(of: geo.size) { _, new in session.resized(new) }
+            // 0.19: "Note…" on a chosen message.
+            .sheet(isPresented: Binding(get: { desk.noteFor != nil }, set: { if !$0 { desk.noteFor = nil } }), onDismiss: { session.takeKeys() }) {
+                SequenceNotePage(session: session)
+            }
         }
         .clipped()
         .focusable()
@@ -289,6 +309,8 @@ struct SequenceView: View {
                 return .block(place.id)
             }
         }
+        // 0.19: a message's note box belongs to its message.
+        for (id, box) in layout.notes where box.insetBy(dx: -3 / s, dy: -3 / s).contains(p) { return .step(id) }
         let slack = 9 / s
         for row in layout.rows.reversed() where row.box.insetBy(dx: -slack * 0.6, dy: -slack * 0.4).contains(p) { return .step(row.id) }
         if p.y > CGFloat(layout.boxBottom), p.y < CGFloat(layout.lineBottom) + 16 / s,
@@ -383,6 +405,8 @@ struct SequenceView: View {
             Feel.lift()
             #endif
             session.select(id)
+            room.still = reduceMotion
+            room.start(before: session.sequenceLayout)
             drag = .lifting(id)
         default:
             drag = .panning(session.offset)
@@ -410,13 +434,8 @@ struct SequenceView: View {
         case .lifting(let id):
             let layout = session.sequenceLayout
             lifted = CGSize(width: 0, height: value.translation.height / s)
-            let slot = layout.slot(atY: Double(here.y), moving: id)
-            if slot == layout.index(of: id) {
-                landing = nil
-            } else {
-                let y = CGFloat(layout.landingY(slot: slot, moving: id))
-                landing = Landing(from: CGPoint(x: layout.left - 8, y: y), to: CGPoint(x: layout.right + 8, y: y))
-            }
+            // 0.19: no thin line any more; the others make room and the message's faint place shows where it lands.
+            room.aim(layout.slot(atY: Double(here.y), moving: id), board: session.board, moving: id)
         case .carrying(let id):
             let layout = session.sequenceLayout
             lifted = CGSize(width: value.translation.width / s, height: 0)
@@ -450,6 +469,7 @@ struct SequenceView: View {
         case .lifting(let id):
             let slot = session.sequenceLayout.slot(atY: Double(here.y), moving: id)
             session.change { $0.moveStep(id, to: slot) }
+            room.end()
         case .carrying(let id):
             let slot = session.sequenceLayout.whoSlot(atX: Double(here.x), moving: id)
             session.change { $0.moveWho(id, to: slot) }

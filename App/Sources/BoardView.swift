@@ -13,6 +13,8 @@ enum Glyph {
     case control(ControlMark)
     /// New in 0.2 (see NewMarks.swift).
     case new(NewMark)
+    /// 0.19: one of Apple's own SF Symbols, by name (the names of a lane's new marks are in its own enum, e.g. SeqTable19Marks).
+    case symbol(String)
 }
 
 struct GlyphView: View {
@@ -25,6 +27,11 @@ struct GlyphView: View {
         case .app(let mark): AppMarkView(mark, size: size, colour: colour)
         case .control(let mark): ControlMarkView(mark, size: size, colour: colour)
         case .new(let mark): AppMarkView(mark.standIn, size: size, colour: colour)
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(.system(size: size * 0.82, weight: .medium))
+                .foregroundStyle(colour ?? Color.primary)
+                .frame(width: size, height: size)
         }
     }
 }

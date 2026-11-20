@@ -129,6 +129,8 @@ public struct SequenceLayout: Equatable, Sendable {
         public var level: Int
     }
 
+    /// 0.19: the grey note box beside a message that has a note (`Item.note`), by the message's id.
+    public var notes: [UUID: CGRect] = [:]
     /// The steps from the top (a message that has lost one of its names is left out).
     public var rows: [Row] = []
     /// The blocks, the outer ones first.
@@ -145,6 +147,8 @@ public struct SequenceLayout: Equatable, Sendable {
     public var lineBottom = 0.0
     public var size = CGSize.zero
     public var metrics = SequenceMetrics()
+
+    public init() {}
 
     public func row(_ id: UUID) -> Row? { rows.first { $0.id == id } }
 
@@ -370,7 +374,10 @@ public extension Board {
         order.remove(at: from)
         let at = min(max(place, 0), order.count)
         order.insert(id, at: at)
+        // 0.19: what each block holds is worked out before, so a block keeps holding the right messages.
+        let held = Dictionary(uniqueKeysWithValues: blocks.map { ($0.id, messages(in: $0.id)) })
         number(order)
+        keepBlocksAfterMove(of: id, held: held)
         return at != from
     }
 
@@ -491,6 +498,11 @@ public extension Board {
         }
         // A note's words never run over the edge.
         for step in all where step.kind != .message { right = max(right, m.margin + step.w + 2 * m.bandPadX) }
+        // 0.19: a note box beside a message reaches out to the right of it.
+        for step in all where step.kind == .message && SequenceNote.has(step) {
+            guard let a = step.from.flatMap({ layout.x[$0] }), let b = step.to.flatMap({ layout.x[$0] }) else { continue }
+            right = max(right, SequenceNote.left(of: step, from: a, to: b, label: label(step), m: m) + SequenceNote.size(of: step.note ?? "").width)
+        }
         layout.right = right
         layout.boxTop = m.top
         layout.boxBottom = m.top + boxHeight
@@ -517,8 +529,9 @@ public extension Board {
                     let lineY = top + m.rowTop + (tall - m.loopHeight) / 2
                     let middle = lineY + m.loopHeight / 2
                     let start = from + m.loopWidth + 8
+                    let noteRoom = SequenceNote.has(step) ? SequenceNote.size(of: step.note ?? "").height + m.rowTop + m.rowBottom : 0
                     layout.rows.append(.init(
-                        id: step.id, kind: .message, top: top, height: m.rowTop + tall + m.rowBottom,
+                        id: step.id, kind: .message, top: top, height: max(m.rowTop + tall + m.rowBottom, noteRoom),
                         lineY: lineY, fromX: from, toX: to, number: number,
                         words: CGRect(x: start + m.badge + m.badgeGap, y: middle - high / 2, width: step.w, height: high),
                         badge: CGPoint(x: start + m.badge / 2, y: middle),
@@ -526,8 +539,9 @@ public extension Board {
                 } else {
                     let start = (from + to) / 2 - wide / 2
                     let wordsTop = top + m.rowTop
+                    let noteRoom = SequenceNote.has(step) ? SequenceNote.size(of: step.note ?? "").height + m.rowTop + m.rowBottom : 0
                     layout.rows.append(.init(
-                        id: step.id, kind: .message, top: top, height: m.rowTop + high + m.wordsGap + m.rowBottom,
+                        id: step.id, kind: .message, top: top, height: max(m.rowTop + high + m.wordsGap + m.rowBottom, noteRoom),
                         lineY: wordsTop + high + m.wordsGap, fromX: from, toX: to, number: number,
                         words: CGRect(x: start + m.badge + m.badgeGap, y: wordsTop, width: step.w, height: high),
                         badge: CGPoint(x: start + m.badge / 2, y: wordsTop + m.lineHeight / 2),
@@ -550,6 +564,11 @@ public extension Board {
                 continue
             }
             rowOfStep[at] = layout.rows.count - 1
+            if step.kind == .message, SequenceNote.has(step), let row = layout.rows.last {
+                let size = SequenceNote.size(of: step.note ?? "")
+                layout.notes[step.id] = CGRect(x: SequenceNote.left(of: step, from: row.fromX, to: row.toX, label: label(step), m: m),
+                                               y: row.top + m.rowTop, width: size.width, height: size.height)
+            }
             top = layout.rows[layout.rows.count - 1].bottom + Double(closes[at] ?? 0) * m.blockFoot
         }
 
