@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Seedboard Tour: chapter rail on the left, coach card + a pretend iPhone, iPad or Mac on the right. Same engine as the other AMS tours.
-   Based on AMS Seedboard 0.16. Update this tour in the release that changes a taught screen. Updated for 0.16. */
+   Based on AMS Seedboard 0.18. Update this tour in the release that changes a taught screen. Updated for 0.18 (0.17: the list as coloured folding cards; 0.18: branches never take purple or red). */
 :root {
   --bg: #F2F7F6; --panel: #FFFFFF; --fg: #14292A; --muted: #587070; --line: #D9E5E3;
   --accent: #17797A; --accent-soft: #DDF0EE; --good: #2F7D32; --good-soft: #E6F3E6; --warn: #A8431A;
@@ -98,7 +98,31 @@ svg.g { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 
 /* List (iPhone home of Seedboard) */
 .hd { display: flex; align-items: center; min-height: 44px }
-.hd h1 { margin: 0; font-size: 31px; line-height: 1.1; font-weight: 700; flex: 1; color: var(--teal) }
+.hd { align-items: flex-start; padding-top: 4px }
+.hd h1 { margin: 0; font-size: 31px; line-height: 1.1; font-weight: 700; flex: 1; color: var(--green) }
+.hd .sub { display: block; font-size: 12px; font-weight: 400; color: var(--pmuted); margin-top: 2px }
+.gearb { border: 0; background: none; color: var(--green); width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; padding: 0; flex: none }
+.gearb svg { width: 22px; height: 22px }
+.fcard { margin: 8px 0 0; border-radius: 14px; background: color-mix(in srgb, var(--cc) 10%, transparent); overflow: hidden }
+.fhead { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: none; padding: 7px 8px 3px; cursor: pointer; text-align: left }
+.fcard.shut .fhead { padding-bottom: 7px }
+.fhead .ft { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--cc) }
+.fhead .fn { flex: none; font-size: 11px; font-weight: 700; color: #fff; background: var(--cc); border-radius: 9px; padding: 1px 6px; font-variant-numeric: tabular-nums }
+.fhead .fa { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--cc) 15%, transparent); color: var(--cc); display: grid; place-items: center }
+.fhead .fa svg { width: 14px; height: 14px; transition: transform .2s }
+.fcard.shut .fa svg { transform: rotate(-90deg) }
+.fbody { padding: 0 2px 4px }
+.fbody .brow { border-radius: 8px; min-height: 48px; padding: 4px 8px }
+.fbody .brow + .brow { border-top: 0 }
+.fbody .thumb { background: var(--pcard) }
+.sstrip { display: flex; gap: 8px; overflow: hidden; padding: 2px 8px 6px }
+.sstrip .scard { width: 104px; padding: 5px; background: var(--pcard) }
+.sstrip .scard .pic { height: 46px }
+.sstrip .scard .pic svg { width: 26px; height: 26px }
+.sstrip .scard b { font-size: 12px }
+.wtitle { display: flex; align-items: center; margin: 10px 10px 0 12px }
+.wtitle h1 { margin: 0; font-size: 24px; line-height: 1.1; font-weight: 700; flex: 1; color: var(--green) }
+.wtitle .sub { display: block; font-size: 10px; font-weight: 400; color: var(--pmuted); white-space: nowrap }
 .grp { margin: 14px 0 4px; font-weight: 700; font-size: 13px; color: var(--pmuted) }
 .card { background: var(--pcard); border: 1px solid var(--pline); border-radius: 12px; overflow: hidden }
 .brow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 6px 12px; border: 0; background: none; text-align: left; cursor: pointer }
@@ -115,7 +139,6 @@ svg.g { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .sfield input { flex: 1; border: 0; background: none; outline: none; font-size: 16px; min-width: 0 }
 .plusb { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--green); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.25) }
 .plusb svg { width: 24px; height: 24px; stroke-width: 2.4 }
-.setl { position: absolute; left: 0; right: 0; bottom: 44px; display: flex; justify-content: center; gap: 10px; border: 0; background: none; color: var(--pmuted); font-size: 12px; cursor: pointer; width: 100%; z-index: 19 }
 
 /* Sheets */
 .dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 50 }
@@ -554,7 +577,7 @@ const mkTL = o => Object.assign({ today: 15, sel: null, undo: null, bars: [
   { id: 6, name: 'Roof', s: 25, e: 32, done: false, todo: true, col: '--b3', after: 5 },
   { id: 7, name: 'Paint', s: 33, e: 42, done: false, todo: false, col: '--b6', after: 6 },
   { id: 8, name: 'Move in', s: 43, e: 51, done: false, todo: false, col: '--b4', after: 7 }] }, o || {});
-const START = () => ({ screen: 'list', bt: 'mind', bname: 'Summer cabin', sheet: null, menu: false, q: '', mm: mkMM(), tl: mkTL(), send: { mode: 'note' }, sent: null,
+const START = () => ({ screen: 'list', bt: 'mind', bname: 'Summer cabin', sheet: null, menu: false, q: '', mm: mkMM(), tl: mkTL(), send: { mode: 'note' }, sent: null, fold: {},
   dock: false, sh: { dest: 'new', sent: false }, plate: { as: 'Picture' }, arrived: false, qa: { open: false, pinned: ['Summer cabin', 'Garden plan'] }, toast: null, draw: false, mbar: null, settings: false, nine: null, pa: ["Last year's trip", 'Old bench plan', 'Spring checklist'] });
 let S = START();
 const set = o => { S = Object.assign(START(), o); };
@@ -594,12 +617,17 @@ function countText(m) {
 /* ---------- Screens ---------- */
 const paRow = () => S.pa.length ? `<button class="quiet" data-act="pa-open" data-t="putaway-row">Put away (${S.pa.length})</button>` : '';
 function listHTML() {
-  const shown = BOARDS.filter(matches);
-  const grp = g => { const l = shown.filter(b => b.group === g); return l.length ? `<div class="grp">${g}</div><div class="card">${l.map(b => `<button class="brow" data-act="open-board" data-id="${b.id}" data-t="row-${b.id}"><span class="dotc" style="background:var(${b.col})"></span><span style="flex:1;min-width:0"><span class="bn">${esc(b.n)}</span><span class="bi">${esc(b.locked ? 'Changed 3 days ago' : b.info)}</span>${b.due ? `<span class="due" data-t="due-${b.id}">${b.due}</span>` : ''}</span><span class="thumb${b.locked ? ' priv' : ''}">${b.locked ? 'Private' : icon(b.bt === 'tl' ? 'timeline' : 'mind', 'g')}</span></button>`).join('')}</div>` : ''; };
-  return `<div class="scr" data-keep="list"><div class="hd"><h1>Seedboard</h1></div>
-    ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON')}
+  const shown = BOARDS.filter(matches), searching = S.q.trim().length > 0;
+  const rowH = b => `<button class="brow" data-act="open-board" data-id="${b.id}" data-t="row-${b.id}"><span class="dotc" style="background:var(${b.col})"></span><span style="flex:1;min-width:0"><span class="bn">${esc(b.n)}</span><span class="bi">${esc(b.locked ? 'Changed 3 days ago' : b.info)}</span>${b.due ? `<span class="due" data-t="due-${b.id}">${b.due}</span>` : ''}</span><span class="thumb${b.locked ? ' priv' : ''}">${b.locked ? 'Private' : icon(b.bt === 'tl' ? 'timeline' : 'mind', 'g')}</span></button>`;
+  const fcard = (key, title, n, cc, inner) => { const shut = S.fold[key] && !searching;
+    return `<div class="fcard${shut ? ' shut' : ''}" style="--cc:${cc}" data-t="card-${key}"><button class="fhead" data-act="fold" data-id="${key}" data-t="fold-${key}" aria-label="${title}, ${n}. ${shut ? 'Folded' : 'Open'}"><span class="ft">${title}</span><span class="fn">${n}</span><span class="fa">${icon('chevD', 'g')}</span></button>${shut ? '' : `<div class="fbody">${inner}</div>`}</div>`; };
+  const grp = (g, key, cc) => { const l = shown.filter(b => b.group === g); return l.length ? fcard(key, g, l.length, cc, l.map(rowH).join('')) : ''; };
+  const pin = BOARDS.filter(b => b.group === 'Pinned').length, sent = BOARDS.filter(b => b.group === 'Sent to PARAGON').length;
+  const line = [BOARDS.length + ' boards', pin ? pin + ' pinned' : '', sent ? sent + ' in PARAGON' : ''].filter(Boolean).join(' · ');
+  const strip = `<div class="sstrip" data-t="strip">${STARTERS.map(([id, nm, ic]) => `<button class="scard" data-act="st-pick" data-id="${id}" data-t="strip-${id}"><span class="pic">${icon(ic, 'g')}</span><b>${nm}</b></button>`).join('')}</div>`;
+  return `<div class="scr" data-keep="list"><div class="hd"><h1 data-t="list-title">Seedboard<span class="sub" data-t="count-line">${line}</span></h1><button class="gearb" data-act="set-open" data-t="settings-btn" aria-label="Settings">${icon('gear', 'g')}</button></div>
+    ${searching ? '' : fcard('starters', 'Starters', STARTERS.length, 'var(--green)', strip)}${grp('Pinned', 'pinned', 'var(--green)')}${grp('Recent', 'recent', 'var(--green)')}${grp('Sent to PARAGON', 'sent', 'var(--para)')}
     ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}${paRow()}</div>
-    <button class="setl" data-act="soon">Settings <span>0.16</span></button>
     <div class="lbar"><label class="sfield" data-t="search-field">${icon('search', 'g')}<input data-in="q" placeholder="Search boards" value="${esc(S.q)}" autocomplete="off" aria-label="Search boards"></label>
       <button class="plusb" data-act="plus" data-t="plus" aria-label="New board">${icon('plus', 'g')}</button></div>`;
 }
@@ -799,18 +827,19 @@ function menubarHTML() {
 function sideHTML() {
   const shown = BOARDS.filter(matches), open = S.screen === 'board' ? S.bname : null;
   const grp = (g, cls) => { const l = shown.filter(b => b.group === g); return l.length ? `<div class="wgh ${cls || ''}">${g}</div>${l.map(b => `<button class="wrow${open === b.n ? ' isOn' : ''}" data-act="open-board" data-id="${b.id}" data-t="row-${b.id}"><span class="dotc" style="width:9px;height:9px;background:var(${b.col})"></span><span style="flex:1;min-width:0"><span class="bn">${esc(b.n)}</span><span class="bi">${esc(b.locked ? 'Private' : b.cnt)}</span>${b.due ? `<span class="due" data-t="due-${b.id}">${b.due}</span>` : ''}</span></button>`).join('')}` : ''; };
-  return `<div class="wside" data-t="side-list"><button class="bigb wnew" data-act="plus" data-t="plus">${icon('plus', 'g')}New board</button>
+  const padHead = DEV === 'pad' ? `<div class="wtitle"><h1 data-t="list-title">Seedboard<span class="sub" data-t="count-line">${BOARDS.length} boards · 1 pinned · 1 in PARAGON</span></h1><button class="gearb" data-act="set-open" data-t="settings-btn" aria-label="Settings">${icon('gear', 'g')}</button></div>` : '';
+  return `<div class="wside" data-t="side-list">${padHead}<button class="bigb wnew" data-act="plus" data-t="plus">${icon('plus', 'g')}New board</button>
     <label class="wsf" data-t="search-field">${icon('search', 'g')}<input data-in="q" placeholder="Search boards" value="${esc(S.q)}" autocomplete="off" aria-label="Search boards"></label>
     <div class="wlist"><button class="wrow${S.screen === 'list' ? ' isOn' : ''}" data-act="back" data-t="back-btn" style="margin-top:4px"><span style="width:9px">${icon('sprout', 'g')}</span><span class="bn" style="margin-left:4px">Home</span></button>
     ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON', 'pg')}
     ${shown.length ? '' : '<p class="none" data-t="none">No board has these words.</p>'}${paRow()}</div>
-    <div class="wfoot"><button data-act="set-open" data-t="settings-btn">${icon('gear', 'g')}Settings</button><span data-t="version">0.16</span></div></div>`;
+    ${DEV === 'mac' ? `<div class="wfoot"><button data-act="set-open" data-t="settings-btn">${icon('gear', 'g')}Settings</button><span data-t="version">0.18</span></div>` : ''}</div>`;
 }
 function homeWide() {
   const shown = BOARDS.filter(matches), grp = (g, cls) => { const l = shown.filter(b => b.group === g); return l.length ? `<div class="hsec ${cls || ''}">${g}</div><div class="cgrid">${l.map(b => `<button class="bcard" data-act="open-board" data-id="${b.id}" data-t="card-${b.id}"><span class="pic${b.locked ? ' priv' : ''}">${b.locked ? 'Private' : icon(b.bt === 'tl' ? 'timeline' : 'mind', 'g')}</span><span><span class="bn">${b.locked ? `<i class="dotc" style="display:inline-block;width:9px;height:9px;margin-right:5px;background:var(${b.col})"></i>` : ''}${esc(b.n)}</span><span class="bi">${esc(b.locked ? 'Locked' : b.cnt)}</span>${b.due ? `<span class="due" data-t="due-${b.id}">${b.due}</span>` : ''}</span></button>`).join('')}</div>` : ''; };
   return `<div class="hpage" data-keep="home"><div class="hhead">${icon('sprout', 'g')}<div><b>Plant a seed</b><span>Every idea starts on a board.</span></div></div>
-    <div class="hsec"><span>Starters</span><span>Edit</span></div>
-    <div class="strip" data-t="strip">${STARTERS.map(([id, nm, ic]) => `<button class="scard" data-act="st-pick" data-id="${id}" data-t="strip-${id}"><span class="pic">${icon(ic, 'g')}</span><b>${nm}</b></button>`).join('')}</div>
+    ${DEV === 'pad' ? '' : `<div class="hsec"><span>Starters</span><span>Edit</span></div>
+    <div class="strip" data-t="strip">${STARTERS.map(([id, nm, ic]) => `<button class="scard" data-act="st-pick" data-id="${id}" data-t="strip-${id}"><span class="pic">${icon(ic, 'g')}</span><b>${nm}</b></button>`).join('')}</div>`}
     ${grp('Pinned')}${grp('Recent')}${grp('Sent to PARAGON', 'pg')}${paRow()}</div>`;
 }
 function wideWeb() {
@@ -818,7 +847,7 @@ function wideWeb() {
     <div style="padding:64px 40px 0;max-width:640px"><h3>Roof ideas for a small cabin</h3><div class="gl"></div><div class="gl" style="width:80%"></div><div class="webimg">${icon('picture', 'g')}</div><div class="gl"></div><div class="gl" style="width:60%"></div></div></div>`;
 }
 function settingsHTML() {
-  const rows = [['Help', ['How it works', 'What’s new']], ['PARAGON', ['Check again']], ['Sounds', [DEV === 'mac' ? 'Tick sound  Off' : 'Tick sound  On']], ['Your boards', ['Removed and earlier versions', 'Export all boards', 'Import boards', 'Pictures nobody uses: 3 (12 MB)'].concat(DEV === 'mac' ? ['Show the boards folder'] : [])], ['About', ['Version  0.16']]];
+  const rows = [['Help', ['How it works', 'What’s new']], ['PARAGON', ['Check again']], ['Sounds', [DEV === 'mac' ? 'Tick sound  Off' : 'Tick sound  On']], ['Your boards', ['Removed and earlier versions', 'Export all boards', 'Import boards', 'Pictures nobody uses: 3 (12 MB)'].concat(DEV === 'mac' ? ['Show the boards folder'] : [])], ['About', ['Version  0.18']]];
   const list = rows.map(([h, l]) => `<div class="hd2">${h}</div><div class="card">${l.map(x => `<div class="shrow" style="cursor:default">${esc(x)}</div>`).join('')}</div>`).join('');
   const done = `<button class="hb fill" data-act="set-close" data-t="settings-done">Done</button>`;
   if (DEV === 'mac') return `<div class="mset" data-t="win-settings"><div class="mtitle"><i class="d1"></i><i class="d2"></i><i class="d3"></i><span class="mtn">Settings</span><span style="margin-left:auto;position:relative">${done}</span></div><div class="scr" data-keep="set">${list}</div></div>`;
@@ -1002,6 +1031,7 @@ function act(a, id, el) {
     case 'soon': case 'app-tap': soon(); break;
     case 'open-board': openBoard(id); break;
     case 'back': S.screen = 'list'; S.menu = false; renderStage(); break;
+    case 'fold': S.fold[id] = !S.fold[id]; renderStage(); emit('fold', { id, shut: !!S.fold[id] }); break;
     case 'plus': S.sheet = 'starters'; renderStage(); emit('starters'); break;
     case 'sheet-cancel': S.sheet = null; renderStage(); break;
     case 'st-pick': if (id === 'st-mind') { S.sheet = null; S.screen = 'board'; S.bt = 'mind'; S.bname = 'Mind map'; S.mm = mkMM({ items: [] }); renderStage(); emit('starter', id); }
@@ -1081,15 +1111,16 @@ const tlb = o => set(Object.assign({ screen: 'board', bt: 'tl', bname: 'Summer c
 const withSent = (m, o) => { tlb(Object.assign({ dock: true }, o || {})); S.sent = mkSent(m); };
 const LESSONS = [
   { title: 'Home and starters', icon: 'home', steps: [
-    { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the title they stand in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and when you last changed it. New in 0.9: under the name a line says what is on the board, for example 9 ideas · 5 done. Only ideas with words count, and done means done in PARAGON. A new empty board says Empty, and a timeline says for example 9 things · 3 done · 1 late.', target: 'row-cabin', setup: () => set({}),
+    { kind: 'look', head: 'Your boards come first', text: 'Seedboard opens on your list of boards. Under the big green title, a small line counts them, for example "4 boards · 1 pinned · 1 in PARAGON". The boards stand on soft coloured cards in three groups: Pinned, Recent and Sent to PARAGON (that card is purple). Each card has its name in small capital letters and a count in a coloured pill. Each row has a coloured dot, the name and when you last changed it. New in 0.9: under the name a line says what is on the board, for example 9 ideas · 5 done. Only ideas with words count, and done means done in PARAGON. A new empty board says Empty, and a timeline says for example 9 things · 3 done · 1 late.', target: 'row-cabin', setup: () => set({}),
       wide: { text: 'No board is open, so the home page shows. At the side stands the list of your boards in three groups: Pinned, Recent and Sent to PARAGON. Each row has a coloured dot, the name and what is on the board, for example 6 ideas · 2 done (new in 0.9). The list stays there when a board is open. Press Home at the top of the list to come back to this page.' } },
-    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The version number, 0.16, is in the last line.', target: 'plus', setup: () => set({}),
-      wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.16, are at the bottom of the list.' } },
+    { kind: 'look', head: 'Search and the round green +', text: 'At the bottom, under your thumb, stand the search field "Search boards" and a round green +. The gear for Settings is at the top right. There is no Settings line at the bottom any more: the version number, 0.18, is only inside Settings, under About.', target: 'plus', setup: () => set({}),
+      wide: { head: 'Search and New board', text: 'At the top of the list stand the green New board button and the field "Search boards". The big green title "Seedboard" stands above the button, with the gear for Settings beside it. The version number, 0.18, is only inside Settings, under About.' },
+      mac: { text: 'At the top of the list stand the green New board button and the field "Search boards". Settings and the version number, 0.18, are at the bottom of the list.' } },
     { kind: 'try', head: 'Find a board by a word', text: 'Tap the search field and type "timber". It is not in any board’s name. It is written on a board.', target: 'search-field', setup: () => set({}), wait: 'search', when: d => d.q.length >= 5 && d.n === 1, ok: 'Only "Summer cabin" is left. Search finds a board by its name and by every word written on it. Type two words and only boards with both are shown.' },
     { kind: 'try', head: 'Start a new board', text: 'Tap the round green +.', target: 'plus', setup: () => set({}), wait: 'starters', ok: 'The starters come up from the bottom, two in a row.',
       wide: { text: 'Press the green "New board" button at the top of the list.', ok: 'The starters come up in a small pop-up under the button.' } },
-    { kind: 'try', head: 'Pick a starter', text: 'Ten starters come with Seedboard: Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timeline, Who does what and, new in 0.9, Decision grid, Weekly review and SWOT. Tap "Mind map".', hint: 'On the iPad and the Mac the same starters stand in one strip that slides sideways, under the small heading STARTERS on the home page. Your boards are right below it.', target: 'st-mind', setup: () => set({ sheet: 'starters' }), wait: 'starter', when: d => d === 'st-mind', ok: 'A new board takes the name of its start: "Mind map". It opens at once.',
-      wide: { hint: 'The same starters also stand in one strip that slides sideways, under the small heading STARTERS on the home page. Your boards are right below it.', ok: 'A new board takes the name of its start: "Mind map". It opens at once, beside the list.' } },
+    { kind: 'try', head: 'Pick a starter', text: 'Ten starters come with Seedboard: Blank board, Mind map, Flow, Pros and cons, Plan in steps, Timeline, Who does what and, new in 0.9, Decision grid, Weekly review and SWOT. Tap "Mind map".', hint: 'On the iPhone the same starters also stand on the Starters card at the top of the list, a strip of small cards that slides sideways. Tap one there and it opens at once.', target: 'st-mind', setup: () => set({ sheet: 'starters' }), wait: 'starter', when: d => d === 'st-mind', ok: 'A new board takes the name of its start: "Mind map". It opens at once.',
+      wide: { hint: 'On the iPad the starters come only from the New board button. On the Mac they also stand in one strip that slides sideways, under the small heading STARTERS on the home page.', ok: 'A new board takes the name of its start: "Mind map". It opens at once, beside the list.' } },
     { kind: 'check', head: 'Quick check', text: 'What does the round green + at the bottom of the list do?', answers: ['It opens the starters, to make a new board', 'It sends the board to PARAGON', 'It opens Settings'], right: 0, ok: 'Right. On the iPad and the Mac the green New board at the top of the list does the same.',
       wide: { text: 'What does the green New board button at the top of the list do?', ok: 'Right. On the iPhone the round green + at the bottom of the list does the same.' } },
   ]},
@@ -1150,7 +1181,7 @@ const LESSONS = [
     { kind: 'check', only: ['phone', 'pad'], head: 'Quick check', text: 'Two boards are pinned. Which four lines does the icon show?', answers: ['New board, New board from the clipboard and the two pinned boards', 'New board, New mind map, New board from the clipboard and one pinned board', 'Only the two pinned boards and Settings'], right: 0, ok: 'Right. New mind map comes back when fewer than two boards are pinned.' },
   ]},
   { title: 'iPad and Mac', icon: 'frame', steps: [
-    { kind: 'look', only: ['pad', 'mac'], head: 'The list stays beside the board', text: 'On the iPad and the Mac the list of boards stays at the side while a board is open. At its top stand the green New board and the search field. Under them come Home and your boards in three groups: Pinned, Recent and Sent to PARAGON. Settings and the version stand at the bottom. You can also drag a board’s row onto the open board: a door to that board lies where you let go.', target: 'side-list', setup: () => board() },
+    { kind: 'look', only: ['pad', 'mac'], head: 'The list stays beside the board', text: 'On the iPad and the Mac the list of boards stays at the side while a board is open. At its top stand the green New board and the search field (on the iPad the big green title "Seedboard" and the gear for Settings stand above them). Under them come Home and your boards in three groups: Pinned, Recent and Sent to PARAGON. On the Mac, Settings and the version stand at the bottom. You can also drag a board’s row onto the open board: a door to that board lies where you let go.', target: 'side-list', setup: () => board() },
     { kind: 'try', only: ['pad', 'mac'], head: 'Open another board', text: 'Tap "Garden plan" in the list.', target: 'row-garden', setup: () => board(), wait: 'board-open', when: d => d === 'garden', ok: 'The board opens beside the list, and the list stays. Press Home at the top of the list to see the home page again.' },
     { kind: 'try', only: ['mac'], head: 'The menu bar', text: 'The Mac has a real menu bar at the top of the screen. Click "Insert", then choose "Sticky note".', target: 'mb-Insert', setup: () => board(), wait: 'menu-pick', when: d => d === 'Insert|Sticky note', on: { 'menu-open': 'mb-Stickynote' }, ok: 'A sticky note appears on the board. Insert has a line for every tool, with its letter at the end: Mind map M, Box B, Diamond D, Arrow A, Sticky note N, Text T, Frame F, Round box U, Oval O, Picture… P and Draw S. The letters work while nothing is chosen and no words are being typed.' },
     { kind: 'try', only: ['pad', 'mac'], head: 'Tab: an idea under', text: 'Permit is chosen. Press the Tab key on your keyboard.', pad: { text: 'On the iPad with a keyboard the same keys work. Permit is chosen. Press the Tab key.' }, target: 'mm-Permit', setup: () => board({ mm: mkMM({ sel: 'Permit' }) }), wait: 'key', when: d => d === 'Tab', ok: 'A new idea hangs under Permit, ready for words. Type something. Shift and Tab moves an idea out one level, and Escape takes a new idea away again.' },
@@ -1197,6 +1228,15 @@ const LESSONS = [
     { kind: 'look', head: 'Brainstorm timer', text: 'In More, choose "Brainstorm timer" and pick "5 min" or "10 min". A small pill counts down, for example "4:12 left", with a Stop button. At the end it says "Time!" for a moment.', target: 'more-btn', setup: () => board() },
     { kind: 'look', head: 'Planned and real days', text: 'On a timeline, "Set the plan" remembers each bar’s days. A bar that has moved shows a faint dashed outline where it was planned, and a done bar says how it went, for example "2 days late" in red or "3 days early" in green.', target: 'tl-bar-4', setup: () => tlb() },
     { kind: 'look', head: 'Lift out of a picture', text: 'Choose a picture and press "Lift out". The person or thing is cut out of its background and laid beside the old picture as a new one. A PDF you drop or paste on a board becomes a picture too: you are asked "Only page 1" or "All pages".', target: 'canvas-area', setup: () => board() },
+  ]},
+  { title: 'New in 0.17 and 0.18', icon: 'sprout', steps: [
+    { kind: 'try', only: ['phone'], head: 'Fold a card', text: 'Your list is now coloured cards. Tap the small arrow at the right of the Recent card.', target: 'fold-recent', setup: () => set({}), wait: 'fold', when: d => d.id === 'recent' && d.shut,
+      ok: 'The card folds to one line. The count pill, 2, stays, so you still see how many boards are inside. Tap the arrow again to open it. A search opens every card so nothing hides, and your folds come back after it. Each device remembers its own folds.' },
+    { kind: 'look', only: ['pad', 'mac'], head: 'Fold a group', text: 'On the iPad the groups sit on soft coloured cards, and on the Mac the plain headings (Pinned, Recent, Sent to PARAGON) have a small arrow. Press a heading and its group folds into one line. Press it again and it opens. A search opens every group.', target: 'side-list', setup: () => set({}) },
+    { kind: 'look', head: 'The gear is Settings', text: 'On the iPhone, the gear at the top right opens Settings. The line \"Settings 0.16\" at the bottom of the list is gone: the version number is now only inside Settings, under About. The big green title \"Seedboard\" has a small line under it that counts your boards, for example \"4 boards · 1 pinned · 1 in PARAGON\".', target: 'settings-btn', setup: () => set({}),
+      pad: { text: 'On the iPad the big green title \"Seedboard\" stands above the New board button, with the gear beside it. The gear opens Settings. The version number is only inside Settings, under About. There is no Starters card on the iPad: the starters come from New board.' },
+      mac: { text: 'The Mac keeps its plain headings and the last line at the bottom of the list: the gear with the word Settings, and the version number. The same window opens with ⌘ and the comma key.' } },
+    { kind: 'look', head: 'New in 0.18: branches skip purple and red', text: 'New branches on a mind map never take purple or red by themselves. Purple means PARAGON, and red means late on a timeline, so a branch in those colours could be mistaken for them. New branches go round pink, orange, teal, blue, yellow and green. People in \"Who does what\" skip red too. The first time you open an older board with purple or red main branches, Seedboard asks once if it may recolour them. You can do it any time: More, then \"Recolour Branches\".', target: 'mm-Permit', setup: () => board() },
   ]},
 ];
 
@@ -1266,7 +1306,7 @@ function renderRail() {
     ${LESSONS.map((l, i) => `<button class="chap ${i === ci ? 'cur' : ''} ${doneChapters.has(i) ? 'done' : ''}" data-ch="${i}">${icon(l.icon)}<span>${l.title}</span><span class="n">${doneChapters.has(i) ? '✓' : arrs[i].length ? arrs[i].length + ' steps' : 'iPad, Mac'}</span></button>`).join('')}
     <button class="chap ${ci === LESSONS.length ? 'cur' : ''}" data-ch="${LESSONS.length}">${icon('todo')}<span>Now on your ${DEVS[DEV].name}</span></button>
     <div class="bar"><i style="width:${Math.round(100 * Math.min(before, total) / total)}%"></i></div>
-    <p class="railnote">Practice copy, nothing changes on your ${DEVS[DEV].name}. Based on AMS Seedboard 0.16.</p>`;
+    <p class="railnote">Practice copy, nothing changes on your ${DEVS[DEV].name}. Based on AMS Seedboard 0.18.</p>`;
 }
 document.getElementById('rail').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) goChapter(+b.dataset.ch); });
 
@@ -1310,7 +1350,7 @@ function renderFinish() {
   const fin = document.getElementById('finish'); fin.hidden = false;
   S = START(); curTarget = null; renderStage();
   const dn = DEVS[DEV].name;
-  const items = DEV === 'phone' ? ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and the version 0.16 in the last line.',
+  const items = DEV === 'phone' ? ['Open Seedboard on your iPhone. Find the list (Pinned, Recent, Sent to PARAGON), the field "Search boards", the round green + and, at the top right, the gear for Settings (the version 0.18 is inside Settings).',
     'Press the green +, pick Mind map, type a middle idea, press Return for a branch and Tab for an idea under it. Look at where the words sit on the line.',
     'Choose an idea and press To do. The hollow purple ring appears at its corner.',
     'Press the green +, pick Timeline. Choose a bar and press Done. Check the line at the top, for example "3 of 8 done · 1 late · ends 20 Feb", and the Done button: with that bar chosen it says the day, for example "Done 18 Nov". If a bar is late, press the red Catch up.',
@@ -1321,7 +1361,7 @@ function renderFinish() {
     'Press and hold the Seedboard icon on your Home Screen. Check the four lines: New board, New board from the clipboard and your two pinned boards.',
     'New in 0.9: choose a sticky note and press Vote, then Sort by dots in More. Choose a frame and press Focus. Press and hold the Undo button to see the Undo list.',
     'New in 0.11: on the Draw plate press the fade mark. Choose a mind map\u2019s middle and press Main branches only. Open More, then Due day….']
-  : [`Open Seedboard on your ${dn}. At the side stand the green New board, the field "Search boards" and your boards in three groups (Pinned, Recent, Sent to PARAGON). Settings and the version 0.16 are at the bottom of the list. Press Home to see the home page with the starters.`,
+  : [`Open Seedboard on your ${dn}. At the side stand the green New board, the field "Search boards" and your boards in three groups (Pinned, Recent, Sent to PARAGON). ${DEV === 'mac' ? 'Settings and the version 0.18 are at the bottom of the list.' : 'The gear for Settings is at the top, beside the big green title.'} Press Home to see the home page${DEV === 'mac' ? ' with the starters' : ''}.`,
     'Press New board and pick Mind map. Choose an idea and press To do. The bar floats just above the idea. The hollow purple ring appears at its corner.',
     'Press New board and pick Timeline. Choose a bar: the bar above the tools shows its dates in words. Press Done: with that bar chosen the button says the day, for example "Done 18 Nov". If a bar is late, press the red Catch up.',
     'Send the timeline to PARAGON as a project. Switch to PARAGON and check that the bar you marked Done is already ticked, with its words struck through.',
