@@ -320,12 +320,19 @@ struct StarterPicker: View {
     private static let perRow = 3
     private static let gap: CGFloat = 8
 
+    /// 0.17: room for "Open an outline file…" under the cards (iPhone and iPad).
+    #if os(iOS)
+    private static let outlineRoom: CGFloat = 44
+    #else
+    private static let outlineRoom: CGFloat = 0
+    #endif
+
     /// The pop-up's size: every card in sight without sliding, whatever the number of starters.
     private static func popSize(count: Int) -> CGSize {
         let rows = CGFloat((max(count, 1) + perRow - 1) / perRow)
         let card = (cardWidth / Thumbs.shape).rounded(.up) + 1 + StarterCard.wordsRoom
         return CGSize(width: CGFloat(perRow) * cardWidth + CGFloat(perRow - 1) * gap + 20,
-                      height: rows * card + (rows - 1) * gap + 60)
+                      height: rows * card + (rows - 1) * gap + 60 + outlineRoom)
     }
 
     /// The iPhone's page: most of the screen, so three rows of two are in sight; it can be pulled up all the way.
@@ -376,6 +383,23 @@ struct StarterPicker: View {
                 // Room for the cards' faint shadow and edge.
                 .padding(.horizontal, 1)
                 .padding(.bottom, 3)
+                #if os(iOS)
+                // 0.17: was the only line under "More" at the bottom of the list (the Mac has File ▸ Open Outline…).
+                Button {
+                    close()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { Boards14Desk.shared.openingOutline = true }
+                } label: {
+                    Text("Open an outline file…")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Part.boards.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityIdentifier("boards.openOutline")
+                #endif
             }
         }
         .padding(10)

@@ -93,9 +93,19 @@ struct BoardList: View {
     /// The iPhone's list has search and "+" at the bottom, under the thumb (`ThumbRow`).
     private var thumbRow: Bool { phone && ThumbRow.onThisDevice }
     @State private var searching = false
+    /// 0.17: iPhone and iPad show the parts on coloured cards; the Mac keeps plain headings.
+    private var cards: Bool {
+        #if os(macOS)
+        false
+        #else
+        true
+        #endif
+    }
 
     var body: some View {
         VStack(spacing: 0) {
+            // 0.17, iPad: the big green heading over "New board".
+            if cards && !thumbRow { ListTitle().padding(.horizontal, 8).padding(.top, 2) }
             // On the iPhone search and "+" sit at the bottom instead (`ThumbRow`).
             if !thumbRow {
             Button {
@@ -135,20 +145,29 @@ struct BoardList: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
+                    // 0.17: the big green heading and its count line (iPhone and iPad).
+                    if cards && thumbRow { ListTitle() }
                     // The way back to the home page (on the iPhone the list itself is the home).
                     if !phone { homeRow }
                     // 0.13: "Still thinking about these?" — on the iPhone's list; the Mac and iPad show it on the home page.
                     if phone { NudgeRows(search: search, open: open) }
-                    section("Pinned", BoardSearch.find(search, in: model.pinned))
-                    section("Recent", BoardSearch.find(search, in: model.recent))
-                    section("Sent to PARAGON", BoardSearch.find(search, in: model.sent), part: .paragon)
+                    let firstSeeds = FeelRules.showsFirstSeeds(loaded: model.loaded, boards: model.boards.count, phone: phone)
+                    // 0.17: the starters on the iPhone's list (the iPad and Mac have them on the home page).
+                    if thumbRow && !firstSeeds && model.loaded && BoardSearch.words(search).isEmpty {
+                        ListCard(title: "Starters", key: "starters", count: model.shelf.strip.count) {
+                            ListStarters(open: open)
+                        }
+                    }
+                    section("Pinned", key: "pinned", BoardSearch.find(search, in: model.pinned))
+                    section("Recent", key: "recent", BoardSearch.find(search, in: model.recent))
+                    section("Sent to PARAGON", key: "sent", BoardSearch.find(search, in: model.sent), part: .paragon)
                     // 0.9: a search also finds boards that were put away; they are marked.
                     if !BoardSearch.words(search).isEmpty {
-                        section("Put away", BoardSearch.find(search, in: model.putAwayBoards))
+                        section("Put away", key: "putAway", BoardSearch.find(search, in: model.putAwayBoards))
                     } else {
                         PutAwayRow()
                     }
-                    if FeelRules.showsFirstSeeds(loaded: model.loaded, boards: model.boards.count, phone: phone) {
+                    if firstSeeds {
                         // 0.5: the iPhone's first start shows the starters themselves (EmptyBoard.swift).
                         FirstSeeds(open: open)
                     } else if model.loaded && model.boards.isEmpty {
@@ -169,27 +188,13 @@ struct BoardList: View {
             }
             .accessibilityIdentifier("boards.list")
 
-            if thumbRow { ThumbRow(search: $search, typing: $searching, open: open) } else { Divider() }
+            if thumbRow { ThumbRow(search: $search, typing: $searching, open: open) }
+            #if os(macOS)
+            Divider()
             HStack {
-                #if os(macOS)
                 SettingsLink { settingsLabel }
                     .buttonStyle(PressStyle())
                     .accessibilityIdentifier("boards.settings")
-                #else
-                Button { showSettings = true } label: { settingsLabel }
-                    .buttonStyle(PressStyle())
-                    .accessibilityIdentifier("boards.settings")
-                #endif
-                #if !os(macOS)
-                // 0.14: "Open an outline file" (the Mac has File ▸ Open Outline…).
-                Menu("More") {
-                    Button("Open an outline file") { Boards14Desk.shared.openingOutline = true }
-                        .accessibilityIdentifier("boards.openOutline")
-                }
-                .font(.subheadline)
-                .foregroundStyle(Part.boards.text)
-                .accessibilityIdentifier("boards.more")
-                #endif
                 Spacer()
                 Text(version)
                     .font(.caption)
@@ -198,11 +203,16 @@ struct BoardList: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .goneWhile(thumbRow && searching)
+            #endif
         }
         .navigationTitle("Seedboard")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        // 0.17: the big green heading is in the list itself; the bar holds only the gear, far right.
+        .toolbar {
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+            ToolbarItem(placement: .topBarTrailing) { ListGear { showSettings = true } }
+        }
         #endif
         .alert("Name of the board", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $newName)
@@ -262,17 +272,16 @@ struct BoardList: View {
     }
 
     @ViewBuilder
-    private func section(_ title: String, _ boards: [Board], part: Part = .boards) -> some View {
+    private func section(_ title: String, key: String, _ boards: [Board], part: Part = .boards) -> some View {
         if !boards.isEmpty {
-            Text(title.uppercased())
-                .font(.caption.weight(.bold))
-                .kerning(0.5)
-                .foregroundStyle(part.text)
-                .padding(.horizontal, 8)
-                .padding(.top, 10)
-                .padding(.bottom, 2)
-            ForEach(boards) { board in
-                row(board)
+            ListCard(title: title, key: key, count: boards.count, part: part,
+                     forceOpen: !BoardSearch.words(search).isEmpty, plain: !cards) {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(boards) { board in
+                        row(board)
+                    }
+                }
+                .padding(.horizontal, cards ? 2 : 0)
             }
         }
     }

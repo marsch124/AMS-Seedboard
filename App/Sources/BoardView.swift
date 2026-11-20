@@ -339,6 +339,16 @@ struct BoardView: View {
                         Button("Add to Calendar…") { session.commitEdit(); model.showCalendar = true }
                             .accessibilityIdentifier("more.calendar")
                     }
+                    // 0.17: the same as the one-time question, any time later (purple means PARAGON).
+                    if !session.readOnly && session.board.purpleMilestones > 0 {
+                        Button("Make Milestones Orange") { _ = session.change { $0.makeMilestonesOrange() }; session.takeKeys() }
+                            .accessibilityIdentifier("more.orangeMilestones")
+                    }
+                }
+                // 0.17: a mind map's purple main branches get a new colour.
+                if !session.readOnly && session.board.purpleBranches > 0 {
+                    Button("Recolour Purple Branches") { _ = session.change { $0.recolourPurpleBranches() }; session.takeKeys() }
+                        .accessibilityIdentifier("more.recolourBranches")
                 }
                 // 0.11: the board's own due day (DueDay.swift).
                 if !session.readOnly && !session.starterDraft {

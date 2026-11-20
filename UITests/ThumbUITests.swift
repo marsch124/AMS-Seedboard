@@ -17,7 +17,8 @@ final class ThumbUITests: XCTestCase {
         #if os(iOS)
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone, "The thumb row is the iPhone's layout only.")
         let app = XCUIApplication()
-        app.launchArguments = ["-sampleData"]
+        // 0.17: the cards open whatever this device folded before.
+        app.launchArguments = ["-fold.list.pinned", "NO", "-fold.list.recent", "NO", "-sampleData"]
         app.launch()
 
         let search = element(app, "boards.search")
@@ -26,16 +27,17 @@ final class ThumbUITests: XCTestCase {
         let firstRow = element(app, "boards.row.Summer cabin")
         XCTAssertTrue(search.waitForExistence(timeout: 15), "the search field did not appear")
         XCTAssertTrue(plus.waitForExistence(timeout: 10), "the + did not appear")
-        XCTAssertTrue(settings.waitForExistence(timeout: 10), "the Settings line did not appear")
+        XCTAssertTrue(settings.waitForExistence(timeout: 10), "the gear did not appear")
         XCTAssertTrue(firstRow.waitForExistence(timeout: 10), "the boards did not appear")
 
-        // In the lower quarter of the screen, and wholly above the "Settings" line.
+        // In the lower quarter of the screen. 0.17: the gear sits alone at the top right instead of a bottom line.
         let screen = app.windows.firstMatch.frame
         let lowerQuarter = screen.minY + screen.height * 0.75
         for (name, frame) in [("the search field", search.frame), ("the +", plus.frame)] {
             XCTAssertGreaterThanOrEqual(frame.minY, lowerQuarter, "\(name) is not in the lower quarter of the screen")
-            XCTAssertLessThanOrEqual(frame.maxY, settings.frame.minY, "\(name) is not above the Settings line")
         }
+        XCTAssertLessThan(settings.frame.maxY, screen.minY + screen.height * 0.2, "the gear is not at the top")
+        XCTAssertGreaterThan(settings.frame.minX, screen.midX, "the gear is not at the right")
         // One row: the search field at the left, the "+" at its right, a full finger tall.
         XCTAssertLessThan(search.frame.maxX, plus.frame.minX, "the + is not at the right of the search field")
         XCTAssertGreaterThanOrEqual(plus.frame.height, 44, "the + is smaller than a finger")
@@ -51,11 +53,8 @@ final class ThumbUITests: XCTestCase {
         XCTAssertLessThan(lastInSight, search.frame.minY, "a board row in sight starts below the search field")
         XCTAssertLessThan(lastInSight, plus.frame.minY, "a board row in sight starts below the +")
 
-        // With the keyboard up the row stays in reach: the "Settings" line makes room, the field and the "+"
-        // sit over the keyboard.
+        // With the keyboard up the row stays in reach: the field and the "+" sit over the keyboard.
         search.tap()
-        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: settings)
-        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 10), .completed, "the Settings line stayed while typing")
         let keyboard = app.keyboards.firstMatch
         // (A simulator with a Mac keyboard joined shows no keyboard on screen: then there is nothing to be over.)
         if keyboard.waitForExistence(timeout: 5) {

@@ -305,7 +305,7 @@ This section replaces the description of the bar in 2.3 where they differ (picks
 - `Link` (arrow): id, from, to, text, colour, style (`elbow` "Right angles" default, `straight`, `curve`), head; new in format 2: `fromSide`, `toSide` ("up", "down", "left" or "right": the side the owner chose for the start / the end; missing or an unknown word = found by the app), `tail` (true = a head at the near end too), `dashed` (true = drawn with dashes). `Link.ends` (`LinkEnds`: `oneWay`, `bothWays`, `none`; words "One way", "Both ways", "No ends") reads and writes head and tail: One way = head true, no tail; Both ways = head true, tail true; No ends = head false, no tail. `Link.isDashed`. Also `unknownStyle` and `extra`, as for an item.
 - `SentInfo`: when, kind ("note" or "project"), title, path (e.g. "Projects/Summer cabin.md").
 - `Board`: id, title, created, changed, format, pinned, colour (default "green"), items, links, sent, sentTodos (ids of to-do items already sent to the Inbox or inside a note/project); new in format 2: `kind` ("timeline", or missing for an ordinary board). Also `extra` (the file's fields this version does not know).
-- `Palette.names`: pink, orange, teal, blue, purple, green, yellow, red, grey. `Palette.branches` (order of main-branch colours): pink, orange, teal, blue, purple, green, red. `Palette.notes`: yellow, pink, blue, green, orange, purple. `Palette.boards`: green, pink, orange, blue, teal, purple. `branch(i)` wraps round after 7.
+- `Palette.names`: pink, orange, teal, blue, purple, green, yellow, red, grey. `Palette.branches` (order of main-branch colours; since 0.17, section 23.4: pink, orange, teal, blue, yellow, green, red; this older text said purple fifth). `Palette.notes`: yellow, pink, blue, green, orange, purple. `Palette.boards`: green, pink, orange, blue, teal, purple. `branch(i)` wraps round after 7.
 - Colours by day / night (hex), lines: pink C0399F / E58AD0, orange E07B1A / F2A45C, teal 1E9C8E / 5CCBBE, blue 3572D6 / 7FAEF5, purple 8E55D9 / B99AF0, green 2E8B57 / 5FBF8A, yellow C99A0A / F0C850, red D5485C / F08A98, grey 7B8794 / A9B4C4. Note paper by day / by night: yellow FBE38A / D9BC55, pink F9C2D4 / D98AA8, blue BFD9FA / 86AEDD, green BFE8C8 / 86C79A, orange FBD0A0 / DDA066, purple DCC9F7 / B39AE0 (in 0.1 the night papers were dark; now they stay bright). Ink on a note is `Paint.noteInk` (0.12, 0.14, 0.19) by day and by night, in the drawing and in the field while typing; its contrast on the night papers is 6.0 : 1 (pink) to 8.3 : 1 (yellow). An unknown colour name draws as grey (line) or yellow (note).
 - Canvas: day F6F7F9, night 17181B. Chosen/outline green 2E8B57 / 5FBF8A.
 - `touch()` stamps `changed` with `max(now, changed + 0.001 s)`: always later than the board's last stamp, even when this device's clock runs behind another's, so "the newer change wins" never throws away the change just made. New in 0.2: `touch()` also raises `format` to `Board.currentFormat`, so a board this version CHANGES is written in this version's format. `canBeChanged` = `format <= Board.currentFormat` AND no item or arrow of a kind this version does not know (`holdsUnknownKinds`).
@@ -1788,3 +1788,33 @@ Version 0.16 (build 16): one question about old purple milestones. Where this pa
 ### 22.2 Course and texts
 - The course (the tour web page) draws a tilted note in its Tilt step and a locked board's card with the word Private in its Lock step (outside the app; What's new says it in one line).
 - `Guide.swift`: new 0.16 entry in What's new (above 0.15); How it works changed in Timeline board (the milestone-colour text). Signs in this app is unchanged: it already says purple = PARAGON only.
+
+## 23. New in 0.17 (build 17, 20 Nov 2026)
+Version 0.17 (build 17): coloured cards on the list, folding, and purple only for PARAGON. Where this part and an older part disagree, this part is right. Board format stays 8; no new stored board fields.
+
+### 23.1 iPhone first page
+- Heading: a large green "Seedboard" at the top of the list (green = Seedboard's own colour). Under it one grey line with live numbers, for example "14 boards · 2 pinned · 4 in PARAGON".
+- The settings gear sits alone at the top right, no word "Settings". The bottom line with "Settings", "More" and the version number is gone on iPhone and iPad. The version number is in Settings (its existing Version line, under About).
+- Cards: each part of the list sits on a soft card in its own colour: Starters, Pinned, Recent (green), Sent to PARAGON (purple, PARAGON's colour). The heading of a card shows a count in a small round-ended pill and a round arrow button at the right.
+- Starters card (iPhone only): the starters as a strip of small cards that slide sideways; press one to start a new board from it; press and hold for its menu. Not shown on the very first start (no board at all), when the list itself shows the starters.
+- "Open an outline file" (formerly the only line under the old "More" button) is now the last line of the New board chooser (the + chooser), on iPhone and iPad.
+
+### 23.2 Folding
+- Pressing a card heading or its arrow folds the card to a slim line; pressing again unfolds it. The arrow points down when open, right when folded.
+- Folds are kept per device in UserDefaults: `fold.list.starters`, `fold.list.pinned`, `fold.list.recent`, `fold.list.sent` (Bool, true = folded; missing = open). They do not sync.
+- While a search is typed, every card is shown unfolded; the saved folds are not changed by searching.
+- Mac: the look is unchanged (bottom line with Settings and version stays), but the list's headings also fold when pressed, with the same keys.
+
+### 23.3 iPad
+- The list column gets the same big green heading and count line, the gear alone at the top right (no word), no bottom line, and the coloured folding cards (Pinned, Recent, Sent to PARAGON). No Starters card: the home page already shows the starters large. "Open an outline file" is in the New board chooser.
+
+### 23.4 Purple only for PARAGON
+- Timeline: More line "Make Milestones Orange" (Mac: also in the menu bar next to Set the Plan / Clear the Plan). Same action as the one-time question of 22.1, any time later (for example after Keep Purple). Shown only while that timeline has purple milestones (Mac: greyed out when none). One Undo step per board.
+- Mind map: `Palette.branches` is now pink, orange, teal, blue, yellow, green, red (yellow replaced purple as fifth). A main branch never comes purple by itself.
+- One-time question "Recolour purple branches?", buttons "New Colours" (main) and "Keep Purple"; remembered per device under the key `ask.purpleBranches.v1` after either button. New Colours gives every purple main branch a colour its sister main branches do not use yet, else yellow. It comes after the milestone question (22.1); never both at once.
+- More line "Recolour Purple Branches" (Mac: also in the menu bar): shown only while the board has purple main branches; can be undone.
+- Who does what: new names take `Board.whoColours` = blue, teal, orange, yellow, green, pink, red in turn (purple removed in 0.17); a name with no stored colour falls back to `Palette.branch(place)` (also without purple). Names stored purple before 0.17 keep it.
+
+### 23.5 Signs and texts
+- Signs in this app has four new lines: the round arrow on a card heading (down = open, right = folded), the count pill, the gear alone at the top right = Settings, and the card colours (green = boards, purple = Sent to PARAGON). Purple still means PARAGON only.
+- `Guide.swift`: new 0.17 entry in What's new; How it works changed in Your boards, Starters chooser (New board), Settings, Open an outline file, mind-map branch colours, Timeline, Who does what, iPhone, Version, Signs.

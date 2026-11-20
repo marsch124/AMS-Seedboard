@@ -10,6 +10,8 @@ struct StarterStripCard: View {
     let starter: ShelfStarter
     let pick: () -> Void
     let ask: (StarterAsk) -> Void
+    /// 0.17: the iPhone list's strip has smaller cards.
+    var width: CGFloat = StarterStripCard.width
 
     static let width: CGFloat = 132
     static let gap: CGFloat = 8
@@ -32,7 +34,7 @@ struct StarterStripCard: View {
                     .padding(.bottom, 5)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: StarterStripCard.width)
+            .frame(width: width)
             .modifier(CardPlate())
         }
         .buttonStyle(PressStyle())

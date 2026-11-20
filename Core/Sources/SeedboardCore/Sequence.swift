@@ -206,7 +206,7 @@ public extension Board {
     var placesItself: Bool { isTimeline || isSequence }
 
     /// The colours new names take, one after the other.
-    static let whoColours = ["blue", "teal", "orange", "purple", "green", "pink", "red", "yellow"]
+    static let whoColours = ["blue", "teal", "orange", "yellow", "green", "pink", "red"]   // 0.17: no purple (PARAGON)
 
     /// A new, empty "Who does what" board.
     static func sequence(title: String = "Who does what", created: Date = Date()) -> Board {

@@ -650,7 +650,8 @@ struct Lenient<T: Decodable>: Decodable {
 public enum Palette {
     public static let names = ["pink", "orange", "teal", "blue", "purple", "green", "yellow", "red", "grey"]
     /// The order in which the branches of a mind map take their colours.
-    public static let branches = ["pink", "orange", "teal", "blue", "purple", "green", "red"]
+    /// 0.17: yellow instead of purple — purple means PARAGON in this app.
+    public static let branches = ["pink", "orange", "teal", "blue", "yellow", "green", "red"]
     /// Sticky note colours.
     public static let notes = ["yellow", "pink", "blue", "green", "orange", "purple"]
     /// Board dots in the list.
