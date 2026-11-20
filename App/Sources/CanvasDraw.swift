@@ -191,6 +191,8 @@ struct MapFacts {
     var below: [UUID: Int] = [:]
     /// 0.9: the number of each flowchart shape, when the board numbers its steps.
     var numbers: [UUID: Int] = [:]
+    /// 0.19: the number of each main branch, when the board numbers its branches.
+    var branchNumbers: [UUID: Int] = [:]
 
     init() {}
 
@@ -215,6 +217,7 @@ struct MapFacts {
             for item in board.items where item.kind == .idea && item.folded { below[item.id] = weight(item.id, 0) }
         }
         if board.numberSteps == true, !board.placesItself { numbers = board.stepNumbers() }
+        branchNumbers = board.branchNumbers()
 
         func walk(_ item: Item, depth d: Int, side s: Side, colour c: String, hidden h: Bool) {
             depth[item.id] = d
@@ -286,11 +289,11 @@ struct BoardPainter {
         for item in board.items where item.kind == .idea && !facts.hidden.contains(item.id) {
             let ctx = motionLayer(ctx, for: item)
             guard let parentID = item.parent, let parent = byID[parentID] else { continue }
-            // 0.5: thick to thin, and the words sit on the line — BranchLook.swift.
+            // 0.5: thick to thin, and the words sit on the line — BranchLook.swift. 0.19: thick near the middle,
+            // and the board's map look (lines, curves, boxes).
             let depth = facts.depth[item.id] ?? 1
-            let path = BranchLook.path(from: parent.frame, parentDepth: depth - 1, to: item.frame, side: facts.side[item.id] ?? .right)
-            ctx.stroke(path, with: .color(paint.line(facts.colour[item.id] ?? "pink")),
-                       style: StrokeStyle(lineWidth: BranchLook.weight(depth: depth), lineCap: .round, lineJoin: .round))
+            BranchLook.draw(ctx, look: board.look, parent: parent.frame, parentDepth: depth - 1, child: item.frame, depth: depth,
+                            side: facts.side[item.id] ?? .right, colour: paint.line(facts.colour[item.id] ?? "pink"))
         }
 
         drawArrows(&ctx)
@@ -353,6 +356,13 @@ struct BoardPainter {
                 ctx.stroke(box, with: .color(paint.edge), lineWidth: 1.4)
             } else {
                 align = (facts.side[item.id] ?? .right) == .right ? .leading : .trailing
+                if board.look == .boxes {
+                    // 0.19: the `boxes` look: a rounded box round the words, in the branch's colour.
+                    let name = facts.colour[item.id] ?? "pink"
+                    let box = Path(roundedRect: BranchLook.box(of: f), cornerRadius: 8)
+                    ctx.fill(box, with: .color(paint.soft(name)))
+                    ctx.stroke(box, with: .color(paint.line(name)), style: StrokeStyle(lineWidth: 1.6, lineJoin: .round))
+                }
             }
         case .door:
             // A door to another board (DoorDraw.swift): a card of its own, no words to type, no tick.
@@ -468,6 +478,17 @@ struct BoardPainter {
             ctx.fill(Path(roundedRect: box, cornerRadius: 9), with: .color(paint.line(name)))
             let n = ctx.resolve(Text("+\(count)").font(.system(size: 11, weight: .bold)).foregroundColor(.white))
             ctx.draw(n, at: CGPoint(x: box.midX, y: box.midY), anchor: .center)
+        }
+
+        if item.kind == .idea, let number = facts.branchNumbers[item.id] {
+            // 0.19: a main branch's number, in the shape of a step number: a small round badge in the branch's colour,
+            // at the top corner on the outer side of its words.
+            let right = (facts.side[item.id] ?? .right) == .right
+            let c = CGPoint(x: right ? f.minX + 1 : f.maxX - 1, y: f.minY - 3)
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 10, y: c.y - 10, width: 20, height: 20)), with: .color(ground ?? paint.canvas))
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 8.5, y: c.y - 8.5, width: 17, height: 17)), with: .color(paint.line(facts.colour[item.id] ?? "pink")))
+            let n = ctx.resolve(Text("\(number)").font(.system(size: number > 9 ? 9 : 11, weight: .bold)).foregroundColor(.white))
+            ctx.draw(n, at: c, anchor: .center)
         }
 
         if let number = facts.numbers[item.id], item.kind.isShape {

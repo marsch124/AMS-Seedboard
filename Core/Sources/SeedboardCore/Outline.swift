@@ -195,7 +195,15 @@ public extension Board {
         }
         var sections: [String] = []
 
-        let maps = mapCentres.map { Outline.text([outline(of: $0.id)]) }
+        // 0.19: a board that numbers its branches copies them with their numbers ("2. Food"), as on the board.
+        let numbers = branchNumbers()
+        let maps = mapCentres.map { centre -> String in
+            var node = outline(of: centre.id)
+            for (n, kid) in children(of: centre.id).enumerated() {
+                if let number = numbers[kid.id], node.children.indices.contains(n) { node.children[n].text = "\(number). " + node.children[n].text }
+            }
+            return Outline.text([node])
+        }
         if !maps.isEmpty { sections.append(maps.joined(separator: "\n")) }
 
         let arrows = links.compactMap { link -> String? in

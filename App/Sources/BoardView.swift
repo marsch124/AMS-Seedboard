@@ -217,6 +217,7 @@ struct BoardView: View {
         }
         // 0.11: "Due day" (DueDay.swift).
         .modifier(DueHost(session: session))
+        .modifier(GrowHost(session: session))
         // 0.14 (27): the Pieces page and "Save as a piece" (PiecesPage.swift); (22) leaving the board stops the timer.
         .modifier(PieceHost(session: session))
         .onChange(of: session.board.id) { old, _ in BrainstormDesk.shared.stop(leaving: old) }
@@ -383,6 +384,23 @@ struct BoardView: View {
                         session.takeKeys()
                     }
                     .accessibilityIdentifier("more.numberSteps")
+                }
+                // 0.19: numbered branches and the look of a mind map.
+                if !session.board.placesItself, !session.readOnly, !session.board.mapCentres.isEmpty {
+                    Button(session.board.numberBranches == true ? "Stop numbering the branches" : "Number the branches") {
+                        session.toggleNumberBranches()
+                        session.takeKeys()
+                    }
+                    .accessibilityIdentifier("more.numberBranches")
+                    Menu("Map look") {
+                        ForEach(MapLook.allCases, id: \.self) { look in
+                            Button { session.setMapLook(look); session.takeKeys() } label: {
+                                if session.board.look == look { Label(look.word, systemImage: "checkmark") } else { Text(look.word) }
+                            }
+                            .accessibilityIdentifier("more.mapLook.\(look.rawValue)")
+                        }
+                    }
+                    .accessibilityIdentifier("more.mapLook")
                 }
                 // 0.9: Sort by dots, Clear all dots, Colour legend…, Background (MarksViews.swift).
                 if !session.board.placesItself && !session.starterDraft { MarksMoreLines(session: session) }

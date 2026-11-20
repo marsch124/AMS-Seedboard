@@ -35,6 +35,7 @@ final class ArrowCache: @unchecked Sendable {
             hasher.combine(link.style)
             hasher.combine(link.fromSide)
             hasher.combine(link.toSide)
+            hasher.combine(link.bend)
         }
         let now = hasher.finalize()
         lock.lock()
@@ -130,5 +131,16 @@ extension BoardPainter {
             ctx.fill(dot, with: .color(paint.plate))
             ctx.stroke(dot, with: .color(paint.chosen), lineWidth: 2 / scale)
         }
+        // 0.19: a knob in the middle bends the arrow: a small diamond, so it is not taken for an end dot.
+        // Filled when the arrow is bent (a press twice on it makes it straight again).
+        let k = arrow.knob
+        var knob = Path()
+        knob.move(to: CGPoint(x: k.x, y: k.y - r * 1.25))
+        knob.addLine(to: CGPoint(x: k.x + r * 1.25, y: k.y))
+        knob.addLine(to: CGPoint(x: k.x, y: k.y + r * 1.25))
+        knob.addLine(to: CGPoint(x: k.x - r * 1.25, y: k.y))
+        knob.closeSubpath()
+        ctx.fill(knob, with: .color(arrow.isBent ? paint.chosen : paint.plate))
+        ctx.stroke(knob, with: .color(paint.chosen), style: StrokeStyle(lineWidth: 2 / scale, lineJoin: .round))
     }
 }

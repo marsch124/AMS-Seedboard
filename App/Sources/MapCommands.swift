@@ -29,5 +29,23 @@ struct MapCommands: View {
             session?.takeKeys()
         }
         .disabled(!canChange)
+        // 0.19: numbered branches, the look of a map, a branch to the other side, ideas grown from an idea.
+        Button(session?.board.numberBranches == true ? "Stop Numbering the Branches" : "Number the Branches") {
+            session?.toggleNumberBranches()
+            session?.takeKeys()
+        }
+        .disabled(!canChange)
+        Menu("Map Look") {
+            ForEach(MapLook.allCases, id: \.self) { look in
+                Button((session?.board.look == look ? "✓ " : "") + look.word) { session?.setMapLook(look); session?.takeKeys() }
+            }
+        }
+        .disabled(!canChange)
+        Button("Move to the Other Side") { session?.moveToOtherSide(); session?.takeKeys() }
+            .disabled(!canChange || chosenIdea.map { !(session?.board.canMoveToOtherSide($0.id) ?? false) } ?? true)
+        Button("Grow Ideas from This") { if let idea = chosenIdea { session?.growIdeas(from: idea.id) } }
+            .disabled(!canChange || chosenIdea.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? true)
+        Button("Straighten the Arrow") { session?.straightenLink(); session?.takeKeys() }
+            .disabled(session.map { $0.readOnly || $0.selectedLink == nil || $0.board.arrow($0.selectedLink!)?.isBent != true } ?? true)
     }
 }

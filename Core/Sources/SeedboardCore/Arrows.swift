@@ -71,6 +71,9 @@ public extension Route {
         public var endHeading: CGVector
         /// The line goes round a shape that stood in its way.
         public var detour: Bool
+        /// 0.19: for a bent arrow, the middle of the plain line it was bent from, and the point it now runs through.
+        public var plainMiddle: CGPoint?
+        public var through: CGPoint?
     }
 
     /// One end of an arrow: the item's box, its kind, the side and how far from the side's middle.
@@ -195,7 +198,7 @@ public extension Route {
         Double(hypot(b.x - a.x, b.y - a.y))
     }
 
-    private static func unit(from a: CGPoint, to b: CGPoint) -> CGVector {
+    static func unit(from a: CGPoint, to b: CGPoint) -> CGVector {
         let d = length(a, b)
         guard d > 0 else { return CGVector(dx: 1, dy: 0) }
         return CGVector(dx: Double(b.x - a.x) / d, dy: Double(b.y - a.y) / d)
@@ -726,6 +729,8 @@ public extension Board {
             all[w.link.id] = Route.arrow(from: Route.End(rect: ra, kind: w.a.kind, side: w.leaves, offset: w.startOffset),
                                          to: Route.End(rect: rb, kind: w.b.kind, side: w.arrives, offset: w.endOffset),
                                          style: w.link.style, obstacles: obstacles)
+            // 0.19: a bent arrow runs through its knob.
+            if w.link.bend != nil, let plain = all[w.link.id] { all[w.link.id] = Route.bent(plain, by: w.link.bend) }
         }
         return all
     }
