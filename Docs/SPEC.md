@@ -305,7 +305,7 @@ This section replaces the description of the bar in 2.3 where they differ (picks
 - `Link` (arrow): id, from, to, text, colour, style (`elbow` "Right angles" default, `straight`, `curve`), head; new in format 2: `fromSide`, `toSide` ("up", "down", "left" or "right": the side the owner chose for the start / the end; missing or an unknown word = found by the app), `tail` (true = a head at the near end too), `dashed` (true = drawn with dashes). `Link.ends` (`LinkEnds`: `oneWay`, `bothWays`, `none`; words "One way", "Both ways", "No ends") reads and writes head and tail: One way = head true, no tail; Both ways = head true, tail true; No ends = head false, no tail. `Link.isDashed`. Also `unknownStyle` and `extra`, as for an item.
 - `SentInfo`: when, kind ("note" or "project"), title, path (e.g. "Projects/Summer cabin.md").
 - `Board`: id, title, created, changed, format, pinned, colour (default "green"), items, links, sent, sentTodos (ids of to-do items already sent to the Inbox or inside a note/project); new in format 2: `kind` ("timeline", or missing for an ordinary board). Also `extra` (the file's fields this version does not know).
-- `Palette.names`: pink, orange, teal, blue, purple, green, yellow, red, grey. `Palette.branches` (order of main-branch colours; since 0.17, section 23.4: pink, orange, teal, blue, yellow, green, red; this older text said purple fifth). `Palette.notes`: yellow, pink, blue, green, orange, purple. `Palette.boards`: green, pink, orange, blue, teal, purple. `branch(i)` wraps round after 7.
+- `Palette.names`: pink, orange, teal, blue, purple, green, yellow, red, grey. `Palette.branches` (order of main-branch colours; since 0.18, section 24: pink, orange, teal, blue, yellow, green, six colours; 0.17 had red as a seventh and this older text said purple fifth). `Palette.notes`: yellow, pink, blue, green, orange, purple. `Palette.boards`: green, pink, orange, blue, teal, purple. `branch(i)` wraps round after 6 (7 before 0.18).
 - Colours by day / night (hex), lines: pink C0399F / E58AD0, orange E07B1A / F2A45C, teal 1E9C8E / 5CCBBE, blue 3572D6 / 7FAEF5, purple 8E55D9 / B99AF0, green 2E8B57 / 5FBF8A, yellow C99A0A / F0C850, red D5485C / F08A98, grey 7B8794 / A9B4C4. Note paper by day / by night: yellow FBE38A / D9BC55, pink F9C2D4 / D98AA8, blue BFD9FA / 86AEDD, green BFE8C8 / 86C79A, orange FBD0A0 / DDA066, purple DCC9F7 / B39AE0 (in 0.1 the night papers were dark; now they stay bright). Ink on a note is `Paint.noteInk` (0.12, 0.14, 0.19) by day and by night, in the drawing and in the field while typing; its contrast on the night papers is 6.0 : 1 (pink) to 8.3 : 1 (yellow). An unknown colour name draws as grey (line) or yellow (note).
 - Canvas: day F6F7F9, night 17181B. Chosen/outline green 2E8B57 / 5FBF8A.
 - `touch()` stamps `changed` with `max(now, changed + 0.001 s)`: always later than the board's last stamp, even when this device's clock runs behind another's, so "the newer change wins" never throws away the change just made. New in 0.2: `touch()` also raises `format` to `Board.currentFormat`, so a board this version CHANGES is written in this version's format. `canBeChanged` = `format <= Board.currentFormat` AND no item or arrow of a kind this version does not know (`holdsUnknownKinds`).
@@ -1810,11 +1810,41 @@ Version 0.17 (build 17): coloured cards on the list, folding, and purple only fo
 
 ### 23.4 Purple only for PARAGON
 - Timeline: More line "Make Milestones Orange" (Mac: also in the menu bar next to Set the Plan / Clear the Plan). Same action as the one-time question of 22.1, any time later (for example after Keep Purple). Shown only while that timeline has purple milestones (Mac: greyed out when none). One Undo step per board.
-- Mind map: `Palette.branches` is now pink, orange, teal, blue, yellow, green, red (yellow replaced purple as fifth). A main branch never comes purple by itself.
+- Mind map: `Palette.branches` is now pink, orange, teal, blue, yellow, green, red (yellow replaced purple as fifth; 0.18 takes red out again, see section 24). A main branch never comes purple by itself.
 - One-time question "Recolour purple branches?", buttons "New Colours" (main) and "Keep Purple"; remembered per device under the key `ask.purpleBranches.v1` after either button. New Colours gives every purple main branch a colour its sister main branches do not use yet, else yellow. It comes after the milestone question (22.1); never both at once.
 - More line "Recolour Purple Branches" (Mac: also in the menu bar): shown only while the board has purple main branches; can be undone.
-- Who does what: new names take `Board.whoColours` = blue, teal, orange, yellow, green, pink, red in turn (purple removed in 0.17); a name with no stored colour falls back to `Palette.branch(place)` (also without purple). Names stored purple before 0.17 keep it.
+- Who does what: new names take `Board.whoColours` = blue, teal, orange, yellow, green, pink in turn (purple removed in 0.17, red in 0.18); a name with no stored colour falls back to `Palette.branch(place)` (also without purple). Names stored purple before 0.17 keep it.
 
 ### 23.5 Signs and texts
 - Signs in this app has four new lines: the round arrow on a card heading (down = open, right = folded), the count pill, the gear alone at the top right = Settings, and the card colours (green = boards, purple = Sent to PARAGON). Purple still means PARAGON only.
 - `Guide.swift`: new 0.17 entry in What's new; How it works changed in Your boards, Starters chooser (New board), Settings, Open an outline file, mind-map branch colours, Timeline, Who does what, iPhone, Version, Signs.
+
+## 24. New in 0.18 (build 18, 20 Nov 2026)
+Version 0.18 (build 18): branches no longer take red (red is kept for late); one question for purple and red branches. Where this part and an older part disagree, this part is right. Board format stays 8; no new stored board fields.
+
+### 24.1 Branch colours
+- `Palette.branches` goes from 7 colours to 6: pink, orange, teal, blue, yellow, green (red removed; 23.4 had it as seventh). `branch(i)` wraps round after 6.
+- A main branch never takes purple (PARAGON) or red (late) by itself. Red can still be picked by hand from the colour row (`board.colours`, dot `colour.red`); the same for purple. Branches already red or purple are not changed unless the question or the menu line (24.3) is used.
+- Who does what: `Board.whoColours` = blue, teal, orange, yellow, green, pink (six; red removed, purple was removed in 0.17). A name with no stored colour falls back to `Palette.branch(place)`. Names that already have a stored colour keep it.
+- One colour, one meaning: purple = PARAGON, red = a warning (late on timelines, the today line, "did not work" in the short lines at the bottom).
+
+### 24.2 One question: Recolour purple and red branches?
+- Core file `Branches18.swift`: `OddBranches` (counts of odd main branches and mind maps), `Board.oddBranches(_:)` (the purple or red main branches of a board, read-only boards left out by the caller) and `Board.recolourBranches(_:)` (does the change, one Undo step per board). Ideas further out are not touched: they follow their branch's colour.
+- App `Orange16.swift` holds the question, next to the milestone question of 22.1.
+- When: once the boards have loaded, if a mind map that can be changed (not read-only) has at least one purple or red main branch. Once per device. It comes after the milestone question; never both at once.
+- Keys (UserDefaults): `ask.oddBranches.v1` is new in 0.18 and is set after either button. `ask.purpleBranches.v1` (0.17) is only read: when it is set, this device already answered the purple question, so the question counts red only.
+- Heading: "Recolour purple and red branches?"; when `ask.purpleBranches.v1` is set: "Recolour red branches?".
+- Message, for example: "3 branches on 2 mind maps are purple or red. Purple means PARAGON and red means late in Seedboard, and new branches skip both." Red only: "1 branch on 1 mind map is red. Red means late in Seedboard, and new branches skip it." The numbers are the real counts (singular and plural follow them).
+- Buttons: "New Colours" (main, full colour) and "Keep Them" (Escape on the Mac; before: "Keep Purple").
+- New Colours: each such main branch gets a colour its sister main branches do not use yet, in the order of `Palette.branches`, else yellow. Ideas further out follow their branch. A line says how many branches changed.
+- Keep Them: nothing changes; the question does not come again on this device. Colour in the bar still changes a branch.
+- Boards sync, so after New Colours on one device the others find nothing odd and do not ask.
+
+### 24.3 Menu line
+- More line (iPhone and iPad) and Mac menu-bar line, id `more.recolourBranches`: now "Recolour Branches" (before: "Recolour Purple Branches"). Shown while the board has purple or red main branches (Mac: greyed out when none). Does what 24.2 does, at any time; one Undo step per board.
+
+### 24.4 Course and texts
+- The course (`Docs/intro/index.html`, done separately) shows the 0.17 iPhone list (coloured folding cards, gear top right) and has steps for the cards, the gear and the branch colours.
+- `Guide.swift`: new 0.18 entry in What's new (above 0.17); How it works changed in Mind maps (branch colours; the recolour paragraph), Who does what (name colours), Signs in this app (red = late stated in one line; branches never take purple or red by themselves). Older entries in What's new keep their words, as they were true then.
+- Ideas for later: `Docs/IDEAS-0.18.md` (50 ideas, none built yet). To try by hand: `Docs/WHAT-TO-TEST-0.18.txt`.
+- Tests: one data test, `Core/Tests/SeedboardCoreTests/Branches18Tests.swift` — the six-colour order and `whoColours` without red, `OddBranches` (count, title, line), `oddBranches`, `recolourBranches` (red only keeps purple; both clears both). No new screen, so no new screen test; the question keeps the 0.17 identifiers `branches.recolour` / `branches.keep`.

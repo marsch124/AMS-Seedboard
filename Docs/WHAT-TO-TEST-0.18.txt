@@ -1,0 +1,12 @@
+Seedboard 0.18 — what to try.
+1. Have a mind map with a red main branch (pick red from the colour row). Open Seedboard: after the boards load, the question "Recolour purple and red branches?" comes up, with the counts. (On a device that already answered the 0.17 purple question it says "Recolour red branches?".)
+2. Press New Colours: each red or purple main branch gets a colour its sisters do not use yet (yellow if all are used). The ideas further out follow their branch.
+3. On the open board press Undo: the branch is red again.
+4. Make a purple or red branch again and press Keep Them (Mac: Escape). Nothing changes and the question does not come again.
+5. More (iPhone, iPad) and the Mac menu bar: "Recolour Branches" shows while the board has a purple or red main branch, and is gone when there is none. Press it: same as New Colours. Undo works.
+6. Add many main branches to a new mind map: they go pink, orange, teal, blue, yellow, green, then round again. None comes red or purple.
+7. Who does what: add several names: blue, teal, orange, yellow, green, pink. None red.
+8. Colour in the bar still lets you pick red or purple by hand.
+9. Settings > How it works: Mind maps (branch colours), Who does what, and Signs in this app (Red: late, only late).
+10. Settings > What's new: Version 0.18 is at the top.
+11. The course: the iPhone list shows coloured folding cards and the gear at the top right.

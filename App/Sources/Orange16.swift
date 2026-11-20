@@ -14,7 +14,9 @@ final class OrangeDesk: ObservableObject {
     static let shared = OrangeDesk()
     @Published var found: OrangeFound?
     /// 0.17: purple main branches of mind maps (asked after the milestones, never both at once).
+    /// 0.18: purple and red main branches (red means late); `branchColours` says which ones were counted.
     @Published var branches: OrangeFound?
+    var branchColours: Set<String> = OddBranches.all
 }
 
 extension AppModel {
@@ -39,22 +41,26 @@ extension AppModel {
         say(turned == 1 ? "1 milestone is orange now." : "\(turned) milestones are orange now.")
     }
 
-    /// 0.17: asks once, when any mind map still has purple main branches.
+    /// 0.18: asks once, when any mind map still has purple or red main branches
+    /// (red only, when this device already answered the 0.17 purple question).
     func askBranchesOnce() {
         let keep = UserDefaults.standard
-        guard loaded, !keep.bool(forKey: PurpleBranches.askedKey), OrangeDesk.shared.found == nil, OrangeDesk.shared.branches == nil else { return }
-        let n = PurpleBranches.count(boards)
+        guard loaded, !keep.bool(forKey: OddBranches.askedKey), OrangeDesk.shared.found == nil, OrangeDesk.shared.branches == nil else { return }
+        let colours = OddBranches.colours(purpleAsked: keep.bool(forKey: PurpleBranches.askedKey))
+        let n = OddBranches.count(boards, colours: colours)
         guard n.branches > 0 else { return }
+        keep.set(true, forKey: OddBranches.askedKey)
         keep.set(true, forKey: PurpleBranches.askedKey)
+        OrangeDesk.shared.branchColours = colours
         OrangeDesk.shared.branches = OrangeFound(milestones: n.branches, timelines: n.maps)
     }
 
-    /// "New Colours": every purple main branch on every board that can be changed.
-    func recolourPurpleBranches() {
+    /// "New Colours": every main branch in those colours on every board that can be changed.
+    func recolourBranches(_ colours: Set<String>) {
         var turned = 0
-        for board in boards where board.canBeChanged && board.purpleBranches > 0 {
-            turned += board.purpleBranches
-            edit(board.id) { $0.recolourPurpleBranches() }
+        for board in boards where board.canBeChanged && board.oddBranches(colours) > 0 {
+            turned += board.oddBranches(colours)
+            edit(board.id) { $0.recolourBranches(colours) }
         }
         guard turned > 0 else { return }
         say(turned == 1 ? "1 branch has a new colour." : "\(turned) branches have a new colour.")
@@ -82,16 +88,16 @@ struct OrangeHost: ViewModifier {
             }
             // The milestone question is gone: now the branches may ask (0.17).
             .onChange(of: desk.found == nil) { _, gone in if gone { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { model.askBranchesOnce() } } }
-            .alert("Recolour purple branches?",
+            .alert(OddBranches.title(desk.branchColours),
                    isPresented: Binding(get: { desk.branches != nil }, set: { if !$0 { desk.branches = nil } }),
                    presenting: desk.branches) { _ in
-                Button("New Colours") { model.recolourPurpleBranches() }
+                Button("New Colours") { model.recolourBranches(desk.branchColours) }
                     .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("branches.recolour")
-                Button("Keep Purple", role: .cancel) {}
+                Button("Keep Them", role: .cancel) {}
                     .accessibilityIdentifier("branches.keep")
             } message: { found in
-                Text(PurpleBranches.line((found.milestones, found.timelines)))
+                Text(OddBranches.line((found.milestones, found.timelines), colours: desk.branchColours))
             }
     }
 }

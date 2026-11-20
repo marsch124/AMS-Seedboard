@@ -345,9 +345,9 @@ struct BoardView: View {
                             .accessibilityIdentifier("more.orangeMilestones")
                     }
                 }
-                // 0.17: a mind map's purple main branches get a new colour.
-                if !session.readOnly && session.board.purpleBranches > 0 {
-                    Button("Recolour Purple Branches") { _ = session.change { $0.recolourPurpleBranches() }; session.takeKeys() }
+                // 0.17: a mind map's purple main branches get a new colour. 0.18: red ones too (red means late).
+                if !session.readOnly && session.board.oddBranches() > 0 {
+                    Button("Recolour Branches") { _ = session.change { $0.recolourBranches() }; session.takeKeys() }
                         .accessibilityIdentifier("more.recolourBranches")
                 }
                 // 0.11: the board's own due day (DueDay.swift).

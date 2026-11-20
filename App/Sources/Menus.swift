@@ -113,8 +113,9 @@ struct SeedMenus: Commands {
             // 0.17: purple means PARAGON — old purple milestones and mind-map branches get another colour.
             Button("Make Milestones Orange") { _ = session?.change { $0.makeMilestonesOrange() } }
                 .disabled(session == nil || session?.readOnly == true || (session?.board.purpleMilestones ?? 0) == 0)
-            Button("Recolour Purple Branches") { _ = session?.change { $0.recolourPurpleBranches() } }
-                .disabled(session == nil || session?.readOnly == true || (session?.board.purpleBranches ?? 0) == 0)
+            // 0.18: purple (PARAGON) and red (late) main branches.
+            Button("Recolour Branches") { _ = session?.change { $0.recolourBranches() } }
+                .disabled(session == nil || session?.readOnly == true || (session?.board.oddBranches() ?? 0) == 0)
             Button("Add to Calendar…") {
                 session?.commitEdit()
                 model.showCalendar = true
