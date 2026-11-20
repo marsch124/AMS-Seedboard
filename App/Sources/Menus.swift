@@ -93,6 +93,9 @@ struct SeedMenus: Commands {
                 .disabled(session?.todayThreeOffered != true)
             Button("Share…") { if let session { ShareDesk.shared.ask(session) } }
                 .disabled(session?.board.isEmpty ?? true)
+            // 0.19 (43): a picture of the chosen frame alone (Share19.swift).
+            Button("Share Picture of This Frame") { session?.shareFramePicture() }
+                .disabled(session?.frameForPicture == nil)
             // 0.5: a new timeline board from this board's ideas and shapes (TimelineOfIt.swift).
             Button("Make a Timeline of It…") {
                 if let session { model.makeTimeline(of: session) }
@@ -388,8 +391,8 @@ private struct StarterSheet: View {
 @MainActor
 enum SharePicture {
     /// Makes the board's picture and opens the system's share choice. False when no picture could be made.
-    static func show(_ board: Board) -> Bool {
-        guard let png = BoardPicture.png(of: board) else { return false }
+    static func show(_ board: Board, fromFiles: Bool = false) -> Bool {
+        guard let png = BoardPicture.png(of: board, fromFiles: fromFiles) else { return false }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Share", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let name = board.title.components(separatedBy: CharacterSet(charactersIn: "/:\\")).joined(separator: "-")

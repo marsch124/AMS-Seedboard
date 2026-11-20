@@ -39,6 +39,8 @@ public extension Board {
     func todoState(of id: UUID) -> TodoState? {
         if sentTask(id) != nil || sentTodos.contains(id) { return .inParagon }
         guard let item = items.first(where: { $0.id == id }), item.todo else { return nil }
+        // 0.19: a pasted checklist's ticked line (an idea, note … marked To do with a done day) stands done.
+        if !item.kind.isTimeline, !(item.doneDay ?? "").isEmpty { return .done }
         return .waiting
     }
 

@@ -672,7 +672,11 @@ final class BoardSession: ObservableObject {
         if !allOn { Feel.todoOn(); TickSound.play() }
         change { board in
             for id in ids {
-                if let i = board.index(of: id), board.items[i].kind != .frame { board.items[i].todo = !allOn }
+                if let i = board.index(of: id), board.items[i].kind != .frame {
+                    board.items[i].todo = !allOn
+                    // 0.19: taking the tick off a done checklist line makes it a plain thing again.
+                    if allOn, !board.items[i].kind.isTimeline { board.items[i].doneDay = nil }
+                }
             }
             // Taking the tick off forgets that it was sent, so ticking it again sends it again.
             if allOn { board.sentTodos.removeAll { ids.contains($0) } }

@@ -472,6 +472,7 @@ struct BarActions {
             all.append(words(item.id))
             all.append(duplicate())
             all += chooseMore()
+            all += shareFramePicture()
             all += sendFrame()
             all.append(remove(gap: true))
             return all
@@ -600,6 +601,7 @@ struct BarActions {
         if item.kind.isShape || item.kind == .note || item.kind == .frame || item.kind == .drawing || isBranch { all.append(colour(for: item)) }
         if item.kind != .frame && item.kind != .drawing && item.kind != .picture { all.append(todo(on: item.todo, gap: false)) }
         all += todayThree()
+        all += shareFramePicture()
         all += sendFrame()
         copy.gap = true
         all += [copy, cut, twin]

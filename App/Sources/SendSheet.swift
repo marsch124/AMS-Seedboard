@@ -87,6 +87,19 @@ struct SendSheet: View {
         }
     }
 
+    /// 0.19 (44): the Preview — the text of the note (or the lines for the Inbox) from the very functions Send writes with.
+    private var previewText: SendPreviewText {
+        switch kind {
+        case .note, .project:
+            return SendPreviewText(ParagonExport.handoverText(project: kind == .project, board: subject, title: title,
+                                                              picture: "picture.png", now: Date(), choices: choices).text)
+        case .todos:
+            return SendPreviewText(lines: ParagonExport.inboxSend(board: subject, look: subjectLook, choices: choices).lines)
+        case .add:
+            return SendPreviewText(lines: adding?.lines ?? [])
+        }
+    }
+
     /// The words under "Only the to-do boxes".
     private var todosWords: String {
         if waiting == 0 {
@@ -211,6 +224,8 @@ struct SendSheet: View {
             let made = gets
             ParagonGetsBox(rows: made.rows, picture: chosenActive ? subject : frameOnly && frame != nil ? (frame.flatMap { session.board.frameOnly($0.id, keepFrame: true) } ?? session.board) : (branchOnly ? nil : session.board),
                            countLine: ParagonExport.countLine(made.rows, inInbox: made.inInbox))
+
+            SendPreviewBox(preview: previewText)
 
             if let sent = whole.sent, let news,
                let line = ParagonExport.cannotFollowLine(renamed: news.renamed, moved: news.moved, since: sent.when) {

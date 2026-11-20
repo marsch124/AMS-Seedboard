@@ -209,9 +209,7 @@ enum ParagonGate {
             }
 
             // The text, and with it every thing that is a task in it.
-            let handover = kind == .project
-                ? ParagonExport.projectHandover(board: board, title: title, picture: picture, now: now, choices: choices)
-                : ParagonExport.noteHandover(board: board, title: title, picture: picture, now: now, choices: choices)
+            let handover = ParagonExport.handoverText(project: kind == .project, board: board, title: title, picture: picture, now: now, choices: choices)
             do {
                 try writeNew(Data(handover.text.utf8), to: noteURL)
             } catch {
