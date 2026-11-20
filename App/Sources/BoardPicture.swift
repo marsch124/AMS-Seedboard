@@ -18,15 +18,17 @@ enum BoardPicture {
         let facts = MapFacts(fitted)
         guard let all = fitted.bounds else { return nil }
         let box = all.insetBy(dx: -40, dy: -40)
-        let paint = Paint(night: false)
+        let paint = Paint(night: false, paper: board.paper)
+        // 0.19 (18): white as before; a board with a paper colour is drawn on its paper (day look).
+        let page: Color = board.paperColour == nil ? .white : paint.canvas
         let view = Canvas { ctx, size in
-            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white))
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(page))
             var sheet = ctx
             sheet.translateBy(x: -box.minX, y: -box.minY)
             var painter = BoardPainter(board: fitted, facts: facts, paint: paint)
             painter.handles = false
             painter.todoStates = TodoMark.marks(for: fitted)
-            painter.ground = .white
+            painter.ground = page
             painter.draw(&sheet)
         }
         .frame(width: box.width, height: box.height)

@@ -9,6 +9,8 @@ final class BoardSession: ObservableObject {
     @Published private(set) var board: Board
     private(set) var facts: MapFacts
 
+    /// 0.19 (17): Read mode — the board is frozen for reading; kept per board on this device (Canvas19.swift), not stored in the board.
+    @Published var readMode = false
     @Published var selection: Set<UUID> = []
     @Published var selectedLink: UUID?
     /// The item or arrow being typed in.
@@ -96,10 +98,11 @@ final class BoardSession: ObservableObject {
         Lettering.fit(&fitted, facts: MapFacts(board))
         self.board = fitted
         self.facts = MapFacts(fitted)
+        self.readMode = Read19.isOn(for: fitted.id)
     }
 
     /// A board written by a newer version can be looked at, not changed.
-    var readOnly: Bool { !board.canBeChanged || HandoffDesk.shared.waiting == board.id }
+    var readOnly: Bool { !board.canBeChanged || HandoffDesk.shared.waiting == board.id || readMode }
 
     // MARK: Changing
 

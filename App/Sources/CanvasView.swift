@@ -72,7 +72,7 @@ struct CanvasView: View {
         case panning(CGSize)
     }
 
-    private var paint: Paint { Paint(scheme) }
+    private var paint: Paint { Paint(scheme, paper: session.board.paper) }
 
     var body: some View {
         GeometryReader { geo in
@@ -712,7 +712,7 @@ struct CanvasView: View {
                 session.linking = false
                 session.linkFrom = nil
             } else if Finger.twoPressesFit, double(nil) {
-                // iPhone and iPad: two presses on empty board show the whole board (the Mac makes a sticky note).
+                // Before 0.19 on iPhone and iPad: two presses on empty board showed the whole board. Now `Finger.twoPressesFit` is off: all three make a sticky note.
                 session.fit()
                 lastTapAt = .distantPast
                 return

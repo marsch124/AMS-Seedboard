@@ -16,7 +16,7 @@ enum Finger {
 
     /// Two quick presses on empty board show the whole board (true) or make a sticky note as on the
     /// Mac and in 0.1 (false). One switch, should the owner want the sticky note back.
-    static let twoPressesFit = on
+    static let twoPressesFit = false   // 0.19 (9): was `on`; two presses on empty board now make a sticky note on every device
 
     /// Two presses (or clicks) on the board count as one double press when the second lands within this many
     /// seconds. Screen tests only (DEBUG): `-twoPressWindow <seconds>` widens it, because the test's own double

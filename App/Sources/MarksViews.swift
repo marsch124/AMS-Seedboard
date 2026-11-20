@@ -35,6 +35,10 @@ struct MarksMoreLines: View {
             .disabled(!session.marksOn)
         }
         .accessibilityIdentifier("more.background")
+        // 0.19 (18): the paper colour, with Plain, Paper, Warm grey and Night blue (Canvas19.swift).
+        Button("Background colour…") { session.commitEdit(); BackdropColourDesk.shared.show = true }
+            .disabled(!session.marksOn)
+            .accessibilityIdentifier("more.paper")
     }
 }
 

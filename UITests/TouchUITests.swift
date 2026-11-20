@@ -47,9 +47,8 @@ final class TouchUITests: XCTestCase {
         let spot = element(app, "board.canvas").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
         spot.tap()
         spot.tap()
-        waitFor(app, "zoom.value", toSay: "100 %")
-        // Nothing was made by the two presses (before 0.2 they made a sticky note).
-        waitFor(app, "board.count", toSay: "Empty")
+        // 0.19 (9): two presses on empty board make a sticky note on every device (before: they showed the whole board).
+        waitFor(app, "board.count", toSay: "1 note")
         #endif
     }
 }

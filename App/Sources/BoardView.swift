@@ -50,7 +50,7 @@ struct BoardView: View {
     var body: some View {
         ZStack {
             // The board's own colour runs to every edge of the screen, also under the home bar.
-            Paint(scheme).canvas.ignoresSafeArea()
+            Paint(scheme, paper: session.board.paper).canvas.ignoresSafeArea()
             if session.board.isSequence { SequenceView(session: session) } else
             if session.board.isTimeline { TimelineView(session: session) } else { CanvasView(session: session) }
 
@@ -73,8 +73,10 @@ struct BoardView: View {
                 if HandoffDesk.shared.waiting == session.board.id {
                     // Taken up from another device before iCloud brought its newest version (HandoffDesk.swift).
                     banner(Handoff.waitingLine, part: .boards).accessibilityIdentifier("board.handoffWait")
-                } else if session.readOnly {
+                } else if !session.board.canBeChanged {
                     banner("This board was made by a newer Seedboard. Update the app to change it.", part: .notes)
+                } else if session.readMode {
+                    ReadModePill(session: session)
                 } else if session.linking {
                     HStack(spacing: 8) {
                         Text(session.board.isSequence ? SequenceWords.linking(first: session.linkFrom == nil) :
@@ -219,6 +221,7 @@ struct BoardView: View {
         // 0.11: "Due day" (DueDay.swift).
         .modifier(DueHost(session: session))
         .modifier(GrowHost(session: session))
+        .modifier(BackdropColourHost(session: session))
         // 0.14 (27): the Pieces page and "Save as a piece" (PiecesPage.swift); (22) leaving the board stops the timer.
         .modifier(PieceHost(session: session))
         .onChange(of: session.board.id) { old, _ in BrainstormDesk.shared.stop(leaving: old) }
@@ -407,6 +410,8 @@ struct BoardView: View {
                     }
                     .accessibilityIdentifier("more.mapLook")
                 }
+                // 0.19 (17): Read mode.
+                if session.board.canBeChanged && !session.starterDraft { ReadModeMoreLine(session: session) }
                 // 0.9: Sort by dots, Clear all dots, Colour legend…, Background (MarksViews.swift).
                 if !session.board.placesItself && !session.starterDraft { MarksMoreLines(session: session) }
                 if !session.board.isEmpty {

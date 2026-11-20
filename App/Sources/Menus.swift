@@ -198,6 +198,10 @@ struct SeedMenus: Commands {
             Button("Show the Whole Board") { session?.fit() }
                 .keyboardShortcut("1", modifiers: .command)
                 .disabled(session == nil)
+            // 0.19 (17): freeze the board for reading.
+            Button(session?.readMode == true ? "Leave Read Mode" : "Read Mode") { session?.setReadMode(session?.readMode != true) }
+                .keyboardShortcut("r", modifiers: [.option, .command])
+                .disabled(session == nil || session?.board.canBeChanged != true || session?.starterDraft == true)
             // 0.14 (look): the chosen things fill the screen.
             Button("Zoom to Chosen") { session?.zoomToChosen() }
                 .keyboardShortcut("3", modifiers: .command)
